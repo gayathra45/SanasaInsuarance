@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+**/node_modules/
+uploads
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env*.local
+*.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# React Native
+.expo/
+.expo-shared/
+
+# Android/iOS
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
