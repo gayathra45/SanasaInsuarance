@@ -32,6 +32,7 @@ Thumbs.db
 .vscode/
 .idea/
 
+
 # React Native
 .expo/
 .expo-shared/
