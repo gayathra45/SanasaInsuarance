@@ -193,6 +193,43 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        {/* --- Insurance App Section --- */}
+        <section className={styles.appSection}>
+          <div className={styles.appBackground}>
+            <Image
+              src="/Home 3.jpg"
+              alt="Insurance App background"
+              fill
+              style={{ objectFit: "cover" }}
+            />
+          </div>
+
+          <div className={styles.appInnerContainer}>
+            <div className={styles.appImageLeft}>
+              <Image
+                src="/Home 3.1.png"
+                alt="Insurance app with phone, car and shield"
+                width={400}
+                height={500}
+                style={{ objectFit: "contain" }}
+              />
+            </div>
+
+            <div className={styles.appTextRight}>
+              <p className={styles.appSubtitle}>Introducing Insurance App</p>
+              <h2 className={styles.appHeading}>
+                Specifically built for our policy holders
+              </h2>
+              <p className={styles.appDescription}>
+                SANASA Vehicle Insurance App makes managing your insurance simple
+                and convenient. Policyholders can view their policies, track claims,
+                pay premiums, upload documents, and get 24/7 support all from a
+                secure, user-friendly mobile platform.
+              </p>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
   );
