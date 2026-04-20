@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import Navbar from "./Navbar";
+import Footer from "./Footer";
 import styles from "./page.module.css";
 
 export default function Home() {
@@ -156,19 +157,14 @@ export default function Home() {
         <section className={styles.motorSection}>
           <div className={styles.motorBanner}>
             <Image
-              src="/home2.jpg"
-              alt="Motor Insurance SUV"
+              src="/home2 h.png"
+              alt="Motor Insurance Features"
               fill
               className={styles.motorBgImage}
               style={{ objectFit: 'cover' }}
             />
             <div className={styles.motorOverlay}>
               <h2 className={styles.motorHeading}>Our Motor Insurance</h2>
-              <div className={styles.arrowsWrapper}>
-                <Image src="/Home 2.2.1.png" alt="Arrow 1" width={400} height={200} className={styles.arrowImg} />
-                <Image src="/Home 2.2.2.png" alt="Arrow 2" width={400} height={200} className={styles.arrowImg} />
-                <Image src="/Home 2.2.3.png" alt="Arrow 3" width={400} height={200} className={styles.arrowImg} />
-              </div>
             </div>
           </div>
           
@@ -231,6 +227,7 @@ export default function Home() {
           </div>
         </section>
       </main>
+      <Footer />
     </div>
   );
 }

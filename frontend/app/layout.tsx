@@ -11,6 +11,9 @@ const afacad = Afacad({
 export const metadata: Metadata = {
   title: "Sanasa General Insurance",
   description: "Protect Your Drive with Confidence. Fast Claims. Affordable Plans. Trusted Protection.",
+  icons: {
+    icon: "/logo.png",
+  },
 };
 
 export default function RootLayout({

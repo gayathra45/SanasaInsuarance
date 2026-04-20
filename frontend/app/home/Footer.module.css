@@ -1,0 +1,170 @@
+.footer {
+  background-color: #ffa500;
+  color: white;
+  padding: 40px 20px 20px 20px;
+  margin-top: 60px;
+}
+
+.footerContent {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  margin-bottom: 30px;
+}
+
+/* Left Section - Logo */
+.footerLeftSection {
+  flex-shrink: 0;
+}
+
+.footerLogo {
+  height: auto;
+  max-width: 150px;
+  display: block;
+}
+
+/* Center Section - Navigation Links */
+.footerNavLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  flex: 1;
+  justify-content: flex-start;
+}
+
+.footerLink {
+  color: white;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 500;
+  transition: opacity 0.3s ease;
+}
+
+.footerLink:hover {
+  opacity: 0.8;
+}
+
+/* Right Section - Auth Buttons & Social Media */
+.footerRightSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.authButtons {
+  display: flex;
+  gap: 15px;
+  flex-shrink: 0;
+}
+
+.loginButton {
+  background-color: transparent;
+  border: 2px solid white;
+  color: white;
+  padding: 8px 25px;
+  border-radius: 25px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.loginButton:hover {
+  background-color: white;
+  color: #ffa500;
+}
+
+.signupButton {
+  background-color: white;
+  color: #ffa500;
+  padding: 8px 25px;
+  border-radius: 25px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.signupButton:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+/* Social Media Links */
+.socialMediaLinks {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  align-items: flex-end;
+}
+
+.socialMediaLinks a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease;
+}
+
+.socialMediaLinks a:hover {
+  transform: scale(1.2);
+}
+
+.socialIcon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Copyright Section */
+.footerCopyright {
+  text-align: center;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.footerCopyright p {
+  margin: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .footerContent {
+    flex-direction: column;
+    gap: 25px;
+    align-items: center;
+    text-align: center;
+  }
+
+  .footerLeftSection {
+    width: 100%;
+  }
+
+  .footerNavLinks {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+
+  .footerRightSection {
+    align-items: center;
+    width: 100%;
+  }
+
+  .authButtons {
+    justify-content: center;
+    width: 100%;
+  }
+
+  .socialMediaLinks {
+    justify-content: center;
+  }
+}

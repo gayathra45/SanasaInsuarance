@@ -1,8 +1,22 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import styles from "./Navbar.module.css";
 
 export default function Navbar() {
+  const pathname = usePathname();
+
+  const isActive = (href: string) => {
+    // For home link, only match exact path
+    if (href === "/home") {
+      return pathname === "/home" || pathname === "/";
+    }
+    // For other links, match exact path or subpaths
+    return pathname === href || pathname.startsWith(href + "/");
+  };
+
   return (
     <nav className={styles.navbar}>
       <div className={styles.logoContainer}>
@@ -19,16 +33,28 @@ export default function Navbar() {
       </div>
       
       <div className={styles.navLinks}>
-        <Link href="/" className={styles.homeLink}>
+        <Link 
+          href="/home" 
+          className={`${styles.homeLink} ${isActive("/home") ? styles.active : ""}`}
+        >
           Home
         </Link>
-        <Link href="/contact" className={styles.navLink}>
+        <Link 
+          href="/home/Contactus" 
+          className={`${styles.navLink} ${isActive("/home/Contactus") ? styles.active : ""}`}
+        >
           Contact Us
         </Link>
-        <Link href="/news" className={styles.navLink}>
+        <Link 
+          href="/news" 
+          className={`${styles.navLink} ${isActive("/news") ? styles.active : ""}`}
+        >
           News
         </Link>
-        <Link href="/about" className={styles.navLink}>
+        <Link 
+          href="/about" 
+          className={`${styles.navLink} ${isActive("/about") ? styles.active : ""}`}
+        >
           About Us
         </Link>
       </div>
