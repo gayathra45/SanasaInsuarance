@@ -1,0 +1,202 @@
+/* Hero Styles */
+.heroContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 1.5rem 4rem;
+  gap: 2.5rem;
+}
+
+@media (min-width: 768px) {
+  .heroContainer {
+    flex-direction: row;
+    padding-left: 4rem;
+    padding-right: 0;
+  }
+}
+
+@media (min-width: 1200px) {
+  .heroContainer {
+    padding-left: 6rem;
+  }
+}
+
+.heroLeftSection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 2rem;
+}
+
+@media (min-width: 768px) {
+  .heroLeftSection {
+    width: 45%;
+    padding-right: 2rem;
+  }
+}
+
+.heroHeading {
+  font-size: 3rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #000;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .heroHeading {
+    font-size: 4.5rem; /* Larger font size for heading to match image */
+  }
+}
+
+.heroParagraph {
+  font-size: 1.125rem;
+  color: #1f2937;
+  margin-bottom: 4rem;
+  font-weight: 500;
+}
+
+.heroButtonContainer {
+  display: flex;
+  gap: 2rem;
+}
+
+.heroActionButton {
+  background-color: #00ddff; /* Brighter cyan to match image */
+  color: #000;
+  font-weight: 700;
+  font-size: 1.25rem;
+  padding: 0.75rem 3rem;
+  border-radius: 9999px;
+  transition: background-color 0.15s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+}
+
+.heroActionButton:hover {
+  background-color: #22d3ee;
+}
+
+.heroImageContainer {
+  position: relative;
+  height: 400px;
+  width: 100%;
+  border-radius: 3rem; /* extremely rounded */
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+}
+
+@media (min-width: 768px) {
+  .heroImageContainer {
+    width: 55%;
+    height: 550px;
+    border-radius: 4rem 0 0 4rem; /* flat on the right if it bleeds */
+  }
+}
+
+/* Services Styles */
+.servicesContainer {
+  padding: 4rem 1.5rem;
+  background-color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .servicesContainer {
+    padding: 6rem 4rem;
+  }
+}
+
+.servicesTitle {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.servicesCardsWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1200px;
+  margin-bottom: 3rem;
+}
+
+@media (min-width: 640px) {
+  .servicesCardsWrapper {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 1024px) {
+  .servicesCardsWrapper {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+  }
+}
+
+.servicesCard {
+  flex: 1;
+  /* At least enough min width to look good on tablets, but flex box will handle desktop 4 column */
+  min-width: calc(50% - 1rem); 
+  background-color: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1.5rem;
+  padding: 2.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+@media (min-width: 1024px) {
+  .servicesCard {
+    min-width: 0; 
+  }
+}
+
+.servicesCard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+}
+
+.servicesIconWrapper {
+  color: #4b5563; /* Dark gray */
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.servicesIcon {
+  width: 72px;
+  height: 72px;
+}
+
+.servicesCardTitle {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.3;
+}
+
+.servicesDescription {
+  max-width: 900px;
+  text-align: center;
+  font-size: 1rem;
+  color: #374151;
+  line-height: 1.6;
+  margin: 0 auto;
+}
