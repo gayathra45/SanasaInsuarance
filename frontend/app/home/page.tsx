@@ -172,15 +172,7 @@ export default function Home() {
             </div>
           </div>
           
-          <div className={styles.motorBottom}>
-            <p className={styles.motorBottomText}>
-              SANASA Vehicle Insurance provides reliable and affordable
-              protection for your vehicle, ensuring peace of mind with fast claim
-              processing, secure services, and islandwide support. Designed to
-              meet the needs of policyholders, it offers a convenient and
-              trustworthy way to manage your insurance.
-            </p>
-          </div>
+          
         </section>
       </main>
     </div>
