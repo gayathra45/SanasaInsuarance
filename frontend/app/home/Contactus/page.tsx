@@ -1,5 +1,5 @@
-import Navbar from "../Navbar";
-import Footer from "../Footer";
+import Navbar from "../../Components/Homepage/Navbar";
+import Footer from "../../Components/Homepage/Footer";
 
 export default function ContactUs() {
   return (
