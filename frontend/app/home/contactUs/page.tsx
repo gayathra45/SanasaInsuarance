@@ -1,5 +1,5 @@
-import Navbar from "../Components/Homepage/Navbar";
-import Footer from "../Components/Homepage/Footer";
+import Navbar from "../../Components/Homepage/Navbar";
+import Footer from "../../Components/Homepage/Footer";
 
 export default function ContactUs() {
   // ClassName variables for better readability

@@ -54,8 +54,8 @@ export default function Navbar() {
           Home
         </Link>
         <Link 
-          href="/home/home_contact" 
-          className={getLinkClass("/home/home_contact")}
+          href="/home/contactUs" 
+          className={getLinkClass("/home/contactUs")}
         >
           Contact Us
         </Link>
