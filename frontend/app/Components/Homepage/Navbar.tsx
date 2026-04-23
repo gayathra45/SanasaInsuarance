@@ -19,8 +19,8 @@ export default function Navbar() {
 
   const isActive = (href: string) => {
     // For home link, only match exact path
-    if (href === "/home") {
-      return pathname === "/home" || pathname === "/";
+    if (href === "/") {
+      return pathname === "/" || pathname === "";
     }
     // For other links, match exact path or subpaths
     return pathname === href || pathname.startsWith(href + "/");
@@ -48,14 +48,14 @@ export default function Navbar() {
       
       <div className={navLinksContainer}>
         <Link 
-          href="/home" 
-          className={getLinkClass("/home")}
+          href="/" 
+          className={getLinkClass("/")}
         >
           Home
         </Link>
         <Link 
-          href="/home/Contactus" 
-          className={getLinkClass("/home/Contactus")}
+          href="/home/home_contact" 
+          className={getLinkClass("/home/home_contact")}
         >
           Contact Us
         </Link>

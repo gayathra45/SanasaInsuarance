@@ -42,7 +42,7 @@ export default function Footer() {
           <Link href="/news" className={footerLink}>
             News
           </Link>
-          <Link href="/home/Contactus" className={footerLink}>
+          <Link href="/home/home_contact" className={footerLink}>
             Contact Us
           </Link>
           <Link href="/about" className={footerLink}>
