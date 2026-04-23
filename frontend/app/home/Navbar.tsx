@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import styles from "./Navbar.module.css";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -18,54 +17,54 @@ export default function Navbar() {
   };
 
   return (
-    <nav className={styles.navbar}>
-      <div className={styles.logoContainer}>
+    <nav className="w-full bg-white border-b border-gray-200 py-4 px-6 md:px-16 flex items-center justify-between">
+      <div className="flex items-center">
         <Link href="/">
           <Image
             src="/logo.png"
             alt="Sanasa General Insurance"
             width={150}
             height={60}
-            className={styles.logoImage}
+            className="object-contain h-auto"
             priority
           />
         </Link>
       </div>
       
-      <div className={styles.navLinks}>
+      <div className="hidden md:flex items-center gap-12 font-bold text-[#333] text-xl">
         <Link 
           href="/home" 
-          className={`${styles.homeLink} ${isActive("/home") ? styles.active : ""}`}
+          className={`text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff] ${isActive("/home") ? "bg-[#00ddff] !text-black" : ""}`}
         >
           Home
         </Link>
         <Link 
           href="/home/Contactus" 
-          className={`${styles.navLink} ${isActive("/home/Contactus") ? styles.active : ""}`}
+          className={`text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff] ${isActive("/home/Contactus") ? "bg-[#00ddff] !text-black" : ""}`}
         >
           Contact Us
         </Link>
         <Link 
           href="/news" 
-          className={`${styles.navLink} ${isActive("/news") ? styles.active : ""}`}
+          className={`text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff] ${isActive("/news") ? "bg-[#00ddff] !text-black" : ""}`}
         >
           News
         </Link>
         <Link 
           href="/about" 
-          className={`${styles.navLink} ${isActive("/about") ? styles.active : ""}`}
+          className={`text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff] ${isActive("/about") ? "bg-[#00ddff] !text-black" : ""}`}
         >
           About Us
         </Link>
       </div>
 
-      <div className={styles.profileContainer}>
-        <button className={styles.profileButton} aria-label="User Profile">
+      <div className="flex items-center">
+        <button className="text-black transition-colors duration-150 bg-transparent border-none cursor-pointer hover:text-[#00ddff] p-0" aria-label="User Profile">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
             fill="currentColor"
-            className={styles.profileIcon}
+            className="w-9 h-9"
           >
             <path
               fillRule="evenodd"
