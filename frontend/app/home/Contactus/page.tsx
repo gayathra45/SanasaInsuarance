@@ -2,94 +2,113 @@ import Navbar from "../../Components/Homepage/Navbar";
 import Footer from "../../Components/Homepage/Footer";
 
 export default function ContactUs() {
+  // ClassName variables for better readability
+  const pageContainer = "min-h-screen bg-white";
+  const mainSection = "py-16 px-6";
+  const contentWrapper = "max-w-4xl mx-auto";
+  const pageTitle = "text-4xl font-bold mb-4";
+  const pageDesc = "text-lg text-gray-600 mb-8";
+  const formGrid = "grid grid-cols-1 md:grid-cols-2 gap-12";
+  const formContainer = "space-y-6";
+  const formGroup = "space-y-6";
+  const formField = "";
+  const formLabel = "block text-sm font-medium text-gray-700 mb-2";
+  const formInput = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500";
+  const formTextarea = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-32";
+  const submitBtn = "w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition";
+  const infoContainer = "space-y-8";
+  const infoBlock = "";
+  const infoTitle = "text-xl font-bold text-gray-800 mb-2";
+  const infoText = "text-gray-600";
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className={pageContainer}>
       <Navbar />
       <main>
-        <section className="py-16 px-6">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-4xl font-bold mb-4">Contact Us</h1>
-            <p className="text-lg text-gray-600 mb-8">
+        <section className={mainSection}>
+          <div className={contentWrapper}>
+            <h1 className={pageTitle}>Contact Us</h1>
+            <p className={pageDesc}>
               Get in touch with us for any questions or support you need.
             </p>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+            <div className={formGrid}>
               {/* Contact Form */}
-              <form className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+              <form className={formContainer}>
+                <div className={formField}>
+                  <label className={formLabel}>
                     Name
                   </label>
                   <input
                     type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className={formInput}
                     placeholder="Your Name"
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className={formField}>
+                  <label className={formLabel}>
                     Email
                   </label>
                   <input
                     type="email"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className={formInput}
                     placeholder="your@email.com"
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className={formField}>
+                  <label className={formLabel}>
                     Subject
                   </label>
                   <input
                     type="text"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    className={formInput}
                     placeholder="Subject"
                   />
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div className={formField}>
+                  <label className={formLabel}>
                     Message
                   </label>
                   <textarea
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-32"
+                    className={formTextarea}
                     placeholder="Your message..."
                   ></textarea>
                 </div>
                 
                 <button
                   type="submit"
-                  className="w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition"
+                  className={submitBtn}
                 >
                   Send Message
                 </button>
               </form>
               
               {/* Contact Information */}
-              <div className="space-y-8">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Phone</h3>
-                  <p className="text-gray-600">+94 11 234 5678</p>
+              <div className={infoContainer}>
+                <div className={infoBlock}>
+                  <h3 className={infoTitle}>Phone</h3>
+                  <p className={infoText}>+94 11 234 5678</p>
                 </div>
                 
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Email</h3>
-                  <p className="text-gray-600">support@sanasainsurance.com</p>
+                <div className={infoBlock}>
+                  <h3 className={infoTitle}>Email</h3>
+                  <p className={infoText}>support@sanasainsurance.com</p>
                 </div>
                 
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Address</h3>
-                  <p className="text-gray-600">
+                <div className={infoBlock}>
+                  <h3 className={infoTitle}>Address</h3>
+                  <p className={infoText}>
                     123 Insurance Street<br />
                     Colombo, Sri Lanka 00100
                   </p>
                 </div>
                 
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800 mb-2">Hours</h3>
-                  <p className="text-gray-600">
+                <div className={infoBlock}>
+                  <h3 className={infoTitle}>Hours</h3>
+                  <p className={infoText}>
                     Monday - Friday: 9:00 AM - 6:00 PM<br />
                     Saturday: 10:00 AM - 4:00 PM<br />
                     Sunday: Closed

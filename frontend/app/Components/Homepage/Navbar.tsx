@@ -7,6 +7,16 @@ import { usePathname } from "next/navigation";
 export default function Navbar() {
   const pathname = usePathname();
 
+  // ClassName variables for better readability
+  const navContainer = "w-full bg-white border-b border-gray-200 py-4 px-6 md:px-16 flex items-center justify-between";
+  const logoContainer = "flex items-center";
+  const logoImage = "object-contain h-auto";
+  const navLinksContainer = "hidden md:flex items-center gap-12 font-bold text-[#333] text-xl";
+  const navLinkBase = "text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff]";
+  const navLinkActive = "bg-[#00ddff] !text-black";
+  const profileButton = "text-black transition-colors duration-150 bg-transparent border-none cursor-pointer hover:text-[#00ddff] p-0";
+  const profileIcon = "w-9 h-9";
+
   const isActive = (href: string) => {
     // For home link, only match exact path
     if (href === "/home") {
@@ -16,55 +26,60 @@ export default function Navbar() {
     return pathname === href || pathname.startsWith(href + "/");
   };
 
+  const getLinkClass = (href: string) => {
+    const activeStyles = isActive(href) ? navLinkActive : "";
+    return `${navLinkBase} ${activeStyles}`;
+  };
+
   return (
-    <nav className="w-full bg-white border-b border-gray-200 py-4 px-6 md:px-16 flex items-center justify-between">
-      <div className="flex items-center">
+    <nav className={navContainer}>
+      <div className={logoContainer}>
         <Link href="/">
           <Image
             src="/logo.png"
             alt="Sanasa General Insurance"
             width={150}
             height={60}
-            className="object-contain h-auto"
+            className={logoImage}
             priority
           />
         </Link>
       </div>
       
-      <div className="hidden md:flex items-center gap-12 font-bold text-[#333] text-xl">
+      <div className={navLinksContainer}>
         <Link 
           href="/home" 
-          className={`text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff] ${isActive("/home") ? "bg-[#00ddff] !text-black" : ""}`}
+          className={getLinkClass("/home")}
         >
           Home
         </Link>
         <Link 
           href="/home/Contactus" 
-          className={`text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff] ${isActive("/home/Contactus") ? "bg-[#00ddff] !text-black" : ""}`}
+          className={getLinkClass("/home/Contactus")}
         >
           Contact Us
         </Link>
         <Link 
           href="/news" 
-          className={`text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff] ${isActive("/news") ? "bg-[#00ddff] !text-black" : ""}`}
+          className={getLinkClass("/news")}
         >
           News
         </Link>
         <Link 
           href="/about" 
-          className={`text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff] ${isActive("/about") ? "bg-[#00ddff] !text-black" : ""}`}
+          className={getLinkClass("/about")}
         >
           About Us
         </Link>
       </div>
 
-      <div className="flex items-center">
-        <button className="text-black transition-colors duration-150 bg-transparent border-none cursor-pointer hover:text-[#00ddff] p-0" aria-label="User Profile">
+      <div className={logoContainer}>
+        <button className={profileButton} aria-label="User Profile">
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 24 24"
             fill="currentColor"
-            className="w-9 h-9"
+            className={profileIcon}
           >
             <path
               fillRule="evenodd"
