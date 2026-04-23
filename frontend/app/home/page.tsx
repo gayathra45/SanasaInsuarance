@@ -179,7 +179,7 @@ export default function Home() {
             </div>
             <div className="flex-[1.5] flex justify-center items-center">
               <Image
-                src="/Home 2.1.jpg"
+                src="/Home 2.1.png"
                 alt="Vehicles Covered"
                 width={1000}
                 height={400}
