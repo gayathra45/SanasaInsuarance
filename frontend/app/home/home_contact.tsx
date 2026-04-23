@@ -1,5 +1,5 @@
-import Navbar from "../../Components/Homepage/Navbar";
-import Footer from "../../Components/Homepage/Footer";
+import Navbar from "../Components/Homepage/Navbar";
+import Footer from "../Components/Homepage/Footer";
 
 export default function ContactUs() {
   // ClassName variables for better readability
@@ -11,13 +11,13 @@ export default function ContactUs() {
   const formGrid = "grid grid-cols-1 md:grid-cols-2 gap-12";
   const formContainer = "space-y-6";
   const formGroup = "space-y-6";
-  const formField = "";
+  const formField = "space-y-2";
   const formLabel = "block text-sm font-medium text-gray-700 mb-2";
   const formInput = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500";
   const formTextarea = "w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 h-32";
   const submitBtn = "w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 transition";
   const infoContainer = "space-y-8";
-  const infoBlock = "";
+  const infoBlock = "bg-gray-50 p-6 rounded-lg border border-gray-200";
   const infoTitle = "text-xl font-bold text-gray-800 mb-2";
   const infoText = "text-gray-600";
 
