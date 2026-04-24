@@ -45,7 +45,7 @@ export default function Navbar() {
           />
         </Link>
       </div>
-      
+     
       <div className={navLinksContainer}>
         <Link 
           href="/" 
