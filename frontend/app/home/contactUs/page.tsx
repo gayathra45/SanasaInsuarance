@@ -87,7 +87,7 @@ export default function ContactUs() {
               <div className="w-full md:w-[60%] lg:w-[55%] -mb-12 md:-mb-24 z-20 md:pl-4">
                  <div className="relative w-full h-[250px] md:h-[350px] rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl border-[6px] border-white bg-white">
                     <iframe 
-                       src="https://maps.google.com/maps?q=Sanasa%20General%20Insurance,%20172,%20Elvitigala%20Mv,%20Colombo%208,%20Sri%20Lanka&t=&z=15&ie=UTF8&iwloc=&output=embed"
+                       src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3961.2661808899647!2d79.87076!3d6.918!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3ae259ab28a0b0f1%3A0x5f5b0b0b0b0b0b0b!2sSanasa%20General%20Insurance!5e0!3m2!1sen!2slk!4v1234567890"
                        width="100%" 
                        height="100%" 
                        style={{ border: 0 }} 
