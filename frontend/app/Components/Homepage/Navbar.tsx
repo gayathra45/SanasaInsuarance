@@ -8,11 +8,11 @@ export default function Navbar() {
   const pathname = usePathname();
 
   // ClassName variables for better readability
-  const navContainer = "w-full bg-white border-b border-gray-200 py-4 px-6 md:px-16 flex items-center justify-between";
+  const navContainer = "w-full bg-white border-b border-gray-200 py-2 px-6 md:px-16 flex items-center justify-between";
   const logoContainer = "flex items-center";
   const logoImage = "object-contain h-auto";
-  const navLinksContainer = "hidden md:flex items-center gap-12 font-bold text-[#333] text-xl";
-  const navLinkBase = "text-inherit no-underline transition-all duration-150 py-2 px-9 rounded-full hover:text-[#00ddff]";
+  const navLinksContainer = "hidden md:flex items-center gap-10 font-bold text-[#333] text-lg";
+  const navLinkBase = "text-inherit no-underline transition-all duration-150 py-1 px-7 rounded-full hover:text-[#00ddff]";
   const navLinkActive = "bg-[#00ddff] !text-black";
   const profileButton = "text-black transition-colors duration-150 bg-transparent border-none cursor-pointer hover:text-[#00ddff] p-0";
   const profileIcon = "w-9 h-9";
@@ -38,8 +38,8 @@ export default function Navbar() {
           <Image
             src="/logo.png"
             alt="Sanasa General Insurance"
-            width={150}
-            height={60}
+            width={100}
+            height={40}
             className={logoImage}
             priority
           />
