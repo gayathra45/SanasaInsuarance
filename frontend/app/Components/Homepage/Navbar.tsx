@@ -45,30 +45,23 @@ export default function Navbar() {
           />
         </Link>
       </div>
-     
+
       <div className={navLinksContainer}>
-        <Link 
-          href="/" 
-          className={getLinkClass("/")}
-        >
+        <Link href="/" className={getLinkClass("/")}>
           Home
         </Link>
-        <Link 
-          href="/home/contactUs" 
+        <Link
+          href="/home/contactUs"
           className={getLinkClass("/home/contactUs")}
         >
           Contact Us
         </Link>
-        <Link 
-          href="/news" 
-          className={getLinkClass("/news")}
-        >
+        <Link href="/home/News"
+         className={getLinkClass("/home/News")}>
           News
         </Link>
-        <Link 
-          href="/about" 
-          className={getLinkClass("/about")}
-        >
+        <Link href="/home/About"
+         className={getLinkClass("/home/About")}>
           About Us
         </Link>
       </div>

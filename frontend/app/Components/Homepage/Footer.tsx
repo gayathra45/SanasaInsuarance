@@ -39,13 +39,13 @@ export default function Footer() {
           <Link href="/" className={footerLink}>
             Home
           </Link>
-          <Link href="/news" className={footerLink}>
+          <Link href="/home/News" className={footerLink}>
             News
           </Link>
           <Link href="/home/contactUs" className={footerLink}>
             Contact Us
           </Link>
-          <Link href="/about" className={footerLink}>
+          <Link href="/home/About" className={footerLink}>
             About Us
           </Link>
         </div>
@@ -100,7 +100,9 @@ export default function Footer() {
 
       {/* Copyright Section */}
       <div className={copyrightSection}>
-        <p className="m-0">© 2023 Sanasa General Insurance Co. LTD. All Rights Reserved.</p>
+        <p className="m-0">
+          © 2023 Sanasa General Insurance Co. LTD. All Rights Reserved.
+        </p>
       </div>
     </footer>
   );
