@@ -26,7 +26,33 @@ export default function News() {
              </div>
           </section>
 
+    {/* Introducing Insurance App Section */}
+    <section className="w-full flex flex-col md:flex-row items-center justify-between py-12 md:py-20 px-6 md:px-16 gap-10 max-w-6xl mx-auto">
+      {/* Left Side - Image */}
+      <div className="flex-1 flex justify-center items-center">
+        <Image
+          src="/Home 3.1.png"
+          alt="Insurance App Introduction"
+          width={400}
+          height={500}
+          className="object-contain"
+          priority
+        />
+      </div>
 
+      {/* Right Side - Content */}
+      <div className="flex-1 flex flex-col items-start">
+        <h2 className="text-4xl md:text-5xl font-bold text-black mb-3 leading-tight">
+          Introducing Insurance App
+        </h2>
+        <p className="text-lg font-semibold text-gray-800 mb-6">
+          Specifically built for our policy holders
+        </p>
+        <p className="text-base text-gray-800 leading-relaxed">
+          SANASA Vehicle Insurance App makes managing your insurance simple and convenient. Policyholders can view their policies, track claims, pay premiums, upload documents, and get 24/7 support all from a secure, user-friendly mobile platform.
+        </p>
+      </div>
+    </section>
 
     <Footer />
     </div>
