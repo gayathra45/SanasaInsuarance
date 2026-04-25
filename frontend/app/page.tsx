@@ -81,14 +81,6 @@ export default function Home() {
         {/* --- Services Section --- */}
         <section className={servicesSection}>
           <h2 className={servicesTitle}>Our Services</h2>
-
-
-
-
-
-
-
-
           <div className={servicesGrid}>
             <div className={serviceCard}>
               <div className={serviceIcon}>
