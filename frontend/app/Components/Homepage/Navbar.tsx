@@ -60,8 +60,8 @@ export default function Navbar() {
          className={getLinkClass("/home/News")}>
           News
         </Link>
-        <Link href="/home/About"
-         className={getLinkClass("/home/About")}>
+        <Link href="/home/AboutUs"
+         className={getLinkClass("/home/AboutUs")}>
           About Us
         </Link>
       </div>

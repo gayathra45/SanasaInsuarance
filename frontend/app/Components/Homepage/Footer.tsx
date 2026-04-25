@@ -45,7 +45,7 @@ export default function Footer() {
           <Link href="/home/contactUs" className={footerLink}>
             Contact Us
           </Link>
-          <Link href="/home/About" className={footerLink}>
+          <Link href="/home/AboutUs" className={footerLink}>
             About Us
           </Link>
         </div>
