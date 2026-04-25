@@ -3,11 +3,7 @@ import Footer from "@/app/Components/Homepage/Footer";
 import Navbar from "@/app/Components/Homepage/Navbar";
 import Image from "next/image";
 
-function page() {
-  return (
-    <div>page</div>
-  )
-}
+
 
 export default function About() {
   return (
@@ -90,7 +86,7 @@ export default function About() {
         </div>
       </section>
 
-      
+
       <Footer />
     </div>
   );

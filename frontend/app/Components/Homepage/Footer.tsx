@@ -53,10 +53,10 @@ export default function Footer() {
         {/* Right Section - Login/Sign Up & Social Media */}
         <div className={buttonsSection}>
           <div className={buttonContainer}>
-            <Link href="/login" className={loginBtn}>
+            <Link href="/Login" className={loginBtn}>
               Login
             </Link>
-            <Link href="/signup" className={signupBtn}>
+            <Link href="/SignUp" className={signupBtn}>
               Sign Up
             </Link>
           </div>

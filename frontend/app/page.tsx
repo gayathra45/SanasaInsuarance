@@ -57,10 +57,10 @@ export default function Home() {
             </p>
 
             <div className={buttonGroup}>
-              <Link href="/login" className={ctaButton}>
+              <Link href="/Login" className={ctaButton}>
                 Login
               </Link>
-              <Link href="/signup" className={ctaButton}>
+              <Link href="/SignUp" className={ctaButton}>
                 Sign up
               </Link>
             </div>
