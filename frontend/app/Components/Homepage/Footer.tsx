@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 export default function Footer() {
-  // ClassName variables for better readability
+  
   const footerContainer = "bg-[#ffa500] text-white pt-10 pb-5 px-5 mt-[60px]";
   const contentWrapper = "max-w-[1200px] mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-[25px] md:gap-10 mb-[30px] text-center md:text-left";
   const logoSection = "flex-shrink-0 w-full md:w-auto flex justify-center md:justify-start";
@@ -101,7 +101,7 @@ export default function Footer() {
       {/* Copyright Section */}
       <div className={copyrightSection}>
         <p className="m-0">
-          © 2023 Sanasa General Insurance Co. LTD. All Rights Reserved.
+          © 2026 Sanasa General Insurance Co. LTD. All Rights Reserved.
         </p>
       </div>
     </footer>

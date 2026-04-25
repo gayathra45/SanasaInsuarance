@@ -4,7 +4,7 @@ import Navbar from "./Components/Homepage/Navbar";
 import Footer from "./Components/Homepage/Footer";
 
 export default function Home() {
-  // ClassName variables for better readability
+
   const pageContainer = "min-h-screen bg-white";
   const heroSection = "w-full flex flex-col md:flex-row items-center justify-between py-6 px-6 pb-16 md:pl-16 md:pr-0 xl:pl-24 gap-10";
   const heroTextContainer = "flex flex-col items-start pt-8 md:w-[45%] md:pr-8";

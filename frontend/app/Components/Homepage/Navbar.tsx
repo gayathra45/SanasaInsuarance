@@ -7,7 +7,6 @@ import { usePathname } from "next/navigation";
 export default function Navbar() {
   const pathname = usePathname();
 
-  // ClassName variables for better readability
   const navContainer = "w-full bg-white border-b border-gray-200 py-2 px-6 md:px-16 flex items-center justify-between";
   const logoContainer = "flex items-center";
   const logoImage = "object-contain h-auto";
@@ -18,11 +17,9 @@ export default function Navbar() {
   const profileIcon = "w-9 h-9";
 
   const isActive = (href: string) => {
-    // For home link, only match exact path
     if (href === "/") {
       return pathname === "/" || pathname === "";
     }
-    // For other links, match exact path or subpaths
     return pathname === href || pathname.startsWith(href + "/");
   };
 
