@@ -13,7 +13,9 @@ export default function Navbar() {
   const navLinksContainer = "hidden md:flex items-center gap-10 font-bold text-[#333] text-lg";
   const navLinkBase = "text-inherit no-underline transition-all duration-150 py-1 px-7 rounded-full hover:text-[#00ddff]";
   const navLinkActive = "bg-[#00ddff] !text-black";
-  const profileButton = "text-black transition-colors duration-150 bg-transparent border-none cursor-pointer hover:text-[#00ddff] p-0";
+  const profileButton = `transition-colors duration-150 bg-transparent border-none cursor-pointer p-0 ${
+    pathname === "/Login" ? "text-[#00ddff]" : "text-black hover:text-[#00ddff]"
+  }`;
   const profileIcon = "w-9 h-9";
 
   const isActive = (href: string) => {
