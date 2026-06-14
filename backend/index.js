@@ -1,9 +1,19 @@
 import "dotenv/config";
+import dns from "dns";
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 import express from "express";
 import mongoose from "mongoose";
 import path from "path";
+import cors from "cors";
+import signupRouter from "./Signup/signup.js";
+
 const app = express();
 const __dirname = path.resolve();
+
+app.use(cors());
+app.use(express.json());
+app.use("/api/signup", signupRouter);
 
 
 

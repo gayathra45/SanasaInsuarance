@@ -13,6 +13,12 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      sessionStorage.clear();
+    }
+  }, []);
+
   const handleConfirm = (e: React.FormEvent) => {
     e.preventDefault();
     alert(`Logging in as ${activeRole.replace("_", " ").toUpperCase()}\nNIC: ${nic}`);
@@ -53,7 +59,7 @@ export default function Login() {
           </h1>
         </div>
 
-        {/* Right Side: Glassmorphism Login Card */}
+        {/* Right Side: Glass effect Login Card */}
         <div className="w-full max-w-[500px] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2.5rem] p-8 md:p-12 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] flex flex-col gap-8 transition-all duration-500 hover:border-white/30">
           
           <form onSubmit={handleConfirm} className="flex flex-col gap-6">
