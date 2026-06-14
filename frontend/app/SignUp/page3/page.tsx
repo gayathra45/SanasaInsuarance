@@ -5,6 +5,117 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/app/Components/Homepage/Navbar";
 import LoginFooter from "@/app/Components/Login/Footer";
 
+function formatNumberPlate(plate: string): string {
+  if (!plate) return "";
+  const cleaned = plate.trim();
+  if (cleaned.includes("-")) {
+    return cleaned;
+  }
+  const lastNumbersMatch = cleaned.match(/^(.*[A-Za-z]+)(\d+)$/);
+  if (lastNumbersMatch) {
+    return `${lastNumbersMatch[1].trim().toUpperCase()}-${lastNumbersMatch[2]}`;
+  }
+  return cleaned;
+}
+
+function getVehicleIconSvg(type: string, className = "w-5 h-5 text-white") {
+  if (!type) type = "car";
+  const t = type.toLowerCase().trim();
+  
+  if (t.includes("suv")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 12h20M17 17h3a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3L14 4H6L3 7v8a2 2 0 0 0 2 2h3" />
+        <circle cx="7" cy="17" r="2" />
+        <path d="M9 17h6" />
+        <circle cx="17" cy="17" r="2" />
+        <path d="M7 7h6M19 10h-3" />
+      </svg>
+    );
+  }
+  if (t.includes("cab") || t.includes("pickup")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 13h13V8H7L4 11H2v2zm13 0h7V10h-7v3z" />
+        <path d="M2 13v3a1 1 0 0 0 1 1h3" />
+        <path d="M9 17h6" />
+        <path d="M19 17h2a1 1 0 0 0 1-1v-3" />
+        <circle cx="7" cy="17" r="2" />
+        <circle cx="17" cy="17" r="2" />
+      </svg>
+    );
+  }
+  if (t.includes("van") || t.includes("minibus")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 15V7a2 2 0 0 1 2-2h12l5 3v7a2 2 0 0 1-2 2h-1" />
+        <path d="M2 15h3" />
+        <path d="M9 17h6" />
+        <circle cx="7" cy="17" r="2" />
+        <circle cx="17" cy="17" r="2" />
+        <path d="M6 8h4v3H6V8zm6 0h3v3h-3V8z" />
+      </svg>
+    );
+  }
+  if (t.includes("bike") || t.includes("motorcycle") || t.includes("scooter")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="5" cy="16" r="3" />
+        <circle cx="19" cy="16" r="3" />
+        <path d="M5 16h8l3-7H9l-2 3M16 9h3M12 9l-3-4H6" />
+      </svg>
+    );
+  }
+  if (t.includes("three") || t.includes("rickshaw") || t.includes("tuk")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="18" cy="18" r="2" />
+        <path d="M3 18h1c.5 0 .9-.4 1-1l1-6h11c.6 0 1-.4 1-1V5h-3l-2 3H8L6 11H3v7z" />
+        <path d="M12 11v7M15 11v7" />
+      </svg>
+    );
+  }
+  if (t.includes("lorry") || t.includes("truck")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 18H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h11v13zm0-8h7l2 3v5a1 1 0 0 1-1 1h-8v-9z" />
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+      </svg>
+    );
+  }
+  if (t.includes("bus")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 15V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v9M2 15h20v1a2 2 0 0 1-2 2h-1M5 18H3" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+        <path d="M4 7h3v3H4V7zm5 0h3v3H9V7zm5 0h3v3h-3V7zm5 0h2v3h-2V7z" />
+      </svg>
+    );
+  }
+  if (t.includes("tractor")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="17" r="2.5" />
+        <circle cx="17" cy="15" r="4.5" />
+        <path d="M6 17h6v-2h-3v-4h4v5" />
+        <path d="M12.5 15.5h.5M9 11l-3-4H4" />
+      </svg>
+    );
+  }
+  
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.8C2.1 11 2 11.3 2 11.5V16c0 .6.4 1 1 1h2" />
+      <circle cx="7" cy="17" r="2" />
+      <path d="M9 17h6" />
+      <circle cx="17" cy="17" r="2" />
+    </svg>
+  );
+}
+
 interface Vehicle {
   numberPlate: string;
   vehicleType: string;
@@ -280,13 +391,16 @@ export default function SignUpPage3() {
                   <div className="flex flex-col gap-4">
                     {vehicles.map((v, index) => (
                       <div key={index} className="bg-black/20 rounded-3xl p-6 border border-white/10 text-white grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-sm md:text-base">
-                        <div className="md:col-span-2 border-b border-white/10 pb-2 flex justify-between select-none">
-                          <span className="font-bold text-orange-400">Vehicle #{index + 1}</span>
+                        <div className="md:col-span-2 border-b border-white/10 pb-2 flex justify-between select-none items-center">
+                          <span className="font-bold text-orange-400 flex items-center gap-2">
+                            <span>{getVehicleIconSvg(v.vehicleType)}</span>
+                            <span>Vehicle #{index + 1}</span>
+                          </span>
                           <span className="text-xs uppercase bg-white/10 px-3 py-1 rounded-full">{v.vehicleType}</span>
                         </div>
                         <div>
                           <span className="text-white/50 font-medium text-xs uppercase block">Number Plate</span>
-                          <span className="font-bold">{v.numberPlate}</span>
+                          <span className="font-bold">{formatNumberPlate(v.numberPlate)}</span>
                         </div>
                         <div>
                           <span className="text-white/50 font-medium text-xs uppercase block">Brand / Company</span>

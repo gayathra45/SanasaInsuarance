@@ -82,7 +82,7 @@ export default function PolicyHolderNavbar() {
               Contact
             </Link>
             <Link
-              href="/Policy_Holder/NewClaim"
+              href="/Policy_Holder/New_Claim"
               className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold px-6 py-2 rounded-full shadow-md transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] no-underline"
             >
               New Claim
@@ -188,7 +188,7 @@ export default function PolicyHolderNavbar() {
               Contact
             </Link>
             <Link
-              href="/Policy_Holder/NewClaim"
+              href="/Policy_Holder/New_Claim"
               onClick={() => setIsOpen(false)}
               className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold py-3 px-5 rounded-2xl shadow-md transition-all duration-150 text-center"
             >

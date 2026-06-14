@@ -1,11 +1,154 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
 
+function formatNumberPlate(plate: string): string {
+  if (!plate) return "";
+  const cleaned = plate.trim();
+  if (cleaned.includes("-")) {
+    return cleaned;
+  }
+  const lastNumbersMatch = cleaned.match(/^(.*[A-Za-z]+)(\d+)$/);
+  if (lastNumbersMatch) {
+    return `${lastNumbersMatch[1].trim().toUpperCase()}-${lastNumbersMatch[2]}`;
+  }
+  return cleaned;
+}
+
+function getVehicleIconSvg(type: string, className = "w-9 h-9 text-black") {
+  if (!type) type = "car";
+  const t = type.toLowerCase().trim();
+  
+  if (t.includes("suv")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 12h20M17 17h3a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3L14 4H6L3 7v8a2 2 0 0 0 2 2h3" />
+        <circle cx="7" cy="17" r="2" />
+        <path d="M9 17h6" />
+        <circle cx="17" cy="17" r="2" />
+        <path d="M7 7h6M19 10h-3" />
+      </svg>
+    );
+  }
+  if (t.includes("cab") || t.includes("pickup")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 13h13V8H7L4 11H2v2zm13 0h7V10h-7v3z" />
+        <path d="M2 13v3a1 1 0 0 0 1 1h3" />
+        <path d="M9 17h6" />
+        <path d="M19 17h2a1 1 0 0 0 1-1v-3" />
+        <circle cx="7" cy="17" r="2" />
+        <circle cx="17" cy="17" r="2" />
+      </svg>
+    );
+  }
+  if (t.includes("van") || t.includes("minibus")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 15V7a2 2 0 0 1 2-2h12l5 3v7a2 2 0 0 1-2 2h-1" />
+        <path d="M2 15h3" />
+        <path d="M9 17h6" />
+        <circle cx="7" cy="17" r="2" />
+        <circle cx="17" cy="17" r="2" />
+        <path d="M6 8h4v3H6V8zm6 0h3v3h-3V8z" />
+      </svg>
+    );
+  }
+  if (t.includes("bike") || t.includes("motorcycle") || t.includes("scooter")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="5" cy="16" r="3" />
+        <circle cx="19" cy="16" r="3" />
+        <path d="M5 16h8l3-7H9l-2 3M16 9h3M12 9l-3-4H6" />
+      </svg>
+    );
+  }
+  if (t.includes("three") || t.includes("rickshaw") || t.includes("tuk")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="18" cy="18" r="2" />
+        <path d="M3 18h1c.5 0 .9-.4 1-1l1-6h11c.6 0 1-.4 1-1V5h-3l-2 3H8L6 11H3v7z" />
+        <path d="M12 11v7M15 11v7" />
+      </svg>
+    );
+  }
+  if (t.includes("lorry") || t.includes("truck")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 18H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h11v13zm0-8h7l2 3v5a1 1 0 0 1-1 1h-8v-9z" />
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+      </svg>
+    );
+  }
+  if (t.includes("bus")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 15V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v9M2 15h20v1a2 2 0 0 1-2 2h-1M5 18H3" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+        <path d="M4 7h3v3H4V7zm5 0h3v3H9V7zm5 0h3v3h-3V7zm5 0h2v3h-2V7z" />
+      </svg>
+    );
+  }
+  if (t.includes("tractor")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="17" r="2.5" />
+        <circle cx="17" cy="15" r="4.5" />
+        <path d="M6 17h6v-2h-3v-4h4v5" />
+        <path d="M12.5 15.5h.5M9 11l-3-4H4" />
+      </svg>
+    );
+  }
+  
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.8C2.1 11 2 11.3 2 11.5V16c0 .6.4 1 1 1h2" />
+      <circle cx="7" cy="17" r="2" />
+      <path d="M9 17h6" />
+      <circle cx="17" cy="17" r="2" />
+    </svg>
+  );
+}
+
+function getVehicleIconContainer(type: string) {
+  const svg = getVehicleIconSvg(type);
+  return (
+    <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white border-2 border-black text-black shadow-sm flex-shrink-0 select-none">
+      {svg}
+    </div>
+  );
+}
+
+
 export default function PolicyHolderHome() {
+  const [userName, setUserName] = useState("Kamal");
+  const [vehicles, setVehicles] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userStr = sessionStorage.getItem("logged_in_user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          if (user.firstName) {
+            setUserName(user.firstName);
+          }
+          if (user.vehicles && Array.isArray(user.vehicles)) {
+            setVehicles(user.vehicles);
+          }
+        } catch (err) {
+          console.error("Error parsing user session", err);
+        }
+      }
+    }
+  }, []);
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
       <PolicyHolderNavbar />
@@ -22,7 +165,7 @@ export default function PolicyHolderHome() {
           <div>
             <div className="inline-block border-b-3 border-[#00ddff] pb-1.5 mb-2">
               <h2 className="text-white text-xl md:text-2.5xl font-black tracking-tight">
-                Welcome back, Kamal !
+                Welcome back, {userName} !
               </h2>
             </div>
             <p className="text-slate-200 text-[13px] md:text-sm font-semibold tracking-wide mt-1">
@@ -42,7 +185,7 @@ export default function PolicyHolderHome() {
           {/* Action Buttons - Highly highlighted with glowing drop shadows */}
           <div className="flex flex-row justify-center gap-6 mt-2">
             <Link
-              href="/Policy_Holder/NewClaim"
+              href="/Policy_Holder/New_Claim"
               className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-base md:text-lg px-10 py-4.5 rounded-full transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] no-underline"
               style={{ boxShadow: "0 8px 25px rgba(220, 38, 38, 0.65)" }}
             >
@@ -231,50 +374,70 @@ export default function PolicyHolderHome() {
 
             {/* Vehicle List */}
             <div className="flex flex-col gap-5">
-              
-              {/* Vehicle 1 */}
-              <div className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0">
-                    <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M19.16 8a2 2 0 0 0-1.8-1.1H6.64a2 2 0 0 0-1.8 1.1L3.2 11h17.6l-1.64-3zM2 13h20v3a2 2 0 0 1-2 2h-1.18a3 3 0 0 1-5.64 0h-2.36a3 3 0 0 1-5.64 0H4a2 2 0 0 1-2-2v-3zm4 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm12 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
-                    </svg>
+              {vehicles.length > 0 ? (
+                vehicles.map((vehicle, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      {getVehicleIconContainer(vehicle.vehicleType)}
+                      <div>
+                        <h4 className="text-slate-800 font-extrabold text-base leading-tight">{formatNumberPlate(vehicle.numberPlate)}</h4>
+                        <p className="text-slate-400 font-bold text-xs mt-0.5">{vehicle.company} {vehicle.model} {vehicle.year}</p>
+                      </div>
+                    </div>
+                    <Link
+                      href="/Policy_Holder/MyVehicles"
+                      className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
+                    >
+                      View
+                    </Link>
                   </div>
-                  <div>
-                    <h4 className="text-slate-800 font-extrabold text-base leading-tight">CBH-3202</h4>
-                    <p className="text-slate-400 font-bold text-xs mt-0.5">Toyota Corolla 2019</p>
+                ))
+              ) : (
+                <>
+                  {/* Vehicle 1 */}
+                  <div className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0">
+                        <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M19.16 8a2 2 0 0 0-1.8-1.1H6.64a2 2 0 0 0-1.8 1.1L3.2 11h17.6l-1.64-3zM2 13h20v3a2 2 0 0 1-2 2h-1.18a3 3 0 0 1-5.64 0h-2.36a3 3 0 0 1-5.64 0H4a2 2 0 0 1-2-2v-3zm4 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm12 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-slate-800 font-extrabold text-base leading-tight">CBH-3202</h4>
+                        <p className="text-slate-400 font-bold text-xs mt-0.5">Toyota Corolla 2019</p>
+                      </div>
+                    </div>
+                    <Link
+                      href="/Policy_Holder/MyVehicles"
+                      className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
+                    >
+                      View
+                    </Link>
                   </div>
-                </div>
-                <Link
-                  href="/Policy_Holder/MyVehicles"
-                  className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
-                >
-                  View
-                </Link>
-              </div>
 
-              {/* Vehicle 2 */}
-              <div className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0">
-                    <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M20 8h-3V4H2v11h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-4c0-1.7-1.3-3-3-3zm-13 8c-.8 0-1.5-.7-1.5-1.5S6.2 13 7 13s1.5.7 1.5 1.5S7.8 16 7 16zm11 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z" />
-                      <path d="M17 9.5h3c.8 0 1.5.7 1.5 1.5v1H17v-2.5z" />
-                    </svg>
+                  {/* Vehicle 2 */}
+                  <div className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0">
+                        <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M20 8h-3V4H2v11h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-4c0-1.7-1.3-3-3-3zm-13 8c-.8 0-1.5-.7-1.5-1.5S6.2 13 7 13s1.5.7 1.5 1.5S7.8 16 7 16zm11 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z" />
+                          <path d="M17 9.5h3c.8 0 1.5.7 1.5 1.5v1H17v-2.5z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h4 className="text-slate-800 font-extrabold text-base leading-tight">NE-7856</h4>
+                        <p className="text-slate-400 font-bold text-xs mt-0.5">Ashok Leyland Lorry</p>
+                      </div>
+                    </div>
+                    <Link
+                      href="/Policy_Holder/MyVehicles"
+                      className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
+                    >
+                      View
+                    </Link>
                   </div>
-                  <div>
-                    <h4 className="text-slate-800 font-extrabold text-base leading-tight">NE-7856</h4>
-                    <p className="text-slate-400 font-bold text-xs mt-0.5">Ashok Leyland Lorry</p>
-                  </div>
-                </div>
-                <Link
-                  href="/Policy_Holder/MyVehicles"
-                  className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
-                >
-                  View
-                </Link>
-              </div>
-
+                </>
+              )}
             </div>
           </div>
 

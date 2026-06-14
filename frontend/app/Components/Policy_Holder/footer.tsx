@@ -31,7 +31,7 @@ export default function PolicyHolderFooter() {
             <Link href="/Policy_Holder/MyClaims" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
               My Claims
             </Link>
-            <Link href="/Policy_Holder/NewClaim" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
+            <Link href="/Policy_Holder/New_Claim" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
               New Claims
             </Link>
             <Link href="/Policy_Holder/Documents" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">

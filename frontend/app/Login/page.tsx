@@ -2,12 +2,14 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Navbar from "@/app/Components/Homepage/Navbar";
 import Footer from "@/app/Components/Login/Footer";
 
 type Role = "policy_holder" | "insurance_agent" | "office_staff" | "admin";
 
 export default function Login() {
+  const router = useRouter();
   const [activeRole, setActiveRole] = useState<Role>("policy_holder");
   const [nic, setNic] = useState("");
   const [password, setPassword] = useState("");
@@ -19,10 +21,31 @@ export default function Login() {
     }
   }, []);
 
-  const handleConfirm = (e: React.FormEvent) => {
+  const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert(`Logging in as ${activeRole.replace("_", " ").toUpperCase()}\nNIC: ${nic}`);
-    // Future authentication logic can be wired here
+    if (activeRole !== "policy_holder") {
+      alert(`Logging in as ${activeRole.replace("_", " ").toUpperCase()}\nNIC: ${nic}`);
+      router.push("/Policy_Holder/Home");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:5000/api/policy-holder/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nic, password })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        alert(data.error || "Login failed.");
+        return;
+      }
+      sessionStorage.setItem("logged_in_user", JSON.stringify(data.user));
+      router.push("/Policy_Holder/Home");
+    } catch (err) {
+      console.error("Login request failed", err);
+      alert("Unable to connect to the server.");
+    }
   };
 
   const rolesList: { id: Role; label: string }[] = [
