@@ -1,6 +1,5 @@
 import express from "express";
 import crypto from "crypto";
-import nodemailer from "nodemailer";
 import User from "./user.model.js";
 
 const router = express.Router();
@@ -8,64 +7,6 @@ const router = express.Router();
 function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
-
-const sendResetEmail = async (email, name, link) => {
-  const isSMTPConfigured =
-    process.env.SMTP_USER &&
-    process.env.SMTP_USER !== "your-email@gmail.com" &&
-    process.env.SMTP_PASS &&
-    process.env.SMTP_PASS !== "your-gmail-app-password";
-
-  if (isSMTPConfigured) {
-    try {
-      const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST || "smtp.gmail.com",
-        port: parseInt(process.env.SMTP_PORT || "587", 10),
-        secure: process.env.SMTP_PORT === "465",
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
-      });
-
-      const mailOptions = {
-        from: `"Sanasa Insurance" <${process.env.SMTP_USER}>`,
-        to: email,
-        subject: "Reset Your Sanasa Insurance Password",
-        html: `
-          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-            <h2 style="color: #0e3b44; text-align: center;">Sanasa General Insurance</h2>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p>Hello <strong>${name}</strong>,</p>
-            <p>We received a request to reset your account password. Please click the button below to set a new password:</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${link}" style="background-color: #ff9800; color: white; padding: 12px 25px; text-decoration: none; font-weight: bold; border-radius: 25px; display: inline-block;">Reset Password</a>
-            </div>
-            <p style="color: #666; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
-            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-            <p style="font-size: 11px; color: #999; text-align: center;">This is an automated system message. Please do not reply directly.</p>
-          </div>
-        `
-      };
-
-      await transporter.sendMail(mailOptions);
-      console.log(`✅ Real email successfully sent to: ${email}`);
-      return true;
-    } catch (err) {
-      console.error("❌ Failed to send real email via SMTP, falling back to console simulation:", err.message);
-    }
-  }
-
-  // Fallback console log simulation
-  console.log("\n==================================================");
-  console.log(`📧 SIMULATED EMAIL SENT TO: ${email}`);
-  console.log(`Subject: Reset Your Sanasa Insurance Password`);
-  console.log(`Hello ${name},`);
-  console.log(`We received a request to reset your password. Please use the link below to confirm:`);
-  console.log(link);
-  console.log("==================================================\n");
-  return false;
-};
 
 router.get("/check", async (req, res) => {
   try {

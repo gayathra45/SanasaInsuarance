@@ -150,12 +150,12 @@ export default function ResetPassword() {
         <div className="relative z-10 w-full max-w-6xl mx-auto px-6 py-12 flex flex-col lg:flex-row items-center justify-around gap-12 lg:gap-6">
           
           <div className="flex flex-col items-center lg:items-start text-center lg:text-left text-white max-w-md select-none">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight drop-shadow-[0_4px_10px_rgba(0,0,0,0.3)] leading-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-7xl font-bold tracking-tight drop-shadow-[0_4px_10px_rgba(0,0,0,0.3)] leading-tight">
               Reset Password
             </h1>
           </div>
 
-          <div className="relative w-full max-w-[500px] bg-white/10 backdrop-blur-md border border-white/20 rounded-[2.5rem] p-8 md:p-12 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] flex flex-col gap-8 transition-all duration-500 hover:border-white/30">
+          <div className="relative w-full max-w-[500px] bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl sm:rounded-[2.5rem] p-6 sm:p-8 md:p-12 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)] flex flex-col gap-6 sm:gap-8 transition-all duration-500 hover:border-white/30">
             
             {validationError && (
               <div className="bg-red-500/20 border-l-4 border-red-500 p-4 rounded-xl text-white text-sm flex items-center gap-3 animate-pulse">
@@ -347,7 +347,7 @@ export default function ResetPassword() {
 
             {/* Done Popup Success Modal */}
             {showSuccessModal && (
-              <div className="absolute inset-0 bg-[#0e3b44]/80 backdrop-blur-lg rounded-[2.5rem] border border-white/20 flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-500">
+              <div className="absolute inset-0 bg-[#0e3b44]/80 backdrop-blur-lg rounded-3xl sm:rounded-[2.5rem] border border-white/20 flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-500">
                 <div className="flex flex-col items-center gap-6 animate-fade-in">
                   
                   {/* Glowing Orange Success Checkmark */}

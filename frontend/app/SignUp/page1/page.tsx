@@ -165,6 +165,16 @@ export default function SignUpPage1() {
         {/* Content Wizard Box */}
         <div className="relative z-10 w-full max-w-5xl mx-auto px-4 md:px-8 flex flex-col items-center gap-8">
           
+          {/* Header Title */}
+          <div className="text-center select-none flex flex-col gap-2">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white tracking-tight drop-shadow-[0_4px_10px_rgba(0,0,0,0.3)] leading-tight">
+              Create an Account
+            </h1>
+            <p className="text-white/75 text-sm sm:text-base font-medium max-w-md mx-auto">
+              Follow the steps to register your account with Sanasa General Insurance.
+            </p>
+          </div>
+
           {/* STEP TRACKER - Solid black line, active circle 01-02 green, line green */}
           <div className="w-full max-w-xl mx-auto py-2 relative flex justify-between items-center select-none z-10">
             {/* Connecting Line Track */}
