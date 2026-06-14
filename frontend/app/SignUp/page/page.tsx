@@ -378,78 +378,45 @@ export default function SignUp() {
             </p>
           </div>
 
-          {/* STEP TRACKER - Solid Solid black line, white/black nodes, green active node */}
-          <div className="w-full max-w-xl mx-auto py-2 relative flex justify-between items-center select-none z-10">
-            {/* Connecting Solid Black Line */}
-            <div className="absolute left-[5%] right-[5%] top-[20px] h-[2.5px] bg-black -z-10" />
-
-            {/* Step 1 Circle */}
-            <div className="flex flex-col items-center">
-              <button 
-                type="button" 
-                onClick={() => step > 1 && setStep(1)} 
-                disabled={step === 1}
-                className={`w-10 h-10 flex items-center justify-center rounded-full text-base font-bold transition-all duration-300 border ${
-                  step === 1
-                    ? "bg-[#00cc66] text-white border-transparent shadow-[0_0_12px_rgba(0,204,102,0.4)]"
-                    : step > 1
-                    ? "bg-[#00cc66] text-white border-transparent"
-                    : "bg-white text-slate-800 border-black"
-                }`}
-              >
-                01
-              </button>
+          {/* MODERN SEGMENTED PILL STEP TRACKER */}
+          <div className="w-full max-w-xl mx-auto flex flex-col gap-4 select-none">
+            {/* Pill Bar */}
+            <div className="flex w-full gap-3 h-1.5">
+              {[1, 2, 3, 4].map((num) => {
+                const isActive = step === num;
+                const isCompleted = step > num;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => {
+                      if (isCompleted) {
+                        setStep(num);
+                      }
+                    }}
+                    disabled={!isCompleted}
+                    className={`flex-1 h-full rounded-full transition-all duration-500 outline-none border-none ${
+                      isCompleted
+                        ? "bg-[#00cc66] cursor-pointer hover:opacity-90"
+                        : isActive
+                        ? "bg-[#ff9800] shadow-[0_0_15px_rgba(255,152,0,0.6)] scale-[1.02]"
+                        : "bg-white/15 cursor-default"
+                    }`}
+                  />
+                );
+              })}
             </div>
-
-            {/* Step 2 Circle */}
-            <div className="flex flex-col items-center">
-              <button 
-                type="button" 
-                onClick={() => step > 2 && setStep(2)} 
-                disabled={step <= 2}
-                className={`w-10 h-10 flex items-center justify-center rounded-full text-base font-bold transition-all duration-300 border ${
-                  step === 2
-                    ? "bg-[#00cc66] text-white border-transparent shadow-[0_0_12px_rgba(0,204,102,0.4)]"
-                    : step > 2
-                    ? "bg-[#00cc66] text-white border-transparent"
-                    : "bg-white text-slate-800 border-black"
-                }`}
-              >
-                02
-              </button>
-            </div>
-
-            {/* Step 3 Circle */}
-            <div className="flex flex-col items-center">
-              <button 
-                type="button" 
-                onClick={() => step > 3 && setStep(3)} 
-                disabled={step <= 3}
-                className={`w-10 h-10 flex items-center justify-center rounded-full text-base font-bold transition-all duration-300 border ${
-                  step === 3
-                    ? "bg-[#00cc66] text-white border-transparent shadow-[0_0_12px_rgba(0,204,102,0.4)]"
-                    : step > 3
-                    ? "bg-[#00cc66] text-white border-transparent"
-                    : "bg-white text-slate-800 border-black"
-                }`}
-              >
-                03
-              </button>
-            </div>
-
-            {/* Step 4 Circle */}
-            <div className="flex flex-col items-center">
-              <button 
-                type="button" 
-                disabled
-                className={`w-10 h-10 flex items-center justify-center rounded-full text-base font-bold transition-all duration-300 border ${
-                  step === 4
-                    ? "bg-[#00cc66] text-white border-transparent shadow-[0_0_12px_rgba(0,204,102,0.4)]"
-                    : "bg-white text-slate-800 border-black"
-                }`}
-              >
-                04
-              </button>
+            {/* Step Label Container */}
+            <div className="flex flex-col items-center md:items-start text-center md:text-left gap-0.5 mt-1">
+              <span className="text-xs md:text-sm font-bold text-[#ff9800] tracking-widest uppercase">
+                STEP 0{step} OF 04
+              </span>
+              <h2 className="text-xl md:text-2xl font-extrabold text-white">
+                {step === 1 && "Personal Details"}
+                {step === 2 && "OTP Verification"}
+                {step === 3 && "Identity Verification"}
+                {step === 4 && "Review & Confirm"}
+              </h2>
             </div>
           </div>
 

@@ -161,55 +161,46 @@ export default function SignUpPage3() {
             </p>
           </div>
 
-          {/* STEP TRACKER - Solid black line, active circle 01-04 green, line green */}
-          <div className="w-full max-w-xl mx-auto py-2 relative flex justify-between items-center select-none z-10">
-            {/* Connecting Line Track */}
-            <div className="absolute left-[5%] right-[5%] top-[20px] h-[2.5px] bg-black -z-10" />
-            {/* Active Green Line Track fill across all steps */}
-            <div className="absolute left-[5%] right-[5%] top-[20px] h-[2.5px] bg-[#00cc66] -z-10" />
-
-            {/* Step 1 Circle (Completed) */}
-            <div className="flex flex-col items-center">
-              <button 
-                type="button" 
-                onClick={() => router.push("/SignUp")}
-                className="w-10 h-10 flex items-center justify-center rounded-full text-base font-bold transition-all duration-300 bg-[#00cc66] text-white border border-transparent shadow-[0_0_12px_rgba(0,204,102,0.4)]"
-              >
-                01
-              </button>
+          {/* MODERN SEGMENTED PILL STEP TRACKER */}
+          <div className="w-full max-w-xl mx-auto flex flex-col gap-4 select-none">
+            {/* Pill Bar */}
+            <div className="flex w-full gap-3 h-1.5">
+              {[1, 2, 3, 4].map((num) => {
+                const isActive = num === 4;
+                const isCompleted = num < 4;
+                return (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => {
+                      if (num === 1) {
+                        router.push("/SignUp");
+                      } else if (num === 2) {
+                        router.push("/SignUp/page1");
+                      } else if (num === 3) {
+                        router.push("/SignUp/page2");
+                      }
+                    }}
+                    disabled={num >= 4}
+                    className={`flex-1 h-full rounded-full transition-all duration-500 outline-none border-none ${
+                      isCompleted
+                        ? "bg-[#00cc66] cursor-pointer hover:opacity-90"
+                        : isActive
+                        ? "bg-[#ff9800] shadow-[0_0_15px_rgba(255,152,0,0.6)] scale-[1.02]"
+                        : "bg-white/15 cursor-default"
+                    }`}
+                  />
+                );
+              })}
             </div>
-
-            {/* Step 2 Circle (Completed) */}
-            <div className="flex flex-col items-center">
-              <button 
-                type="button" 
-                onClick={() => router.push("/SignUp/page1")}
-                className="w-10 h-10 flex items-center justify-center rounded-full text-base font-bold transition-all duration-300 bg-[#00cc66] text-white border border-transparent shadow-[0_0_12px_rgba(0,204,102,0.4)]"
-              >
-                02
-              </button>
-            </div>
-
-            {/* Step 3 Circle (Completed) */}
-            <div className="flex flex-col items-center">
-              <button 
-                type="button" 
-                onClick={handleBackStep}
-                className="w-10 h-10 flex items-center justify-center rounded-full text-base font-bold transition-all duration-300 bg-[#00cc66] text-white border border-transparent shadow-[0_0_12px_rgba(0,204,102,0.4)]"
-              >
-                03
-              </button>
-            </div>
-
-            {/* Step 4 Circle (Active) */}
-            <div className="flex flex-col items-center">
-              <button 
-                type="button" 
-                disabled
-                className="w-10 h-10 flex items-center justify-center rounded-full text-base font-bold transition-all duration-300 bg-[#00cc66] text-white border border-transparent shadow-[0_0_12px_rgba(0,204,102,0.4)]"
-              >
-                04
-              </button>
+            {/* Step Label Container */}
+            <div className="flex flex-col items-center md:items-start text-center md:text-left gap-0.5 mt-1">
+              <span className="text-xs md:text-sm font-bold text-[#ff9800] tracking-widest uppercase">
+                STEP 04 OF 04
+              </span>
+              <h2 className="text-xl md:text-2xl font-extrabold text-white">
+                Review & Confirm
+              </h2>
             </div>
           </div>
 

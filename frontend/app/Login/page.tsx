@@ -214,12 +214,16 @@ export default function Login() {
 
           {/* Footer Links */}
           <div className="flex justify-between items-center w-full border-t border-white/10 pt-6 text-sm text-white/85 font-medium select-none">
-            <Link
-              href="/SignUp"
-              className="hover:text-white hover:underline transition-all cursor-pointer"
-            >
-              Create an Account
-            </Link>
+            {activeRole === "policy_holder" ? (
+              <Link
+                href="/SignUp"
+                className="hover:text-white hover:underline transition-all cursor-pointer"
+              >
+                Create an Account
+              </Link>
+            ) : (
+              <div />
+            )}
             <Link
               href="/Reset_password"
               className="hover:text-white hover:underline transition-all cursor-pointer"
