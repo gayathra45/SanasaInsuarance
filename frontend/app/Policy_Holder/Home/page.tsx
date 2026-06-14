@@ -1,0 +1,298 @@
+"use client";
+
+import React from "react";
+import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
+import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
+import Link from "next/link";
+
+export default function PolicyHolderHome() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
+      <PolicyHolderNavbar />
+
+      {/* Immersive curved header with background image and horizontal gradient overlay */}
+      <header className="relative w-full h-[450px] md:h-[420px] rounded-b-[60px] md:rounded-b-[90px] overflow-hidden shadow-[0_15px_30px_rgba(0,0,0,0.08)] bg-[url('/policy1.jpg')] bg-cover bg-center">
+        {/* Horizontal gradient overlay to darken left text area but keep the right image fold bright and clear */}
+        <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/80 to-transparent" />
+
+        {/* Content Container */}
+        <div className="relative z-10 max-w-7xl mx-auto h-full px-6 md:px-16 pt-10 pb-12 flex flex-col justify-between">
+          
+          {/* Welcome Greeting Row */}
+          <div>
+            <div className="inline-block border-b-3 border-[#00ddff] pb-1.5 mb-2">
+              <h2 className="text-white text-xl md:text-2.5xl font-black tracking-tight">
+                Welcome back, Kamal !
+              </h2>
+            </div>
+            <p className="text-slate-200 text-[13px] md:text-sm font-semibold tracking-wide mt-1">
+              Your policy is active and up to date. You have{" "}
+              <span className="text-[#ff9800] font-extrabold">1 pending claim</span> and a document request awaiting action.
+            </p>
+          </div>
+
+          {/* Central Statement */}
+          <div className="my-auto max-w-4xl mx-auto text-center px-4">
+              <h1 className="text-lg md:text-[24px] font-extrabold text-white leading-relaxed tracking-normal">
+                An accident claim with Sansa General Insurance Company Limited is <br className="hidden md:inline" />
+                a request for compensation after an accident.
+              </h1>
+          </div>
+
+          {/* Action Buttons - Highly highlighted with glowing drop shadows */}
+          <div className="flex flex-row justify-center gap-6 mt-2">
+            <Link
+              href="/Policy_Holder/NewClaim"
+              className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-base md:text-lg px-10 py-4.5 rounded-full transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] no-underline"
+              style={{ boxShadow: "0 8px 25px rgba(220, 38, 38, 0.65)" }}
+            >
+              New Claim
+            </Link>
+            <Link
+              href="/Policy_Holder/TrackClaims"
+              className="bg-[#1fcbf2] hover:bg-[#00b2d6] text-white font-extrabold text-base md:text-lg px-10 py-4.5 rounded-full transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] no-underline"
+              style={{ boxShadow: "0 8px 25px rgba(31, 203, 242, 0.65)" }}
+            >
+              Track Claim
+            </Link>
+          </div>
+
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 md:px-16 py-10 relative z-20">
+        
+        {/* Three Stat Cards - Overlapping header area & clickable buttons */}
+        <section className="-mt-[60px] md:-mt-[50px] grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+          
+          {/* Total Claims */}
+          <Link
+            href="/Policy_Holder/MyClaims"
+            className="bg-white px-6 py-5.5 rounded-[24px] border border-slate-100 shadow-[0_12px_32px_rgba(0,0,0,0.06)] flex items-center justify-center gap-6 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 no-underline text-inherit cursor-pointer"
+          >
+            <div className="text-slate-400 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6m4 13V10m4 9V14" />
+            </svg>
+            </div>
+            <div>
+              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">3</h3>
+              <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">Total Claims</p>
+            </div>
+          </Link>
+
+          {/* In Progress */}
+          <Link
+            href="/Policy_Holder/MyClaims"
+            className="bg-white px-6 py-5.5 rounded-[24px] border border-slate-100 shadow-[0_12px_32px_rgba(0,0,0,0.06)] flex items-center justify-center gap-6 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 no-underline text-inherit cursor-pointer"
+          >
+            <div className="text-slate-400 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            </div>
+            <div>
+              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">1</h3>
+              <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">In Progress</p>
+            </div>
+          </Link>
+
+          {/* Approved */}
+          <Link
+            href="/Policy_Holder/MyClaims"
+            className="bg-white px-6 py-5.5 rounded-[24px] border border-slate-100 shadow-[0_12px_32px_rgba(0,0,0,0.06)] flex items-center justify-center gap-6 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 no-underline text-inherit cursor-pointer"
+          >
+            <div className="text-slate-400 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" />
+            </svg>
+            </div>
+            <div>
+              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">1</h3>
+              <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">Approved</p>
+            </div>
+          </Link>
+
+        </section>
+
+        {/* Dashboard Grid - Notifications & Vehicles */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          
+          {/* Notifications Column */}
+          <div className="lg:col-span-7">
+            <div className="flex items-center gap-2 mb-6 cursor-pointer group">
+              <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
+                Notifications & Reminders
+              </h2>
+              <svg
+                className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
+
+            {/* Alert List */}
+            <div className="flex flex-col gap-6">
+              
+              {/* Notification 1: Action Required */}
+              <div className="bg-red-50/15 border-2 border-red-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px]">
+                <div className="flex items-start gap-4">
+                  <div className="p-1.5 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+                      <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.522a.75.75 0 01-.297 1.228 35.754 35.754 0 01-16.142 0 .75.75 0 01-.297-1.228A9.013 9.013 0 005.25 9.75V9zm4.5 8.25a3.75 3.75 0 007.5 0H9.75z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-red-600 font-extrabold text-base leading-none">
+                      Documents Requested – Action Required
+                    </h4>
+                    <p className="text-slate-600 text-sm font-semibold mt-2 leading-relaxed">
+                      Staff has requested a Police Report & Repair Estimate for CLM-2024-0024.
+                    </p>
+                    <p className="text-slate-400 text-xs font-bold mt-2">
+                      Please upload within 3 days...
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-red-50/50">
+                  <div className="flex gap-2">
+                    <Link
+                      href="/Policy_Holder/Documents"
+                      className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline shadow-sm"
+                    >
+                      Upload
+                    </Link>
+                    <Link
+                      href="/Policy_Holder/MyClaims"
+                      className="bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline"
+                    >
+                      View
+                    </Link>
+                  </div>
+                  <span className="text-slate-400 text-xs font-bold">Today, 10:30 AM</span>
+                </div>
+              </div>
+
+              {/* Notification 2: Approved */}
+              <div className="bg-emerald-50/15 border-2 border-emerald-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
+                <div className="flex items-start gap-4">
+                  <div className="p-1.5 bg-emerald-100 rounded-xl text-emerald-500 flex-shrink-0 mt-0.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+                      <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.74-5.24z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-emerald-600 font-extrabold text-base leading-none">
+                      Claim CLM-2024-0012 Approved!
+                    </h4>
+                    <p className="text-slate-600 text-sm font-semibold mt-2 leading-relaxed">
+                      Your claim for LKR 85,000 has been approved. Payment processed within 5 days.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-emerald-50/50">
+                  <Link
+                    href="/Policy_Holder/MyClaims"
+                    className="bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline"
+                  >
+                    View
+                  </Link>
+                  <span className="text-slate-400 text-xs font-bold">12 Jan 2026</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Vehicles Column */}
+          <div className="lg:col-span-5">
+            <div className="flex items-center gap-2 mb-6 cursor-pointer group">
+              <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
+                My Vehicles
+              </h2>
+              <svg
+                className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </div>
+
+            {/* Vehicle List */}
+            <div className="flex flex-col gap-5">
+              
+              {/* Vehicle 1 */}
+              <div className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0">
+                    <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M19.16 8a2 2 0 0 0-1.8-1.1H6.64a2 2 0 0 0-1.8 1.1L3.2 11h17.6l-1.64-3zM2 13h20v3a2 2 0 0 1-2 2h-1.18a3 3 0 0 1-5.64 0h-2.36a3 3 0 0 1-5.64 0H4a2 2 0 0 1-2-2v-3zm4 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm12 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-slate-800 font-extrabold text-base leading-tight">CBH-3202</h4>
+                    <p className="text-slate-400 font-bold text-xs mt-0.5">Toyota Corolla 2019</p>
+                  </div>
+                </div>
+                <Link
+                  href="/Policy_Holder/MyVehicles"
+                  className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
+                >
+                  View
+                </Link>
+              </div>
+
+              {/* Vehicle 2 */}
+              <div className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0">
+                    <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M20 8h-3V4H2v11h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-4c0-1.7-1.3-3-3-3zm-13 8c-.8 0-1.5-.7-1.5-1.5S6.2 13 7 13s1.5.7 1.5 1.5S7.8 16 7 16zm11 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z" />
+                      <path d="M17 9.5h3c.8 0 1.5.7 1.5 1.5v1H17v-2.5z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-slate-800 font-extrabold text-base leading-tight">NE-7856</h4>
+                    <p className="text-slate-400 font-bold text-xs mt-0.5">Ashok Leyland Lorry</p>
+                  </div>
+                </div>
+                <Link
+                  href="/Policy_Holder/MyVehicles"
+                  className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
+                >
+                  View
+                </Link>
+              </div>
+
+            </div>
+          </div>
+
+        </section>
+
+      </main>
+
+      {/* Floating Chat Bubble Button */}
+      <button
+        className="fixed bottom-8 right-8 z-40 bg-[#00ddff] hover:bg-[#00c8e6] text-white p-4.5 rounded-full shadow-2xl transition-all duration-150 hover:scale-110 active:scale-95 cursor-pointer focus:outline-none border-none flex items-center justify-center"
+        aria-label="Chat support"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-7 h-7">
+          <path fillRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.1 21.5l4.63-.827A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm-3.5 11a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      <PolicyHolderFooter />
+    </div>
+  );
+}
