@@ -18,7 +18,9 @@ const claimSchema = new mongoose.Schema({
     front: { type: [String], default: [] },
     rear: { type: [String], default: [] }
   },
-  status: { type: String, default: "In Progress" },
+  status: { type: String, default: "Pending" },
+  branch: { type: String, default: "Galle" },
+  assignedAgent: { type: String, default: "" },
   amount: { type: Number, default: null },
   currentStep: { type: Number, default: 1 },
   documentsRequested: { type: Boolean, default: false },

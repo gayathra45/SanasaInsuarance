@@ -12,6 +12,28 @@ function hashPassword(password) {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
+function getNearestBranch(city = "", province = "") {
+  const cleanCity = city.trim().toLowerCase();
+  const cleanProvince = province.trim().toLowerCase();
+
+  if (cleanCity.includes("galle") || cleanCity.includes("hambantota")) {
+    return "Galle";
+  }
+  if (cleanCity.includes("matara")) {
+    return "Matara";
+  }
+  if (cleanCity.includes("colombo") || cleanCity.includes("gampaha") || cleanCity.includes("kalutara")) {
+    return "Colombo";
+  }
+  if (cleanCity.includes("anuradhapura") || cleanCity.includes("polonnaruwa")) {
+    return "Anuradhapura";
+  }
+  if (cleanCity.includes("embilipitiya") || cleanCity.includes("ratnapura")) {
+    return "Embilipitiya";
+  }
+  return "Galle";
+}
+
 // ─── CHECK: Email / NIC availability ─────────────────────────────────────────
 router.get("/check", async (req, res) => {
   try {
@@ -133,6 +155,7 @@ router.post("/", async (req, res) => {
       password: hashedPassword,
       vehicles,
       documents,
+      branch: getNearestBranch(city, province),
       referenceNumber: nextRefNum,
     });
 

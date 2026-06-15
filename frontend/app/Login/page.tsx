@@ -24,6 +24,48 @@ export default function Login() {
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (activeRole !== "policy_holder") {
+      if (activeRole === "admin") {
+        try {
+          const response = await fetch("http://localhost:5000/api/admin/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: loginId, password })
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            alert(data.error || "Admin login failed.");
+            return;
+          }
+          sessionStorage.setItem("logged_in_admin", JSON.stringify(data.admin));
+          router.push("/Admin/Dashboard");
+        } catch (err) {
+          console.error("Admin login failed", err);
+          alert("Unable to connect to the server.");
+        }
+        return;
+      }
+
+      if (activeRole === "office_staff") {
+        try {
+          const response = await fetch("http://localhost:5000/api/office-staff/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: loginId, password })
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            alert(data.error || "Office staff login failed.");
+            return;
+          }
+          sessionStorage.setItem("logged_in_staff", JSON.stringify(data.staff));
+          router.push("/Office_Staff/Dashboard");
+        } catch (err) {
+          console.error("Office staff login failed", err);
+          alert("Unable to connect to the server.");
+        }
+        return;
+      }
+
       const isGmail = loginId.trim().toLowerCase().endsWith("@gmail.com");
       if (!isGmail) {
         alert("Please enter a valid Gmail address.");

@@ -127,12 +127,12 @@ function getVehicleIconContainer(type: string) {
 
 
 export default function PolicyHolderHome() {
-  const [userName, setUserName] = useState("Kamal");
+  const [userName, setUserName] = useState("");
   const [vehicles, setVehicles] = useState<any[]>([]);
-  const [pendingClaimsCount, setPendingClaimsCount] = useState(1);
+  const [pendingClaimsCount, setPendingClaimsCount] = useState(0);
   const [hasDocumentRequest, setHasDocumentRequest] = useState(false);
-  const [totalClaimsCount, setTotalClaimsCount] = useState(3);
-  const [approvedClaimsCount, setApprovedClaimsCount] = useState(1);
+  const [totalClaimsCount, setTotalClaimsCount] = useState(0);
+  const [approvedClaimsCount, setApprovedClaimsCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
 
   const formatDateString = (dateStr: string) => {
@@ -261,7 +261,10 @@ export default function PolicyHolderHome() {
           }
         } catch (err) {
           console.error("Error parsing user session", err);
+          window.location.href = "/Login";
         }
+      } else {
+        window.location.href = "/Login";
       }
     }
   }, []);
@@ -315,7 +318,7 @@ export default function PolicyHolderHome() {
           {/* Central Statement */}
           <div className="my-auto max-w-4xl mx-auto text-center px-4">
               <h1 className="text-lg md:text-[24px] font-extrabold text-white leading-relaxed tracking-normal">
-                An accident claim with Sansa General Insurance Company Limited is <br className="hidden md:inline" />
+                An accident claim with Sanasa General Insurance Company Limited is <br className="hidden md:inline" />
                 a request for compensation after an accident.
               </h1>
           </div>

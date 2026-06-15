@@ -5,18 +5,17 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 
-export default function AdminNavbar() {
+export default function OfficeStaffNavbar() {
   const pathname = usePathname();
 
   const menuItems = [
-    { name: "Home", href: "/Admin/Dashboard" },
-    { name: "Claims", href: "/Admin/Claims" },
-    { name: "Registrations", href: "/Admin/Registrations" },
-    { name: "Policy Holders", href: "/Admin/PolicyHolders" },
-    { name: "Agents", href: "/Admin/Agents" },
-    { name: "Staff", href: "/Admin/Staff" },
-    { name: "Analytics & Reports", href: "/Admin/Analytics" },
-    { name: "Contact", href: "/Admin/Contact" },
+    { name: "Home", href: "/Office_Staff/Dashboard" },
+    { name: "Claims", href: "/Office_Staff/Claims" },
+    { name: "Registrations", href: "/Office_Staff/Registrations" },
+    { name: "Policy Holders", href: "/Office_Staff/PolicyHolders" },
+    { name: "Agents", href: "/Office_Staff/Agents" },
+    { name: "Reports", href: "/Office_Staff/Reports" },
+    { name: "Contact", href: "/Office_Staff/Contact" },
   ];
 
   return (
@@ -38,7 +37,9 @@ export default function AdminNavbar() {
       <nav className="flex-1 mt-6 flex flex-col">
         {menuItems.map((item) => {
           // Check if active (matches exact path or prefix path)
-          const isActive = pathname === item.href || (item.href !== "/Admin/Dashboard" && pathname?.startsWith(item.href));
+          const isActive =
+            pathname === item.href ||
+            (item.href !== "/Office_Staff/Dashboard" && pathname?.startsWith(item.href));
 
           return (
             <Link

@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-export default function AdminFooter() {
+export default function OfficeStaffFooter() {
   return (
     <footer className="bg-[#f59e0b] w-full text-white py-12 px-6 md:px-16 select-none relative z-10">
       <div className="max-w-7xl mx-auto flex flex-col gap-10">
@@ -29,29 +29,29 @@ export default function AdminFooter() {
           <div className="flex flex-row gap-12 md:gap-24 flex-1 justify-center md:justify-start md:pl-20">
             {/* Column 1 */}
             <div className="flex flex-col gap-3.5">
-              <Link href="/Admin/Home" className="hover:text-slate-200 transition-colors font-bold text-base no-underline">
+              <Link href="/Office_Staff/Dashboard" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
                 Home
               </Link>
-              <Link href="/Admin/Claims" className="hover:text-slate-200 transition-colors font-bold text-base no-underline">
+              <Link href="/Office_Staff/Claims" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
                 Claims
               </Link>
-              <Link href="/Admin/Registrations" className="hover:text-slate-200 transition-colors font-bold text-base no-underline">
+              <Link href="/Office_Staff/Registrations" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
                 Registrations
               </Link>
-              <Link href="/Admin/Contact" className="hover:text-slate-200 transition-colors font-bold text-base no-underline">
+              <Link href="/Office_Staff/Contact" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
                 Contact
               </Link>
             </div>
 
             {/* Column 2 */}
             <div className="flex flex-col gap-3.5">
-              <Link href="/Admin/PolicyHolders" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
+              <Link href="/Office_Staff/PolicyHolders" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
                 Policy Holders
               </Link>
-              <Link href="/Admin/Agents" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
+              <Link href="/Office_Staff/Agents" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
                 Agents
               </Link>
-              <Link href="/Admin/Analytics" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
+              <Link href="/Office_Staff/Reports" className="hover:text-slate-200 transition-colors font-extrabold text-base no-underline">
                 Reports
               </Link>
             </div>

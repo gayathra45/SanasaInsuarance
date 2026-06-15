@@ -10,6 +10,8 @@ import cors from "cors";
 import signupRouter from "./Signup/signup.js";
 import myClaimsRouter from "./policy_holder/my_claims/my_claims.routes.js";
 import newClaimRouter from "./policy_holder/new_claim/new_claim.routes.js";
+import adminRouter from "./Admin/admin.routes.js";
+import officeStaffRouter from "./office_staff/office_staff.routes.js";
 
 const app = express();
 const __dirname = path.resolve();
@@ -21,6 +23,8 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use("/api/signup", signupRouter);
 app.use("/api/policy-holder", myClaimsRouter);
 app.use("/api/policy-holder", newClaimRouter);
+app.use("/api/admin", adminRouter);
+app.use("/api/office-staff", officeStaffRouter);
 
 
 

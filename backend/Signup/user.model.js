@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema({
     vehicleReg: { type: String },
     revenueLicense: { type: String }
   },
+  branch: { type: String, default: "Galle" },
   referenceNumber: { type: String, required: true, unique: true },
   resetPasswordToken: { type: String },
   resetPasswordExpires: { type: Date },
