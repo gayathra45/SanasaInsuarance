@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -17,11 +17,14 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "../config";
 
+type Role = "policy_holder" | "insurance_agent" | "office_staff" | "admin";
+
 export default function MobileResetPassword() {
   const { width, height } = useWindowDimensions();
 
-  // 2-Stage Navigation (1: Verify NIC & Email, 2: Enter New Password)
+  // 3-Stage Navigation (1: Enter Details, 2: OTP Verification, 3: New Password)
   const [stage, setStage] = useState(1);
+  const [activeRole, setActiveRole] = useState<Role>("policy_holder");
   const [customAlert, setCustomAlert] = useState<{ title: string; message: string } | null>(null);
 
   const showAlert = (title: string, message: string) => {
@@ -30,9 +33,16 @@ export default function MobileResetPassword() {
 
   // Stage 1 Inputs
   const [nic, setNic] = useState("");
+  const [mobile, setMobile] = useState("");
   const [email, setEmail] = useState("");
 
-  // Stage 2 Inputs
+  // OTP Stage Inputs
+  const [generatedOtp, setGeneratedOtp] = useState("");
+  const [enteredOtp, setEnteredOtp] = useState<string[]>(Array(6).fill(""));
+  const otpRefs = useRef<(TextInput | null)[]>([]);
+  const [timerSeconds, setTimerSeconds] = useState(59);
+
+  // Stage 3 Inputs
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -67,9 +77,99 @@ export default function MobileResetPassword() {
 
   const strength = getPasswordStrength();
 
+  // Countdown timer for OTP
+  useEffect(() => {
+    let timer: any;
+    if (stage === 2 && timerSeconds > 0) {
+      timer = setInterval(() => {
+        setTimerSeconds((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [stage, timerSeconds]);
+
+  // Handle OTP Input Changes
+  const handleOtpChange = (index: number, val: string) => {
+    const numericVal = val.replace(/[^0-9]/g, "");
+    if (!numericVal) return;
+
+    const newOtp = [...enteredOtp];
+    newOtp[index] = numericVal.substring(numericVal.length - 1); // Get last digit
+    setEnteredOtp(newOtp);
+
+    // Focus next cell
+    if (index < 5 && otpRefs.current[index + 1]) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: any) => {
+    if (e.nativeEvent.key === "Backspace") {
+      const newOtp = [...enteredOtp];
+      if (newOtp[index] !== "") {
+        newOtp[index] = "";
+        setEnteredOtp(newOtp);
+      } else if (index > 0) {
+        newOtp[index - 1] = "";
+        setEnteredOtp(newOtp);
+        otpRefs.current[index - 1]?.focus();
+      }
+    }
+  };
+
+  const resendOtp = async () => {
+    setEnteredOtp(Array(6).fill(""));
+    setTimerSeconds(59);
+
+    if (activeRole !== "policy_holder") {
+      const localOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(localOtp);
+      showAlert("Simulated Email OTP", `A new verification code has been sent to ${email}.\nCode: ${localOtp}`);
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/signup/reset-password/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nic: nic.trim(), mobile: mobile.trim() })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to verify details.");
+      }
+
+      setGeneratedOtp(data.otp);
+      showAlert("Simulated SMS OTP", `A new verification code has been sent to your mobile number.\nCode: ${data.otp}`);
+    } catch (err: any) {
+      showAlert("Error", "Failed to resend verification code. Please try again.");
+    }
+  };
+
   const handleVerify = async () => {
-    if (!nic.trim() || !email.trim()) {
-      showAlert("Validation Error", "Please fill in both NIC and Email fields.");
+    if (activeRole !== "policy_holder") {
+      if (!email.trim()) {
+        showAlert("Validation Error", "Please enter your Gmail / Email.");
+        return;
+      }
+      const isGmail = email.trim().toLowerCase().endsWith("@gmail.com");
+      if (!isGmail) {
+        showAlert("Validation Error", "Please enter a valid Gmail address.");
+        return;
+      }
+      const localOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(localOtp);
+      setTimerSeconds(59);
+      setStage(2);
+      showAlert("Simulated Email OTP", `A verification code has been sent to ${email}.\nCode: ${localOtp}`);
+      return;
+    }
+
+    if (!nic.trim() || !mobile.trim()) {
+      showAlert("Validation Error", "Please fill in both NIC and Mobile Number fields.");
       return;
     }
 
@@ -79,7 +179,7 @@ export default function MobileResetPassword() {
       const res = await fetch(`${API_BASE_URL}/api/signup/reset-password/verify`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nic: nic.trim(), email: email.trim() })
+        body: JSON.stringify({ nic: nic.trim(), mobile: mobile.trim() })
       });
 
       const data = await res.json();
@@ -87,12 +187,28 @@ export default function MobileResetPassword() {
         throw new Error(data.error || "Verification failed.");
       }
 
+      setGeneratedOtp(data.otp);
+      setTimerSeconds(59);
       setStage(2);
+      showAlert("Simulated SMS OTP", `A verification code has been sent to your mobile number.\nCode: ${data.otp}`);
     } catch (err: any) {
       showAlert("Verification Failed", err.message || "No matching registered account found.");
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleOtpVerify = () => {
+    const code = enteredOtp.join("");
+    if (code.length < 6 || enteredOtp.some(digit => digit === "")) {
+      showAlert("Validation Error", "Please enter the complete 6-digit OTP code.");
+      return;
+    }
+    if (code !== generatedOtp) {
+      showAlert("Verification Error", "Incorrect verification code. Please try again.");
+      return;
+    }
+    setStage(3);
   };
 
   const handleUpdate = async () => {
@@ -116,6 +232,14 @@ export default function MobileResetPassword() {
       return;
     }
 
+    if (activeRole !== "policy_holder") {
+      setShowSuccessModal(true);
+      setTimeout(() => {
+        router.push("/login/page");
+      }, 3000);
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -124,7 +248,7 @@ export default function MobileResetPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nic: nic.trim(),
-          email: email.trim(),
+          mobile: mobile.trim(),
           newPassword
         })
       });
@@ -144,6 +268,13 @@ export default function MobileResetPassword() {
       setIsSubmitting(false);
     }
   };
+
+  const rolesList: { id: Role; label: string }[] = [
+    { id: "policy_holder", label: "Policy Holder" },
+    { id: "insurance_agent", label: "Insurance Agent" },
+    { id: "office_staff", label: "Office Staff" },
+    { id: "admin", label: "Admin" },
+  ];
 
   return (
     <ImageBackground
@@ -181,7 +312,9 @@ export default function MobileResetPassword() {
             <Text style={styles.headerTitle}>Reset Password</Text>
             <Text style={styles.headerSubtitle}>
               {stage === 1
-                ? "Verify your registered identity details to reset your credentials."
+                ? "Verify your identity details to reset your credentials."
+                : stage === 2
+                ? "Verify the verification code sent to your credentials."
                 : "Choose a new strong password for your account."}
             </Text>
           </View>
@@ -192,42 +325,92 @@ export default function MobileResetPassword() {
             {/* STAGE 1: VERIFY IDENTITY */}
             {stage === 1 && (
               <View style={styles.formContainer}>
-                {/* NIC field */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>National Identity Card (NIC) *</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="id-card-outline" size={20} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Enter your NIC"
-                      placeholderTextColor="#94a3b8"
-                      value={nic}
-                      onChangeText={setNic}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                  </View>
+                
+                {/* Roles Selection Grid */}
+                <View style={styles.rolesGrid}>
+                  {rolesList.map((role) => {
+                    const isSelected = activeRole === role.id;
+                    return (
+                      <TouchableOpacity
+                        key={role.id}
+                        activeOpacity={0.7}
+                        onPress={() => setActiveRole(role.id)}
+                        style={[
+                          styles.roleButton,
+                          isSelected && styles.roleButtonActive,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.roleButtonText,
+                            isSelected && styles.roleButtonTextActive,
+                          ]}
+                        >
+                          {role.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
 
-                {/* Email field */}
-                <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Email Address *</Text>
-                  <View style={styles.inputWrapper}>
-                    <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
-                    <TextInput
-                      style={styles.textInput}
-                      placeholder="Enter your Email"
-                      placeholderTextColor="#94a3b8"
-                      value={email}
-                      onChangeText={setEmail}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                  </View>
-                </View>
+                {activeRole === "policy_holder" ? (
+                  <>
+                    {/* NIC field */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>National Identity Card (NIC) *</Text>
+                      <View style={styles.inputWrapper}>
+                        <Ionicons name="id-card-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Enter your NIC"
+                          placeholderTextColor="#94a3b8"
+                          value={nic}
+                          onChangeText={setNic}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                      </View>
+                    </View>
 
-                {/* Verify Action Button */}
+                    {/* Mobile Number field */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Mobile Number *</Text>
+                      <View style={styles.inputWrapper}>
+                        <Ionicons name="phone-portrait-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Enter your Mobile Number"
+                          placeholderTextColor="#94a3b8"
+                          value={mobile}
+                          onChangeText={setMobile}
+                          keyboardType="phone-pad"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  /* Email field */
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Gmail / Email Address *</Text>
+                    <View style={styles.inputWrapper}>
+                      <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.textInput}
+                        placeholder="Enter your Gmail address"
+                        placeholderTextColor="#94a3b8"
+                        value={email}
+                        onChangeText={setEmail}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                      />
+                    </View>
+                  </View>
+                )}
+
+                {/* Send OTP Button */}
                 <TouchableOpacity
                   activeOpacity={0.8}
                   style={styles.actionButton}
@@ -235,14 +418,74 @@ export default function MobileResetPassword() {
                   onPress={handleVerify}
                 >
                   <Text style={styles.actionButtonText}>
-                    {isSubmitting ? "Verifying..." : "Verify Details"}
+                    {isSubmitting ? "Sending..." : "Send OTP"}
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
 
-            {/* STAGE 2: UPDATE PASSWORD */}
+            {/* STAGE 2: OTP VERIFICATION */}
             {stage === 2 && (
+              <View style={styles.formContainer}>
+                <View style={{ alignItems: "center", gap: 12, marginBottom: 8 }}>
+                  <View style={styles.checkmarkCircle}>
+                    <Ionicons name="shield-checkmark-outline" size={36} color="#ff9800" />
+                  </View>
+                  <Text style={[styles.label, { fontSize: 16, fontWeight: "bold", textAlign: "center" }]}>
+                    Verification Code
+                  </Text>
+                  <Text style={{ color: "rgba(255,255,255,0.7)", fontSize: 13, textAlign: "center", paddingHorizontal: 12 }}>
+                    We've sent a 6-digit code to{" "}
+                    <Text style={{ color: "#ff9800", fontWeight: "bold" }}>
+                      {activeRole === "policy_holder" ? mobile : email}
+                    </Text>.
+                  </Text>
+                </View>
+
+                {/* 6-Digit OTP inputs */}
+                <View style={styles.otpWrapper}>
+                  {enteredOtp.map((digit, idx) => (
+                    <TextInput
+                      key={idx}
+                      ref={(el) => { otpRefs.current[idx] = el; }}
+                      style={styles.otpInput}
+                      keyboardType="number-pad"
+                      maxLength={1}
+                      value={digit}
+                      onChangeText={(val) => handleOtpChange(idx, val)}
+                      onKeyPress={(e) => handleOtpKeyDown(idx, e)}
+                    />
+                  ))}
+                </View>
+
+                {/* Timer / Resend */}
+                <View style={{ alignItems: "center", marginTop: 8 }}>
+                  {timerSeconds > 0 ? (
+                    <Text style={styles.otpText}>
+                      Resend code in <Text style={styles.otpTextBold}>{timerSeconds}s</Text>
+                    </Text>
+                  ) : (
+                    <TouchableOpacity onPress={resendOtp}>
+                      <Text style={[styles.linkText, { color: "#ff9800", fontWeight: "bold" }]}>
+                        Resend Verification Code
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Verify OTP Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={styles.actionButton}
+                  onPress={handleOtpVerify}
+                >
+                  <Text style={styles.actionButtonText}>Verify Code</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* STAGE 3: UPDATE PASSWORD */}
+            {stage === 3 && (
               <View style={styles.formContainer}>
                 
                 {/* New Password */}
@@ -318,9 +561,11 @@ export default function MobileResetPassword() {
 
             {/* Bottom links */}
             <View style={styles.footerLinks}>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/Signup/page")}>
-                <Text style={styles.linkText}>Create an Account</Text>
-              </TouchableOpacity>
+              {activeRole === "policy_holder" ? (
+                <TouchableOpacity activeOpacity={0.7} onPress={() => router.push("/Signup/page")}>
+                  <Text style={styles.linkText}>Create an Account</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
 
           </View>
@@ -657,6 +902,73 @@ const styles = StyleSheet.create({
   alertButtonText: {
     color: "#fff",
     fontSize: 14,
+    fontWeight: "bold",
+  },
+  rolesGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 10,
+    marginBottom: 24,
+  },
+  roleButton: {
+    width: "48%",
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  roleButtonActive: {
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    borderColor: "#ffffff",
+    shadowColor: "#ffffff",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  roleButtonText: {
+    fontSize: 12.5,
+    fontWeight: "600",
+    color: "rgba(255, 255, 255, 0.8)",
+    textAlign: "center",
+  },
+  roleButtonTextActive: {
+    color: "#ffffff",
+    fontWeight: "800",
+  },
+  otpWrapper: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    marginVertical: 16,
+  },
+  otpInput: {
+    width: 44,
+    height: 50,
+    backgroundColor: "#ffffff",
+    borderRadius: 12,
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1e293b",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  otpText: {
+    color: "rgba(255,255,255,0.7)",
+    fontSize: 13,
+    fontWeight: "600",
+    marginTop: 8,
+  },
+  otpTextBold: {
+    color: "#ff9800",
     fontWeight: "bold",
   },
 });

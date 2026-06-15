@@ -31,57 +31,7 @@ function TrackClaimsContent() {
   const [claimsList, setClaimsList] = useState<Claim[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Initial mockup claims for tracking
-  const mockClaims: Claim[] = [
-    {
-      claimNumber: "CLM-2024-0024",
-      vehiclePlate: "CBH-3202",
-      incidentDate: "12 Jan 2026",
-      incidentTime: "14:30",
-      damageType: "Accident",
-      amount: "Rs. 120,000",
-      status: "Pending",
-      description: "Minor collision at a junction with front bumper dent.",
-      location: "Galle Road, Colombo",
-      officer: "Agent Saman",
-      documentsRequested: true,
-      requestedDocuments: ["Police Report", "Repair Estimate"],
-      currentStep: 3,
-      messages: []
-    },
-    {
-      claimNumber: "CLM-2074-1487",
-      vehiclePlate: "NE-7856",
-      incidentDate: "07 Aug 2025",
-      incidentTime: "08:15",
-      damageType: "Flood",
-      amount: "Rs. 120,000",
-      status: "Review",
-      description: "Heavy rainfall flooded the road. Engine compartment submerged.",
-      location: "Kandy Road, Kelaniya",
-      officer: "Agent Saman",
-      documentsRequested: true,
-      requestedDocuments: ["Police Report", "Repair Estimate"],
-      currentStep: 4,
-      messages: []
-    },
-    {
-      claimNumber: "CLM-3224-0065",
-      vehiclePlate: "CBH-3202",
-      incidentDate: "25 Feb 2024",
-      incidentTime: "19:00",
-      damageType: "Accident",
-      amount: "Rs. 120,000",
-      status: "Approved",
-      description: "Reversed into a concrete post causing rear-end damage.",
-      location: "Flower Road, Colombo 03",
-      officer: "Agent Perera",
-      documentsRequested: false,
-      requestedDocuments: [],
-      currentStep: 6,
-      messages: []
-    }
-  ];
+
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -158,7 +108,7 @@ function TrackClaimsContent() {
           console.error("Error parsing local claim draft", err);
         }
 
-        const combined = [...localClaims, ...databaseClaims, ...mockClaims];
+        const combined = [...localClaims, ...databaseClaims];
         setClaimsList(combined);
 
         // Check if query parameter 'id' exists

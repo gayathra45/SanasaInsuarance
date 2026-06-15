@@ -550,50 +550,9 @@ export default function PolicyHolderHome() {
                   </div>
                 ))
               ) : (
-                <>
-                  {/* Vehicle 1 */}
-                  <div className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0">
-                        <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M19.16 8a2 2 0 0 0-1.8-1.1H6.64a2 2 0 0 0-1.8 1.1L3.2 11h17.6l-1.64-3zM2 13h20v3a2 2 0 0 1-2 2h-1.18a3 3 0 0 1-5.64 0h-2.36a3 3 0 0 1-5.64 0H4a2 2 0 0 1-2-2v-3zm4 4a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zm12 0a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className="text-slate-800 font-extrabold text-base leading-tight">CBH-3202</h4>
-                        <p className="text-slate-400 font-bold text-xs mt-0.5">Toyota Corolla 2019</p>
-                      </div>
-                    </div>
-                    <Link
-                      href="/Policy_Holder/MyVehicles"
-                      className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
-                    >
-                      View
-                    </Link>
-                  </div>
-
-                  {/* Vehicle 2 */}
-                  <div className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="p-2.5 bg-slate-100 rounded-xl text-slate-600 flex-shrink-0">
-                        <svg className="w-10 h-10 text-slate-700" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M20 8h-3V4H2v11h2a3 3 0 0 0 6 0h4a3 3 0 0 0 6 0h2v-4c0-1.7-1.3-3-3-3zm-13 8c-.8 0-1.5-.7-1.5-1.5S6.2 13 7 13s1.5.7 1.5 1.5S7.8 16 7 16zm11 0c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z" />
-                          <path d="M17 9.5h3c.8 0 1.5.7 1.5 1.5v1H17v-2.5z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h4 className="text-slate-800 font-extrabold text-base leading-tight">NE-7856</h4>
-                        <p className="text-slate-400 font-bold text-xs mt-0.5">Ashok Leyland Lorry</p>
-                      </div>
-                    </div>
-                    <Link
-                      href="/Policy_Holder/MyVehicles"
-                      className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
-                    >
-                      View
-                    </Link>
-                  </div>
-                </>
+                <div className="bg-white border border-slate-200 rounded-[22px] p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                  <p className="text-slate-400 font-bold text-sm">No vehicles registered under this policy.</p>
+                </div>
               )}
             </div>
           </div>

@@ -11,7 +11,7 @@ type Role = "policy_holder" | "insurance_agent" | "office_staff" | "admin";
 export default function Login() {
   const router = useRouter();
   const [activeRole, setActiveRole] = useState<Role>("policy_holder");
-  const [nic, setNic] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -24,7 +24,12 @@ export default function Login() {
   const handleConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (activeRole !== "policy_holder") {
-      alert(`Logging in as ${activeRole.replace("_", " ").toUpperCase()}\nNIC: ${nic}`);
+      const isGmail = loginId.trim().toLowerCase().endsWith("@gmail.com");
+      if (!isGmail) {
+        alert("Please enter a valid Gmail address.");
+        return;
+      }
+      alert(`Logging in as ${activeRole.replace("_", " ").toUpperCase()}\nGmail: ${loginId}`);
       router.push("/Policy_Holder/Home");
       return;
     }
@@ -33,7 +38,7 @@ export default function Login() {
       const response = await fetch("http://localhost:5000/api/policy-holder/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nic, password })
+        body: JSON.stringify({ nic: loginId, password })
       });
       const data = await response.json();
       if (!response.ok) {
@@ -112,40 +117,57 @@ export default function Login() {
               })}
             </div>
 
-            {/* National Identity Card (NIC) Field */}
+            {/* Dynamic NIC / Gmail Input Field */}
             <div className="flex flex-col gap-2">
               <label className="text-white text-base font-semibold tracking-wide ml-1 select-none">
-                National Identity Card (NIC)
+                {activeRole === "policy_holder" ? "National Identity Card (NIC)" : "Gmail / Email"}
               </label>
               <div className="relative">
                 <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-700">
-                  {/* Custom ID Card / NIC Icon */}
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M15 9h3m-3 3h3m-3 3h3M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
-                    />
-                  </svg>
+                  {activeRole === "policy_holder" ? (
+                    /* Custom ID Card / NIC Icon */
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                      strokeWidth="2"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 9h3m-3 3h3m-3 3h3M5 5h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M8 10a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"
+                      />
+                    </svg>
+                  ) : (
+                    /* Mail Icon */
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75"
+                      />
+                    </svg>
+                  )}
                 </span>
                 <input
-                  type="text"
+                  type={activeRole === "policy_holder" ? "text" : "email"}
                   required
-                  value={nic}
-                  onChange={(e) => setNic(e.target.value)}
+                  value={loginId}
+                  onChange={(e) => setLoginId(e.target.value)}
                   className="w-full bg-white text-slate-800 rounded-2xl py-3.5 pl-12 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-orange-400 focus:shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all placeholder:text-gray-400 font-medium border border-transparent"
-                  placeholder="Enter your NIC"
+                  placeholder={activeRole === "policy_holder" ? "Enter your NIC" : "Enter your Gmail address"}
                 />
               </div>
             </div>

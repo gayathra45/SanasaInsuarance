@@ -21,7 +21,7 @@ type Role = "policy_holder" | "insurance_agent" | "office_staff" | "admin";
 
 export default function MobileLogin() {
   const [activeRole, setActiveRole] = useState<Role>("policy_holder");
-  const [nic, setNic] = useState("");
+  const [loginId, setLoginId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [customAlert, setCustomAlert] = useState<{ title: string; message: string } | null>(null);
@@ -32,19 +32,31 @@ export default function MobileLogin() {
   const { width, height } = useWindowDimensions();
 
   const handleLogin = () => {
-    if (!nic.trim() || !password) {
-      showAlert("Validation Error", "Please fill out both NIC and Password fields.");
+    if (!loginId.trim() || !password) {
+      const fieldName = activeRole === "policy_holder" ? "NIC" : "Gmail";
+      showAlert("Validation Error", `Please fill out both ${fieldName} and Password fields.`);
       return;
+    }
+    if (activeRole !== "policy_holder") {
+      const isGmail = loginId.trim().toLowerCase().endsWith("@gmail.com");
+      if (!isGmail) {
+        showAlert("Validation Error", "Please enter a valid Gmail address.");
+        return;
+      }
     }
     showAlert(
       "Login Status",
-      `Logging in as: ${activeRole.toUpperCase().replace("_", " ")}\nNIC: ${nic.trim()}`
+      `Logging in as: ${activeRole.toUpperCase().replace("_", " ")}\n${
+        activeRole === "policy_holder" ? "NIC" : "Gmail"
+      }: ${loginId.trim()}`
     );
   };
 
   const rolesList: { id: Role; label: string }[] = [
     { id: "policy_holder", label: "Policy Holder" },
     { id: "insurance_agent", label: "Insurance Agent" },
+    { id: "office_staff", label: "Office Staff" },
+    { id: "admin", label: "Admin" },
   ];
 
   const isSmallScreen = width < 380;
@@ -119,17 +131,25 @@ export default function MobileLogin() {
 
             {/* Inputs Section */}
             <View style={styles.inputsSection}>
-              {/* NIC input */}
+              {/* Dynamic Input (NIC / Gmail) */}
               <View style={styles.inputContainer}>
-                <Text style={styles.label}>National Identity Card (NIC)</Text>
+                <Text style={styles.label}>
+                  {activeRole === "policy_holder" ? "National Identity Card (NIC)" : "Gmail / Email"}
+                </Text>
                 <View style={styles.inputWrapper}>
-                  <Ionicons name="id-card-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                  <Ionicons
+                    name={activeRole === "policy_holder" ? "id-card-outline" : "mail-outline"}
+                    size={20}
+                    color="#64748b"
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.textInput}
-                    placeholder="Enter your NIC"
+                    placeholder={activeRole === "policy_holder" ? "Enter your NIC" : "Enter your Gmail address"}
                     placeholderTextColor="#94a3b8"
-                    value={nic}
-                    onChangeText={setNic}
+                    value={loginId}
+                    onChangeText={setLoginId}
+                    keyboardType={activeRole === "policy_holder" ? "default" : "email-address"}
                     autoCapitalize="none"
                     autoCorrect={false}
                   />
