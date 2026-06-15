@@ -129,6 +129,23 @@ function getVehicleIconContainer(type: string) {
 export default function PolicyHolderHome() {
   const [userName, setUserName] = useState("Kamal");
   const [vehicles, setVehicles] = useState<any[]>([]);
+  const [pendingClaimsCount, setPendingClaimsCount] = useState(1);
+  const [hasDocumentRequest, setHasDocumentRequest] = useState(false);
+  const [totalClaimsCount, setTotalClaimsCount] = useState(3);
+  const [approvedClaimsCount, setApprovedClaimsCount] = useState(1);
+  const [notifications, setNotifications] = useState<any[]>([]);
+
+  const formatDateString = (dateStr: string) => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${date.getDate().toString().padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -141,6 +158,106 @@ export default function PolicyHolderHome() {
           }
           if (user.vehicles && Array.isArray(user.vehicles)) {
             setVehicles(user.vehicles);
+          }
+
+          if (user.nic) {
+            const fetchClaims = async () => {
+              try {
+                const res = await fetch(`http://localhost:5000/api/policy-holder/user-claims?nic=${encodeURIComponent(user.nic)}`);
+                let dbClaims: any[] = [];
+                if (res.ok) {
+                  const data = await res.json();
+                  if (Array.isArray(data.claims)) {
+                    dbClaims = data.claims;
+                  }
+                }
+
+                // Check for local session submitted claims
+                let localClaims: any[] = [];
+                const lastSubmitted = sessionStorage.getItem("last_submitted_claim");
+                if (lastSubmitted) {
+                  const parsed = JSON.parse(lastSubmitted);
+                  const exists = dbClaims.some(c => c.claimNumber === parsed.claimNumber);
+                  if (!exists) {
+                    localClaims.push(parsed);
+                  }
+                }
+
+                const allClaims = [...localClaims, ...dbClaims];
+
+                // A claim is pending if status is not approved, done, or rejected
+                const pendingClaims = allClaims.filter(c => {
+                  const s = (c.status || "Pending").toLowerCase();
+                  return !["approved", "done", "rejected"].some(val => s.includes(val));
+                });
+
+                const approvedClaims = allClaims.filter(c => {
+                  const s = (c.status || "").toLowerCase();
+                  return ["approved", "done", "active"].some(val => s.includes(val));
+                });
+
+                const docRequest = allClaims.some(c => c.documentsRequested === true);
+
+                // Compile dynamic notifications list
+                const compiledNotifications: any[] = [];
+                allClaims.forEach((claim: any) => {
+                  if (claim.documentsRequested) {
+                    compiledNotifications.push({
+                      id: claim.claimNumber + "-doc",
+                      type: "urgent",
+                      title: "Documents Requested – Action Required",
+                      description: `Staff has requested a ${claim.requestedDocuments && claim.requestedDocuments.length > 0 ? claim.requestedDocuments.join(' & ') : 'Police Report & Repair Estimate'} for ${claim.claimNumber}.`,
+                      subText: "Please upload within 3 days...",
+                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
+                      actions: [
+                        { label: "Upload", href: "/Policy_Holder/Documents", primary: true },
+                        { label: "View", href: "/Policy_Holder/My_claims" }
+                      ],
+                      isUrgent: true
+                    });
+                  }
+
+                  const s = (claim.status || "").toLowerCase();
+                  if (["approved", "done", "active"].some(val => s.includes(val))) {
+                    compiledNotifications.push({
+                      id: claim.claimNumber + "-approved",
+                      type: "approved",
+                      title: `Claim ${claim.claimNumber} Approved!`,
+                      description: `Your claim for LKR ${claim.amount ? Number(claim.amount).toLocaleString() : '85,000'} has been approved. Payment processed within 5 days.`,
+                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
+                      actions: [
+                        { label: "View", href: "/Policy_Holder/My_claims" }
+                      ],
+                      isUrgent: false
+                    });
+                  } else if (!claim.documentsRequested) {
+                    compiledNotifications.push({
+                      id: claim.claimNumber + "-status",
+                      type: "status",
+                      title: `Claim ${claim.claimNumber} Status: ${claim.status || "Pending"}`,
+                      description: `Your claim is currently in ${claim.status || "Pending"} stage. Agent is reviewing details.`,
+                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
+                      actions: [
+                        { label: "View", href: "/Policy_Holder/My_claims" }
+                      ],
+                      isUrgent: false
+                    });
+                  }
+                });
+
+                // Sort: Urgent first
+                compiledNotifications.sort((a, b) => (a.isUrgent === b.isUrgent ? 0 : a.isUrgent ? -1 : 1));
+
+                setTotalClaimsCount(allClaims.length);
+                setPendingClaimsCount(pendingClaims.length);
+                setApprovedClaimsCount(approvedClaims.length);
+                setHasDocumentRequest(docRequest);
+                setNotifications(compiledNotifications);
+              } catch (err) {
+                console.error("Error fetching claims for home page banner:", err);
+              }
+            };
+            fetchClaims();
           }
         } catch (err) {
           console.error("Error parsing user session", err);
@@ -168,9 +285,30 @@ export default function PolicyHolderHome() {
                 Welcome back, {userName} !
               </h2>
             </div>
-            <p className="text-slate-200 text-[13px] md:text-sm font-semibold tracking-wide mt-1">
-              Your policy is active and up to date. You have{" "}
-              <span className="text-[#ff9800] font-extrabold">1 pending claim</span> and a document request awaiting action.
+            <p className="text-slate-200 text-[13px] md:text-sm font-semibold tracking-wide mt-1 animate-fade-in">
+              {pendingClaimsCount > 0 || hasDocumentRequest ? (
+                <>
+                  Your policy is active and up to date. You have{" "}
+                  {pendingClaimsCount > 0 && (
+                    <>
+                      <span className="text-[#ff9800] font-extrabold">
+                        {pendingClaimsCount} pending claim{pendingClaimsCount > 1 ? "s" : ""}
+                      </span>
+                    </>
+                  )}
+                  {pendingClaimsCount > 0 && hasDocumentRequest && " and "}
+                  {hasDocumentRequest && (
+                    <>
+                      <span className="text-[#ff9800] font-extrabold">
+                        a document request awaiting action
+                      </span>
+                    </>
+                  )}
+                  .
+                </>
+              ) : (
+                "Your policy is active and up to date. You have no pending claims."
+              )}
             </p>
           </div>
 
@@ -185,7 +323,7 @@ export default function PolicyHolderHome() {
           {/* Action Buttons - Highly highlighted with glowing drop shadows */}
           <div className="flex flex-row justify-center gap-6 mt-2">
             <Link
-              href="/Policy_Holder/New_Claim"
+              href="/Policy_Holder/New_Claim/page"
               className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-base md:text-lg px-10 py-4.5 rounded-full transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] no-underline"
               style={{ boxShadow: "0 8px 25px rgba(220, 38, 38, 0.65)" }}
             >
@@ -211,7 +349,7 @@ export default function PolicyHolderHome() {
           
           {/* Total Claims */}
           <Link
-            href="/Policy_Holder/MyClaims"
+            href="/Policy_Holder/My_claims"
             className="bg-white px-6 py-5.5 rounded-[24px] border border-slate-100 shadow-[0_12px_32px_rgba(0,0,0,0.06)] flex items-center justify-center gap-6 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 no-underline text-inherit cursor-pointer"
           >
             <div className="text-slate-400 flex-shrink-0">
@@ -220,14 +358,14 @@ export default function PolicyHolderHome() {
             </svg>
             </div>
             <div>
-              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">3</h3>
+              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">{totalClaimsCount}</h3>
               <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">Total Claims</p>
             </div>
           </Link>
 
           {/* In Progress */}
           <Link
-            href="/Policy_Holder/MyClaims"
+            href="/Policy_Holder/My_claims"
             className="bg-white px-6 py-5.5 rounded-[24px] border border-slate-100 shadow-[0_12px_32px_rgba(0,0,0,0.06)] flex items-center justify-center gap-6 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 no-underline text-inherit cursor-pointer"
           >
             <div className="text-slate-400 flex-shrink-0">
@@ -236,14 +374,14 @@ export default function PolicyHolderHome() {
             </svg>
             </div>
             <div>
-              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">1</h3>
+              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">{pendingClaimsCount}</h3>
               <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">In Progress</p>
             </div>
           </Link>
 
           {/* Approved */}
           <Link
-            href="/Policy_Holder/MyClaims"
+            href="/Policy_Holder/My_claims"
             className="bg-white px-6 py-5.5 rounded-[24px] border border-slate-100 shadow-[0_12px_32px_rgba(0,0,0,0.06)] flex items-center justify-center gap-6 hover:shadow-[0_12px_32px_rgba(0,0,0,0.1)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 no-underline text-inherit cursor-pointer"
           >
             <div className="text-slate-400 flex-shrink-0">
@@ -253,7 +391,7 @@ export default function PolicyHolderHome() {
             </svg>
             </div>
             <div>
-              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">1</h3>
+              <h3 className="text-3xl font-black text-slate-800 tracking-tight leading-none mb-1">{approvedClaimsCount}</h3>
               <p className="text-slate-400 font-bold text-xs uppercase tracking-wider">Approved</p>
             </div>
           </Link>
@@ -282,76 +420,95 @@ export default function PolicyHolderHome() {
 
             {/* Alert List */}
             <div className="flex flex-col gap-6">
-              
-              {/* Notification 1: Action Required */}
-              <div className="bg-red-50/15 border-2 border-red-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px]">
-                <div className="flex items-start gap-4">
-                  <div className="p-1.5 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                      <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.522a.75.75 0 01-.297 1.228 35.754 35.754 0 01-16.142 0 .75.75 0 01-.297-1.228A9.013 9.013 0 005.25 9.75V9zm4.5 8.25a3.75 3.75 0 007.5 0H9.75z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-red-600 font-extrabold text-base leading-none">
-                      Documents Requested – Action Required
-                    </h4>
-                    <p className="text-slate-600 text-sm font-semibold mt-2 leading-relaxed">
-                      Staff has requested a Police Report & Repair Estimate for CLM-2024-0024.
-                    </p>
-                    <p className="text-slate-400 text-xs font-bold mt-2">
-                      Please upload within 3 days...
-                    </p>
-                  </div>
-                </div>
+              {notifications.length > 0 ? (
+                notifications.map((notif: any) => {
+                  const isUrgent = notif.type === "urgent";
+                  const isApproved = notif.type === "approved";
+                  
+                  let cardClass = "";
+                  let iconClass = "";
+                  let iconSvg = null;
+                  let titleClass = "";
+                  
+                  if (isUrgent) {
+                    cardClass = "bg-red-50/15 border-2 border-red-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px]";
+                    iconClass = "p-1.5 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5";
+                    iconSvg = (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+                        <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.522a.75.75 0 01-.297 1.228 35.754 35.754 0 01-16.142 0 .75.75 0 01-.297-1.228A9.013 9.013 0 005.25 9.75V9zm4.5 8.25a3.75 3.75 0 007.5 0H9.75z" clipRule="evenodd" />
+                      </svg>
+                    );
+                    titleClass = "text-red-600 font-extrabold text-base leading-none";
+                  } else if (isApproved) {
+                    cardClass = "bg-emerald-50/15 border-2 border-emerald-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]";
+                    iconClass = "p-1.5 bg-emerald-100 rounded-xl text-emerald-500 flex-shrink-0 mt-0.5";
+                    iconSvg = (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+                        <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.74-5.24z" clipRule="evenodd" />
+                      </svg>
+                    );
+                    titleClass = "text-emerald-600 font-extrabold text-base leading-none";
+                  } else {
+                    cardClass = "bg-blue-50/15 border-2 border-blue-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]";
+                    iconClass = "p-1.5 bg-blue-100 rounded-xl text-blue-500 flex-shrink-0 mt-0.5";
+                    iconSvg = (
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+                        <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
+                      </svg>
+                    );
+                    titleClass = "text-blue-600 font-extrabold text-base leading-none";
+                  }
 
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-red-50/50">
-                  <div className="flex gap-2">
-                    <Link
-                      href="/Policy_Holder/Documents"
-                      className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline shadow-sm"
-                    >
-                      Upload
-                    </Link>
-                    <Link
-                      href="/Policy_Holder/MyClaims"
-                      className="bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline"
-                    >
-                      View
-                    </Link>
-                  </div>
-                  <span className="text-slate-400 text-xs font-bold">Today, 10:30 AM</span>
-                </div>
-              </div>
+                  return (
+                    <div key={notif.id} className={`${cardClass} animate-fade-in`}>
+                      <div className="flex items-start gap-4">
+                        <div className={iconClass}>
+                          {iconSvg}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className={titleClass}>
+                            {notif.title}
+                          </h4>
+                          <p className="text-slate-600 text-sm font-semibold mt-2 leading-relaxed">
+                            {notif.description}
+                          </p>
+                          {notif.subText && (
+                            <p className="text-slate-400 text-xs font-bold mt-2">
+                              {notif.subText}
+                            </p>
+                          )}
+                        </div>
+                      </div>
 
-              {/* Notification 2: Approved */}
-              <div className="bg-emerald-50/15 border-2 border-emerald-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]">
-                <div className="flex items-start gap-4">
-                  <div className="p-1.5 bg-emerald-100 rounded-xl text-emerald-500 flex-shrink-0 mt-0.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                      <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.74-5.24z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h4 className="text-emerald-600 font-extrabold text-base leading-none">
-                      Claim CLM-2024-0012 Approved!
-                    </h4>
-                    <p className="text-slate-600 text-sm font-semibold mt-2 leading-relaxed">
-                      Your claim for LKR 85,000 has been approved. Payment processed within 5 days.
-                    </p>
-                  </div>
+                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100/50">
+                        <div className="flex gap-2">
+                          {notif.actions.map((act: any, idx: number) => {
+                            const isPrimary = act.primary;
+                            return (
+                              <Link
+                                key={idx}
+                                href={act.href}
+                                className={`${
+                                  isPrimary 
+                                    ? "bg-red-600 hover:bg-red-700 text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline shadow-sm"
+                                    : "bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline"
+                                }`}
+                              >
+                                {act.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                        <span className="text-slate-400 text-xs font-bold">{notif.date}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="bg-white border border-slate-200 rounded-[24px] p-8 text-center shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
+                  <p className="text-slate-400 font-bold text-sm">No notifications or reminders at this time.</p>
                 </div>
-
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-emerald-50/50">
-                  <Link
-                    href="/Policy_Holder/MyClaims"
-                    className="bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline"
-                  >
-                    View
-                  </Link>
-                  <span className="text-slate-400 text-xs font-bold">12 Jan 2026</span>
-                </div>
-              </div>
-
+              )}
             </div>
           </div>
 

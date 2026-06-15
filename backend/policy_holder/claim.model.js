@@ -19,6 +19,17 @@ const claimSchema = new mongoose.Schema({
     rear: { type: [String], default: [] }
   },
   status: { type: String, default: "In Progress" },
+  amount: { type: Number, default: null },
+  currentStep: { type: Number, default: 1 },
+  documentsRequested: { type: Boolean, default: false },
+  requestedDocuments: { type: [String], default: [] },
+  messages: [
+    {
+      sender: { type: String, default: "Office Staff" },
+      message: { type: String, required: true },
+      sentAt: { type: Date, default: Date.now }
+    }
+  ],
   createdAt: { type: Date, default: Date.now }
 });
 

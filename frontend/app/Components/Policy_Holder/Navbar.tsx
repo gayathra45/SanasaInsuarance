@@ -72,7 +72,7 @@ export default function PolicyHolderNavbar() {
             <Link href="/Policy_Holder/Home" className={getLinkClass("/Policy_Holder/Home")}>
               Home
             </Link>
-            <Link href="/Policy_Holder/MyClaims" className={getLinkClass("/Policy_Holder/MyClaims")}>
+            <Link href="/Policy_Holder/My_claims" className={getLinkClass("/Policy_Holder/My_claims")}>
               My Claims
             </Link>
             <Link href="/Policy_Holder/Documents" className={getLinkClass("/Policy_Holder/Documents")}>
@@ -82,7 +82,7 @@ export default function PolicyHolderNavbar() {
               Contact
             </Link>
             <Link
-              href="/Policy_Holder/New_Claim"
+              href="/Policy_Holder/New_Claim/page"
               className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold px-6 py-2 rounded-full shadow-md transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] no-underline"
             >
               New Claim
@@ -161,10 +161,10 @@ export default function PolicyHolderNavbar() {
               Home
             </Link>
             <Link
-              href="/Policy_Holder/MyClaims"
+              href="/Policy_Holder/My_claims"
               onClick={() => setIsOpen(false)}
               className={`font-bold text-base py-2.5 px-5 rounded-2xl transition-all duration-200 ${
-                isActive("/Policy_Holder/MyClaims") ? "bg-[#00ddff] text-black" : "text-[#333] hover:text-[#00ddff] hover:bg-slate-50"
+                isActive("/Policy_Holder/My_claims") ? "bg-[#00ddff] text-black" : "text-[#333] hover:text-[#00ddff] hover:bg-slate-50"
               }`}
             >
               My Claims
@@ -188,7 +188,7 @@ export default function PolicyHolderNavbar() {
               Contact
             </Link>
             <Link
-              href="/Policy_Holder/New_Claim"
+              href="/Policy_Holder/New_Claim/page"
               onClick={() => setIsOpen(false)}
               className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold py-3 px-5 rounded-2xl shadow-md transition-all duration-150 text-center"
             >
