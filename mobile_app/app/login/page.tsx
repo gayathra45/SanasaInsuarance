@@ -11,11 +11,13 @@ import {
   Platform,
   ScrollView,
   useWindowDimensions,
-  Alert,
+  ActivityIndicator,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL } from "../config";
 
 type Role = "policy_holder" | "insurance_agent" | "office_staff" | "admin";
 
@@ -31,7 +33,9 @@ export default function MobileLogin() {
   };
   const { width, height } = useWindowDimensions();
 
-  const handleLogin = () => {
+  const [loggingIn, setLoggingIn] = useState(false);
+
+  const handleLogin = async () => {
     if (!loginId.trim() || !password) {
       const fieldName = activeRole === "policy_holder" ? "NIC" : "Gmail";
       showAlert("Validation Error", `Please fill out both ${fieldName} and Password fields.`);
@@ -44,12 +48,75 @@ export default function MobileLogin() {
         return;
       }
     }
-    showAlert(
-      "Login Status",
-      `Logging in as: ${activeRole.toUpperCase().replace("_", " ")}\n${
-        activeRole === "policy_holder" ? "NIC" : "Gmail"
-      }: ${loginId.trim()}`
-    );
+
+    setLoggingIn(true);
+    try {
+      // ── Policy Holder ──────────────────────────────────────────
+      if (activeRole === "policy_holder") {
+        const res = await fetch(`${API_BASE_URL}/api/policy-holder/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nic: loginId.trim(), password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert("Login Failed", data.error || "Invalid NIC or Password.");
+          return;
+        }
+        await AsyncStorage.setItem("logged_in_user", JSON.stringify(data.user));
+        router.replace("/Policy Holder/page");
+
+      // ── Insurance Agent ────────────────────────────────────────
+      } else if (activeRole === "insurance_agent") {
+        const res = await fetch(`${API_BASE_URL}/api/agent/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: loginId.trim(), password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert("Login Failed", data.error || "Invalid credentials.");
+          return;
+        }
+        await AsyncStorage.setItem("logged_in_agent", JSON.stringify(data.agent));
+        showAlert("Logged In", `Welcome Agent ${data.agent?.name || ""}!`);
+
+      // ── Office Staff ───────────────────────────────────────────
+      } else if (activeRole === "office_staff") {
+        const res = await fetch(`${API_BASE_URL}/api/office-staff/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: loginId.trim(), password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert("Login Failed", data.error || "Invalid credentials.");
+          return;
+        }
+        await AsyncStorage.setItem("logged_in_staff", JSON.stringify(data.staff));
+        showAlert("Logged In", `Welcome ${data.staff?.name || "Staff"}!`);
+
+      // ── Admin ──────────────────────────────────────────────────
+      } else {
+        const res = await fetch(`${API_BASE_URL}/api/admin/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: loginId.trim(), password }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          showAlert("Login Failed", data.error || "Invalid credentials.");
+          return;
+        }
+        await AsyncStorage.setItem("logged_in_admin", JSON.stringify(data.admin));
+        showAlert("Logged In", `Welcome Admin ${data.admin?.name || ""}!`);
+      }
+    } catch (e) {
+      showAlert("Network Error", "Could not connect to server. Please check your connection.");
+      console.error("Login error:", e);
+    } finally {
+      setLoggingIn(false);
+    }
   };
 
   const rolesList: { id: Role; label: string }[] = [
@@ -190,9 +257,14 @@ export default function MobileLogin() {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleLogin}
-              style={styles.submitButton}
+              style={[styles.submitButton, loggingIn && { opacity: 0.7 }]}
+              disabled={loggingIn}
             >
-              <Text style={styles.submitButtonText}>Login</Text>
+              {loggingIn ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <Text style={styles.submitButtonText}>Login</Text>
+              )}
             </TouchableOpacity>
 
             {/* Bottom Navigation Links */}
