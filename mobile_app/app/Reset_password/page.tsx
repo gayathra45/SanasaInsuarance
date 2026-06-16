@@ -17,7 +17,7 @@ import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { API_BASE_URL } from "../config";
 
-type Role = "policy_holder" | "insurance_agent" | "office_staff" | "admin";
+type Role = "policy_holder" | "insurance_agent";
 
 export default function MobileResetPassword() {
   const { width, height } = useWindowDimensions();
@@ -32,9 +32,10 @@ export default function MobileResetPassword() {
   };
 
   // Stage 1 Inputs
-  const [nic, setNic] = useState("");
-  const [mobile, setMobile] = useState("");
-  const [email, setEmail] = useState("");
+  const [nic, setNic] = useState("");           // Policy Holder NIC
+  const [mobile, setMobile] = useState("");     // Policy Holder Mobile
+  const [agentNic, setAgentNic] = useState(""); // Insurance Agent NIC
+  const [email, setEmail] = useState("");       // Insurance Agent Email
 
   // OTP Stage Inputs
   const [generatedOtp, setGeneratedOtp] = useState("");
@@ -123,7 +124,7 @@ export default function MobileResetPassword() {
     setEnteredOtp(Array(6).fill(""));
     setTimerSeconds(59);
 
-    if (activeRole !== "policy_holder") {
+    if (activeRole === "insurance_agent") {
       const localOtp = Math.floor(100000 + Math.random() * 900000).toString();
       setGeneratedOtp(localOtp);
       showAlert("Simulated Email OTP", `A new verification code has been sent to ${email}.\nCode: ${localOtp}`);
@@ -150,7 +151,12 @@ export default function MobileResetPassword() {
   };
 
   const handleVerify = async () => {
-    if (activeRole !== "policy_holder") {
+    // ── Insurance Agent: NIC + Email ──────────────────────────────
+    if (activeRole === "insurance_agent") {
+      if (!agentNic.trim()) {
+        showAlert("Validation Error", "Please enter your NIC.");
+        return;
+      }
       if (!email.trim()) {
         showAlert("Validation Error", "Please enter your Gmail / Email.");
         return;
@@ -168,6 +174,7 @@ export default function MobileResetPassword() {
       return;
     }
 
+    // ── Policy Holder: NIC + Mobile ───────────────────────────────
     if (!nic.trim() || !mobile.trim()) {
       showAlert("Validation Error", "Please fill in both NIC and Mobile Number fields.");
       return;
@@ -272,8 +279,6 @@ export default function MobileResetPassword() {
   const rolesList: { id: Role; label: string }[] = [
     { id: "policy_holder", label: "Policy Holder" },
     { id: "insurance_agent", label: "Insurance Agent" },
-    { id: "office_staff", label: "Office Staff" },
-    { id: "admin", label: "Admin" },
   ];
 
   return (
@@ -391,23 +396,43 @@ export default function MobileResetPassword() {
                     </View>
                   </>
                 ) : (
-                  /* Email field */
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Gmail / Email Address *</Text>
-                    <View style={styles.inputWrapper}>
-                      <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
-                      <TextInput
-                        style={styles.textInput}
-                        placeholder="Enter your Gmail address"
-                        placeholderTextColor="#94a3b8"
-                        value={email}
-                        onChangeText={setEmail}
-                        keyboardType="email-address"
-                        autoCapitalize="none"
-                        autoCorrect={false}
-                      />
+                  /* Insurance Agent: NIC + Email fields */
+                  <>
+                    {/* Agent NIC field */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>National Identity Card (NIC) *</Text>
+                      <View style={styles.inputWrapper}>
+                        <Ionicons name="id-card-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Enter your NIC"
+                          placeholderTextColor="#94a3b8"
+                          value={agentNic}
+                          onChangeText={setAgentNic}
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                      </View>
                     </View>
-                  </View>
+
+                    {/* Agent Email field */}
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.label}>Gmail / Email Address *</Text>
+                      <View style={styles.inputWrapper}>
+                        <Ionicons name="mail-outline" size={20} color="#64748b" style={styles.inputIcon} />
+                        <TextInput
+                          style={styles.textInput}
+                          placeholder="Enter your Gmail address"
+                          placeholderTextColor="#94a3b8"
+                          value={email}
+                          onChangeText={setEmail}
+                          keyboardType="email-address"
+                          autoCapitalize="none"
+                          autoCorrect={false}
+                        />
+                      </View>
+                    </View>
+                  </>
                 )}
 
                 {/* Send OTP Button */}
@@ -438,7 +463,10 @@ export default function MobileResetPassword() {
                     We've sent a 6-digit code to{" "}
                     <Text style={{ color: "#ff9800", fontWeight: "bold" }}>
                       {activeRole === "policy_holder" ? mobile : email}
-                    </Text>.
+                    </Text>
+                    {activeRole === "insurance_agent" && agentNic ? (
+                      <Text style={{ color: "rgba(255,255,255,0.7)" }}>{" "}(NIC: {agentNic})</Text>
+                    ) : null}.
                   </Text>
                 </View>
 
@@ -912,7 +940,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   roleButton: {
-    width: "48%",
+    flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 16,

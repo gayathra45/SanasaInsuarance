@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "../config";
 
-type Role = "policy_holder" | "insurance_agent" | "office_staff" | "admin";
+type Role = "policy_holder" | "insurance_agent";
 
 export default function MobileLogin() {
   const [activeRole, setActiveRole] = useState<Role>("policy_holder");
@@ -79,37 +79,8 @@ export default function MobileLogin() {
           return;
         }
         await AsyncStorage.setItem("logged_in_agent", JSON.stringify(data.agent));
-        showAlert("Logged In", `Welcome Agent ${data.agent?.name || ""}!`);
+        router.replace("/Agent/Dashboard/page");
 
-      // ── Office Staff ───────────────────────────────────────────
-      } else if (activeRole === "office_staff") {
-        const res = await fetch(`${API_BASE_URL}/api/office-staff/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: loginId.trim(), password }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          showAlert("Login Failed", data.error || "Invalid credentials.");
-          return;
-        }
-        await AsyncStorage.setItem("logged_in_staff", JSON.stringify(data.staff));
-        showAlert("Logged In", `Welcome ${data.staff?.name || "Staff"}!`);
-
-      // ── Admin ──────────────────────────────────────────────────
-      } else {
-        const res = await fetch(`${API_BASE_URL}/api/admin/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: loginId.trim(), password }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          showAlert("Login Failed", data.error || "Invalid credentials.");
-          return;
-        }
-        await AsyncStorage.setItem("logged_in_admin", JSON.stringify(data.admin));
-        showAlert("Logged In", `Welcome Admin ${data.admin?.name || ""}!`);
       }
     } catch (e) {
       showAlert("Network Error", "Could not connect to server. Please check your connection.");
@@ -122,8 +93,6 @@ export default function MobileLogin() {
   const rolesList: { id: Role; label: string }[] = [
     { id: "policy_holder", label: "Policy Holder" },
     { id: "insurance_agent", label: "Insurance Agent" },
-    { id: "office_staff", label: "Office Staff" },
-    { id: "admin", label: "Admin" },
   ];
 
   const isSmallScreen = width < 380;
@@ -378,7 +347,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   roleButton: {
-    width: "48%",
+    flex: 1,
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderRadius: 16,
