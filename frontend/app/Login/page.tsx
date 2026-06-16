@@ -66,12 +66,33 @@ export default function Login() {
         return;
       }
 
+      if (activeRole === "insurance_agent") {
+        try {
+          const response = await fetch("http://localhost:5000/api/agent/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: loginId, password })
+          });
+          const data = await response.json();
+          if (!response.ok) {
+            alert(data.error || "Agent login failed.");
+            return;
+          }
+          sessionStorage.setItem("logged_in_agent", JSON.stringify(data.agent));
+          router.push("/Agent/Dashboard");
+        } catch (err) {
+          console.error("Agent login failed", err);
+          alert("Unable to connect to the server.");
+        }
+        return;
+      }
+
       const isGmail = loginId.trim().toLowerCase().endsWith("@gmail.com");
       if (!isGmail) {
         alert("Please enter a valid Gmail address.");
         return;
       }
-      alert(`Logging in as ${activeRole.replace("_", " ").toUpperCase()}\nGmail: ${loginId}`);
+      alert(`Logging in as ${(activeRole as string).replace("_", " ").toUpperCase()}\nGmail: ${loginId}`);
       router.push("/Policy_Holder/Home");
       return;
     }

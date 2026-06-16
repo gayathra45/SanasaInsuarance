@@ -25,6 +25,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${afacad.variable} antialiased`}
+        suppressHydrationWarning
       >
         {children}
       </body>

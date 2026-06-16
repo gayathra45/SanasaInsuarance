@@ -12,6 +12,7 @@ import myClaimsRouter from "./policy_holder/my_claims/my_claims.routes.js";
 import newClaimRouter from "./policy_holder/new_claim/new_claim.routes.js";
 import adminRouter from "./Admin/admin.routes.js";
 import officeStaffRouter from "./office_staff/office_staff.routes.js";
+import agentRouter from "./Agent/agent.routes.js";
 
 const app = express();
 const __dirname = path.resolve();
@@ -25,12 +26,11 @@ app.use("/api/policy-holder", myClaimsRouter);
 app.use("/api/policy-holder", newClaimRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/office-staff", officeStaffRouter);
+app.use("/api/agent", agentRouter);
 
 
 
-/* =========================
-   SERVER START
-========================= */
+/*  SERVER START */
 
 const PORT = process.env.PORT;
 
