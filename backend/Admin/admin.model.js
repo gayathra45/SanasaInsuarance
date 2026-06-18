@@ -6,6 +6,11 @@ const adminSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   nic: { type: String, required: true, unique: true },
   password: { type: String, required: true },
+  resetOtp: { type: String },
+  resetOtpExpires: { type: Date },
+  resetOtpRequestedAt: { type: Date },
+  resetSessionToken: { type: String },
+  resetSessionExpires: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 

@@ -9,6 +9,11 @@ const agentSchema = new mongoose.Schema({
   address: { type: String, required: true },
   dob: { type: String, required: true },
   branch: { type: String, required: true },
+  resetOtp: { type: String },
+  resetOtpExpires: { type: Date },
+  resetOtpRequestedAt: { type: Date },
+  resetSessionToken: { type: String },
+  resetSessionExpires: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 
