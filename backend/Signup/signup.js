@@ -1,6 +1,9 @@
 import express from "express";
 import crypto from "crypto";
 import User from "./user.model.js";
+import Agent from "../Agent/agent.model.js";
+import OfficeStaff from "../office_staff/office_staff.model.js";
+import Admin from "../Admin/admin.model.js";
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import dotenv from "dotenv";
@@ -14,23 +17,12 @@ function hashPassword(password) {
 
 function getNearestBranch(city = "", province = "") {
   const cleanCity = city.trim().toLowerCase();
-  const cleanProvince = province.trim().toLowerCase();
 
-  if (cleanCity.includes("galle") || cleanCity.includes("hambantota")) {
-    return "Galle";
-  }
-  if (cleanCity.includes("matara")) {
-    return "Matara";
-  }
-  if (cleanCity.includes("colombo") || cleanCity.includes("gampaha") || cleanCity.includes("kalutara")) {
-    return "Colombo";
-  }
-  if (cleanCity.includes("anuradhapura") || cleanCity.includes("polonnaruwa")) {
-    return "Anuradhapura";
-  }
-  if (cleanCity.includes("embilipitiya") || cleanCity.includes("ratnapura")) {
-    return "Embilipitiya";
-  }
+  if (cleanCity.includes("galle") || cleanCity.includes("hambantota")) return "Galle";
+  if (cleanCity.includes("matara")) return "Matara";
+  if (cleanCity.includes("colombo") || cleanCity.includes("gampaha") || cleanCity.includes("kalutara")) return "Colombo";
+  if (cleanCity.includes("anuradhapura") || cleanCity.includes("polonnaruwa")) return "Anuradhapura";
+  if (cleanCity.includes("embilipitiya") || cleanCity.includes("ratnapura")) return "Embilipitiya";
   return "Galle";
 }
 
@@ -38,10 +30,8 @@ function getNearestBranch(city = "", province = "") {
 router.get("/check", async (req, res) => {
   try {
     const { email, nic } = req.query;
-
     let emailExists = false;
     let nicExists = false;
-
     if (email) {
       const matchEmail = await User.findOne({ email: email.trim() });
       if (matchEmail) emailExists = true;
@@ -50,7 +40,6 @@ router.get("/check", async (req, res) => {
       const matchNic = await User.findOne({ nic: nic.trim() });
       if (matchNic) nicExists = true;
     }
-
     res.json({ emailExists, nicExists });
   } catch (err) {
     console.error("Check endpoint error:", err);
@@ -104,16 +93,13 @@ router.post("/", async (req, res) => {
       if (!v.numberPlate || !v.vehicleType || !v.year || !v.company || !v.model || !v.engineNumber || !v.chassisNumber || !v.policyNumber) {
         return res.status(400).json({ error: `All required fields for Vehicle #${i + 1} must be filled.` });
       }
-
       const cleanPlate = v.numberPlate.replace(/[\s-]/g, "");
       if (cleanPlate.length < 5 || cleanPlate.length > 10 || !/^[A-Za-z0-9]+$/.test(cleanPlate)) {
         return res.status(400).json({ error: `Vehicle #${i + 1} Number Plate must be an alphanumeric mix between 5 and 10 characters.` });
       }
-
       if (!/^\d{4}$/.test(v.year)) {
         return res.status(400).json({ error: `Invalid year for Vehicle #${i + 1}. Must be a 4-digit number.` });
       }
-
       const cleanPolicy = v.policyNumber.replace(/[\s-]/g, "");
       if (!/^SAN[A-Za-z0-9]{5,9}$/i.test(cleanPolicy)) {
         return res.status(400).json({ error: `Vehicle #${i + 1} Insurance Policy Number must start with 'SAN' and be between 8 and 12 alphanumeric characters.` });
@@ -122,7 +108,7 @@ router.post("/", async (req, res) => {
 
     const { nicFront, nicBack, vehicleReg, revenueLicense } = documents;
     if (!nicFront || !nicBack || !vehicleReg || !revenueLicense) {
-      return res.status(400).json({ error: "All four required verification documents (NIC Front, NIC Back, Vehicle Registration, and Revenue License) must be uploaded." });
+      return res.status(400).json({ error: "All four required verification documents must be uploaded." });
     }
 
     const existingUser = await User.findOne({ $or: [{ email }, { nic: cleanNic }] });
@@ -143,24 +129,14 @@ router.post("/", async (req, res) => {
     }
 
     const newUser = new User({
-      firstName,
-      lastName,
-      nic: cleanNic,
-      mobile: cleanMobile,
-      email,
-      dob,
-      address,
-      province,
-      city,
-      password: hashedPassword,
-      vehicles,
-      documents,
+      firstName, lastName, nic: cleanNic, mobile: cleanMobile,
+      email, dob, address, province, city,
+      password: hashedPassword, vehicles, documents,
       branch: getNearestBranch(city, province),
       referenceNumber: nextRefNum,
     });
 
     await newUser.save();
-
     res.status(201).json({ message: "Registration successful", referenceNumber: nextRefNum });
   } catch (err) {
     console.error("Signup backend error:", err);
@@ -168,209 +144,222 @@ router.post("/", async (req, res) => {
   }
 });
 
-// ─── ROUTE 1: Send password reset link to user's email ───────────────────────
-router.post("/reset-password/send-link", async (req, res) => {
-  try {
-    const { nic, mobile, email } = req.body;
+// ─── Helper: find user in correct collection ──────────────────────────────────
+async function findUserByRole(role, cleanNic, cleanMobile, cleanEmail) {
+  if (role === "policy_holder") {
+    if (!cleanNic) return { user: null, error: "NIC is required for Policy Holder." };
+    const user = await User.findOne({
+      nic: { $regex: new RegExp(`^${cleanNic}$`, "i") },
+      email: { $regex: new RegExp(`^${cleanEmail}$`, "i") },
+    });
+    return { user, userName: user?.firstName, error: user ? null : "No registered Policy Holder found with that NIC and Email." };
+  }
+  if (role === "insurance_agent") {
+    if (!cleanNic) return { user: null, error: "NIC is required for Insurance Agent." };
+    const user = await Agent.findOne({
+      nic: { $regex: new RegExp(`^${cleanNic}$`, "i") },
+      email: { $regex: new RegExp(`^${cleanEmail}$`, "i") },
+    });
+    return { user, userName: user?.name, error: user ? null : "No registered Insurance Agent found with that NIC and Email." };
+  }
+  if (role === "office_staff") {
+    if (!cleanMobile) return { user: null, error: "Mobile number is required for Office Staff." };
+    const user = await OfficeStaff.findOne({
+      mobile: cleanMobile,
+      email: { $regex: new RegExp(`^${cleanEmail}$`, "i") },
+    });
+    return { user, userName: user?.name, error: user ? null : "No registered Office Staff found with that Mobile and Email." };
+  }
+  if (role === "admin") {
+    if (!cleanMobile) return { user: null, error: "Mobile number is required for Admin." };
+    const user = await Admin.findOne({
+      mobile: cleanMobile,
+      email: { $regex: new RegExp(`^${cleanEmail}$`, "i") },
+    });
+    return { user, userName: user?.name, error: user ? null : "No registered Admin found with that Mobile and Email." };
+  }
+  return { user: null, error: "Invalid role specified." };
+}
 
-    if (!email) {
-      return res.status(400).json({ error: "Email is required." });
-    }
+// ─── Helper: send email via Gmail SMTP or Resend ─────────────────────────────
+async function sendEmail(toEmail, subject, htmlBody, textBody) {
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+  const resendKey = process.env.RESEND_API_KEY;
+
+  const hasGmail = smtpUser && smtpPass &&
+                   !smtpUser.includes("your-gmail") &&
+                   !smtpPass.includes("your-16-char");
+  const hasResend = resendKey && !resendKey.includes("re_your");
+
+  if (hasGmail) {
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com", port: 587, secure: false,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await transporter.sendMail({
+      from: `"Sanasa Insurance" <${smtpUser}>`,
+      to: toEmail, subject, html: htmlBody, text: textBody,
+    });
+    console.log(`✅ Email sent to ${toEmail} via Gmail SMTP`);
+    return { sent: true };
+  }
+
+  if (hasResend) {
+    const resend = new Resend(resendKey);
+    const { error } = await resend.emails.send({
+      from: "Sanasa Insurance <onboarding@resend.dev>",
+      to: [toEmail], subject, html: htmlBody, text: textBody,
+    });
+    if (error) throw new Error(error.message || "Resend failed.");
+    console.log(`✅ Email sent to ${toEmail} via Resend`);
+    return { sent: true };
+  }
+
+  console.warn("⚠️ No email credentials configured — Dev Mode.");
+  return { sent: false, error: "Email credentials not configured in backend/.env" };
+}
+
+// ─── ROUTE 1: Send 6-digit OTP to user's email ───────────────────────────────
+router.post("/reset-password/send-otp", async (req, res) => {
+  try {
+    const { nic, mobile, email, role } = req.body;
+    if (!email) return res.status(400).json({ error: "Email is required." });
 
     const cleanEmail = email.trim().toLowerCase();
     const cleanNic = nic ? nic.trim() : "";
     const cleanMobile = mobile ? mobile.replace(/[-+()\s]/g, "") : "";
+    const userRole = role || "policy_holder";
 
-    let user;
-    if (cleanNic) {
-      // Find user by NIC and email (case-insensitive)
-      user = await User.findOne({
-        nic: { $regex: new RegExp(`^${cleanNic}$`, "i") },
-        email: { $regex: new RegExp(`^${cleanEmail}$`, "i") },
-      });
-      if (!user) {
-        return res.status(400).json({
-          error: "No registered account found with that NIC and Email combination.",
-        });
+    const { user, userName, error: findError } = await findUserByRole(userRole, cleanNic, cleanMobile, cleanEmail);
+    if (findError || !user) return res.status(400).json({ error: findError || "User not found." });
+
+    // Rate limiting: 1 OTP per 60 seconds
+    if (user.resetOtpRequestedAt) {
+      const secs = (Date.now() - new Date(user.resetOtpRequestedAt).getTime()) / 1000;
+      if (secs < 60) {
+        return res.status(429).json({ error: `Please wait ${Math.ceil(60 - secs)} seconds before requesting another code.` });
       }
-    } else if (cleanMobile) {
-      // Find user by normalized Mobile and email (case-insensitive)
-      user = await User.findOne({
-        mobile: cleanMobile,
-        email: { $regex: new RegExp(`^${cleanEmail}$`, "i") },
-      });
-      if (!user) {
-        return res.status(400).json({
-          error: "No registered account found with that Mobile number and Email combination.",
-        });
-      }
-    } else {
-      return res.status(400).json({
-        error: "Secondary verification detail (NIC or Mobile number) is required.",
-      });
     }
 
-    // Generate a secure random token (64 hex chars = 32 bytes)
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
-    // Save token to database
-    user.resetPasswordToken = resetToken;
-    user.resetPasswordExpires = resetExpires;
+    // Generate & store hashed OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetOtp = crypto.createHash("sha256").update(otp).digest("hex");
+    user.resetOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    user.resetOtpRequestedAt = new Date();
+    user.resetSessionToken = undefined;
+    user.resetSessionExpires = undefined;
     await user.save();
 
-    // Build the reset URL — frontend Reset_password page with token in query
-    const resetUrl = `http://localhost:3000/Reset_password?token=${resetToken}`;
-
-    // ── EMAIL HTML BODY ──────────────────────────────────────────────────────
-    const emailHtml = `
+    const displayName = userName || "User";
+    const htmlBody = `
       <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#f4f7f9;border-radius:12px;border:1px solid #dde3e9">
         <div style="text-align:center;margin-bottom:24px">
           <h2 style="color:#0e3b44;font-size:22px;margin:0">Sanasa General Insurance</h2>
-          <p style="color:#666;font-size:13px;margin:4px 0 0">Password Reset Request</p>
+          <p style="color:#666;font-size:13px;margin:4px 0 0">Password Reset Verification Code</p>
         </div>
-        <p style="color:#444;font-size:15px">Hi <strong>${user.firstName}</strong>,</p>
-        <p style="color:#555;font-size:14px;line-height:1.6">
-          We received a request to reset the password for your account.<br/>
-          Click the button below to set a new password. This link expires in <strong>15 minutes</strong>.
-        </p>
+        <p style="color:#444;font-size:15px">Hi <strong>${displayName}</strong>,</p>
+        <p style="color:#555;font-size:14px;line-height:1.6">Your password reset verification code is:</p>
         <div style="text-align:center;margin:32px 0">
-          <a href="${resetUrl}"
-             style="background:#ff9800;color:#fff;text-decoration:none;padding:14px 36px;border-radius:50px;font-size:16px;font-weight:bold;display:inline-block;letter-spacing:0.5px">
-            Reset My Password
-          </a>
+          <div style="display:inline-block;background:#0e3b44;color:#ff9800;font-size:40px;font-weight:bold;letter-spacing:14px;padding:20px 36px;border-radius:14px;font-family:monospace;border:2px solid #1a5c6b">
+            ${otp}
+          </div>
         </div>
-        <p style="color:#888;font-size:12px;text-align:center">
+        <p style="color:#555;font-size:14px;text-align:center">
+          This code expires in <strong>10 minutes</strong>. Do not share it with anyone.
+        </p>
+        <p style="color:#888;font-size:12px;text-align:center;margin-top:16px">
           If you did not request this, you can safely ignore this email.
         </p>
         <hr style="border:none;border-top:1px solid #dde3e9;margin:24px 0"/>
         <p style="color:#aaa;font-size:11px;text-align:center">Sanasa General Insurance &bull; Sri Lanka</p>
       </div>
     `;
-    const emailText = `Reset your Sanasa Insurance password:\n\n${resetUrl}\n\nThis link expires in 15 minutes. If you did not request this, ignore this email.`;
-
-    // ── SEND EMAIL ────────────────────────────────────────────────────────────
-    const resendKey = process.env.RESEND_API_KEY;
-    const smtpUser  = process.env.SMTP_USER;
-    const smtpPass  = process.env.SMTP_PASS;
-
-    const hasGmail  = smtpUser && smtpPass &&
-                      !smtpUser.includes("your-gmail") &&
-                      !smtpPass.includes("your-16-char");
-    const hasResend = resendKey && !resendKey.includes("re_your");
+    const textBody = `Your Sanasa Insurance password reset code is: ${otp}\n\nThis code expires in 10 minutes. Do not share it with anyone.`;
 
     let emailSent = false;
     let emailError = null;
-
     try {
-      if (hasGmail) {
-        // Gmail SMTP — sends to ANY email address
-        const transporter = nodemailer.createTransport({
-          host: "smtp.gmail.com",
-          port: 587,
-          secure: false,
-          auth: { user: smtpUser, pass: smtpPass },
-        });
-        await transporter.sendMail({
-          from: `"Sanasa Insurance" <${smtpUser}>`,
-          to: user.email,
-          subject: "Reset Your Sanasa Insurance Password",
-          html: emailHtml,
-          text: emailText,
-        });
-        console.log(`✅ Email sent to ${user.email} via Gmail SMTP`);
-        emailSent = true;
-
-      } else if (hasResend) {
-        // Resend — Note: free tier only sends to your own verified email
-        const resend = new Resend(resendKey);
-        const { error: resendError } = await resend.emails.send({
-          from: "Sanasa Insurance <onboarding@resend.dev>",
-          to: [user.email],
-          subject: "Reset Your Sanasa Insurance Password",
-          html: emailHtml,
-          text: emailText,
-        });
-        if (resendError) {
-          console.error("Resend error details:", resendError);
-          throw new Error(resendError.message || "Failed to send email via Resend.");
-        }
-        console.log(`✅ Email sent to ${user.email} via Resend`);
-        emailSent = true;
-
-      } else {
-        console.warn("⚠️ No email credentials configured in backend/.env. Bypassing sending email (Dev/Sandbox Mode).");
-        emailError = "Email credentials not configured in backend/.env";
-      }
+      const result = await sendEmail(user.email, `${otp} — Your Sanasa Insurance Verification Code`, htmlBody, textBody);
+      emailSent = result.sent;
+      emailError = result.error || null;
     } catch (sendErr) {
-      console.error("❌ Failed to send email:", sendErr);
-      emailError = sendErr.message || "Unknown error during email sending";
+      emailError = sendErr.message;
     }
 
     res.json({
-      message: emailSent
-        ? "Password reset link sent to your email."
-        : `Dev Mode: Reset link generated (email not sent: ${emailError || "configuration missing"}).`,
-      resetToken,
+      message: emailSent ? `Verification code sent to ${user.email}.` : "Dev Mode: OTP generated (email not sent).",
       emailSent,
       emailError,
+      devOtp: emailSent ? undefined : otp,
     });
   } catch (err) {
-    console.error("Send reset link error:", err);
+    console.error("Send OTP error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
-
-
-
-// ─── ROUTE 2: Validate token (when user opens the link from their email) ──────
-router.get("/reset-password/validate-token", async (req, res) => {
+// ─── ROUTE 2: Verify OTP → issue session token ────────────────────────────────
+router.post("/reset-password/verify-otp", async (req, res) => {
   try {
-    const { token } = req.query;
-    if (!token) {
-      return res.status(400).json({ error: "Reset token is required." });
+    const { email, otp, role } = req.body;
+    if (!email || !otp) return res.status(400).json({ error: "Email and OTP code are required." });
+
+    const cleanEmail = email.trim().toLowerCase();
+    const otpHash = crypto.createHash("sha256").update(otp.trim()).digest("hex");
+    const cleanRole = role || "policy_holder";
+
+    let user;
+    const emailQuery = { email: { $regex: new RegExp(`^${cleanEmail}$`, "i") } };
+    if (cleanRole === "policy_holder") user = await User.findOne(emailQuery);
+    else if (cleanRole === "insurance_agent") user = await Agent.findOne(emailQuery);
+    else if (cleanRole === "office_staff") user = await OfficeStaff.findOne(emailQuery);
+    else if (cleanRole === "admin") user = await Admin.findOne(emailQuery);
+
+    if (!user || !user.resetOtp) {
+      return res.status(400).json({ error: "No OTP request found. Please request a new code." });
+    }
+    if (new Date() > user.resetOtpExpires) {
+      return res.status(400).json({ error: "This code has expired. Please request a new one." });
+    }
+    if (user.resetOtp !== otpHash) {
+      return res.status(400).json({ error: "Incorrect code. Please check your email and try again." });
     }
 
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: new Date() },
-    });
+    // Issue short-lived session token
+    const sessionToken = crypto.randomBytes(32).toString("hex");
+    user.resetOtp = undefined;
+    user.resetOtpExpires = undefined;
+    user.resetOtpRequestedAt = undefined;
+    user.resetSessionToken = sessionToken;
+    user.resetSessionExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
+    await user.save();
 
-    if (!user) {
-      return res.status(400).json({
-        error: "This reset link is invalid or has expired. Please request a new one.",
-      });
-    }
-
-    res.json({ valid: true, firstName: user.firstName, email: user.email });
+    res.json({ message: "OTP verified successfully.", sessionToken });
   } catch (err) {
-    console.error("Validate token error:", err);
+    console.error("Verify OTP error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
-// ─── ROUTE 3: Update password using the reset token ──────────────────────────
+// ─── ROUTE 3: Update password using verified session token ────────────────────
 router.post("/reset-password/update", async (req, res) => {
   try {
-    const { token, newPassword } = req.body;
-
-    if (!token || !newPassword) {
-      return res.status(400).json({ error: "Reset token and new password are required." });
+    const { sessionToken, newPassword } = req.body;
+    if (!sessionToken || !newPassword) {
+      return res.status(400).json({ error: "Session token and new password are required." });
     }
 
-    const user = await User.findOne({
-      resetPasswordToken: token,
-      resetPasswordExpires: { $gt: new Date() },
-    });
+    const tokenQuery = { resetSessionToken: sessionToken, resetSessionExpires: { $gt: new Date() } };
+    let user = await User.findOne(tokenQuery);
+    if (!user) user = await Agent.findOne(tokenQuery);
+    if (!user) user = await OfficeStaff.findOne(tokenQuery);
+    if (!user) user = await Admin.findOne(tokenQuery);
 
     if (!user) {
-      return res.status(400).json({
-        error: "This reset link is invalid or has expired. Please request a new one.",
-      });
+      return res.status(400).json({ error: "Session expired or invalid. Please start the reset process again." });
     }
 
-    // Validate password rules
     if (newPassword.length < 6 || newPassword.length > 12) {
       return res.status(400).json({ error: "Password must be between 6 and 12 characters." });
     }
@@ -378,15 +367,14 @@ router.post("/reset-password/update", async (req, res) => {
       return res.status(400).json({ error: "Password must contain at least one number or special character." });
     }
 
-    // Update password and clear the token
     user.password = hashPassword(newPassword);
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpires = undefined;
+    user.resetSessionToken = undefined;
+    user.resetSessionExpires = undefined;
     await user.save();
 
     res.json({ message: "Password updated successfully. You can now log in." });
   } catch (err) {
-    console.error("Reset password update error:", err);
+    console.error("Update password error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });

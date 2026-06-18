@@ -31,8 +31,11 @@ const userSchema = new mongoose.Schema({
   },
   branch: { type: String, default: "Galle" },
   referenceNumber: { type: String, required: true, unique: true },
-  resetPasswordToken: { type: String },
-  resetPasswordExpires: { type: Date },
+  resetOtp: { type: String },
+  resetOtpExpires: { type: Date },
+  resetOtpRequestedAt: { type: Date },
+  resetSessionToken: { type: String },
+  resetSessionExpires: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 
