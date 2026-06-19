@@ -1,13 +1,13 @@
 import express from "express";
 import crypto from "crypto";
-import User from "./user.model.js";
-import Agent from "../Agent/agent.model.js";
-import OfficeStaff from "../office_staff/office_staff.model.js";
-import Admin from "../Admin/admin.model.js";
+import User from "../models/user.model.js";
+import Agent from "../models/agent.model.js";
+import OfficeStaff from "../models/office_staff.model.js";
+import Admin from "../models/admin.model.js";
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import dotenv from "dotenv";
-import { uploadToCloudinary } from "../src/utils/upload.js";
+import { uploadToCloudinary } from "../utils/upload.js";
 dotenv.config({ override: true });
 
 const router = express.Router();

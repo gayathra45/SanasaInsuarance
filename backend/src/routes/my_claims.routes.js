@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from "crypto";
-import User from "../../Signup/user.model.js";
-import Claim from "../claim.model.js";
+import User from "../models/user.model.js";
+import Claim from "../models/claim.model.js";
 
 const router = express.Router();
 

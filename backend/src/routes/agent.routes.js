@@ -1,7 +1,7 @@
 import express from "express";
 import crypto from "crypto";
-import Agent from "./agent.model.js";
-import Claim from "../policy_holder/claim.model.js";
+import Agent from "../models/agent.model.js";
+import Claim from "../models/claim.model.js";
 
 const router = express.Router();
 

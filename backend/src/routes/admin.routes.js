@@ -1,8 +1,8 @@
 import express from "express";
 import crypto from "crypto";
-import Admin from "./admin.model.js";
-import User from "../Signup/user.model.js";
-import Claim from "../policy_holder/claim.model.js";
+import Admin from "../models/admin.model.js";
+import User from "../models/user.model.js";
+import Claim from "../models/claim.model.js";
 
 const router = express.Router();
 

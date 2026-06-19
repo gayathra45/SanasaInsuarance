@@ -7,12 +7,12 @@ import express from "express";
 import mongoose from "mongoose";
 import path from "path";
 import cors from "cors";
-import signupRouter from "./Signup/signup.js";
-import myClaimsRouter from "./policy_holder/my_claims/my_claims.routes.js";
-import newClaimRouter from "./policy_holder/new_claim/new_claim.routes.js";
-import adminRouter from "./Admin/admin.routes.js";
-import officeStaffRouter from "./office_staff/office_staff.routes.js";
-import agentRouter from "./Agent/agent.routes.js";
+import signupRouter from "./src/routes/signup.routes.js";
+import myClaimsRouter from "./src/routes/my_claims.routes.js";
+import newClaimRouter from "./src/routes/new_claim.routes.js";
+import adminRouter from "./src/routes/admin.routes.js";
+import officeStaffRouter from "./src/routes/office_staff.routes.js";
+import agentRouter from "./src/routes/agent.routes.js";
 
 const app = express();
 const __dirname = path.resolve();

@@ -326,7 +326,7 @@ export default function PolicyHolderHome() {
           {/* Action Buttons - Highly highlighted with glowing drop shadows */}
           <div className="flex flex-row justify-center gap-6 mt-2">
             <Link
-              href="/Policy_Holder/New_Claim/page"
+              href="/Policy_Holder/New_Claim"
               className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-base md:text-lg px-10 py-4.5 rounded-full transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] no-underline"
               style={{ boxShadow: "0 8px 25px rgba(220, 38, 38, 0.65)" }}
             >
