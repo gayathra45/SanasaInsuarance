@@ -243,33 +243,30 @@ export default function PolicyHolderDocuments() {
   // Compile Requested Documents List
   const requestedDocsList = claims.filter(c => c.documentsRequested);
 
-  // Compile Uploaded Documents List
-  const uploadedDocsList: { claimNumber: string; docName: string; date: string; files: string[] }[] = [];
-  claims.forEach(claim => {
-    // 1. Accident Photos
+  // Compile Grouped Uploaded Documents by Claim ID
+  const groupedClaimsList = claims.map(claim => {
+    const docs: { name: string; files: string[] }[] = [];
+
+    // 1. Driving License
+    const licFront = claim.drivingLicense?.front || [];
+    const licRear = claim.drivingLicense?.rear || [];
+    const allLicPhotos = [...licFront, ...licRear].filter(Boolean);
+    if (allLicPhotos.length > 0) {
+      docs.push({
+        name: "Driving License",
+        files: allLicPhotos
+      });
+    }
+
+    // 2. Accident Photos
     const frontPhotos = claim.accidentPhotos?.front || [];
     const rearPhotos = claim.accidentPhotos?.rear || [];
     const sidePhotos = claim.accidentPhotos?.side || [];
     const allAccidentPhotos = [...frontPhotos, ...rearPhotos, ...sidePhotos].filter(Boolean);
     if (allAccidentPhotos.length > 0) {
-      uploadedDocsList.push({
-        claimNumber: claim.claimNumber,
-        docName: `Accident Photos (${allAccidentPhotos.length})`,
-        date: formatDateString(claim.createdAt),
+      docs.push({
+        name: "Rear , Front , Side Photos",
         files: allAccidentPhotos
-      });
-    }
-
-    // 2. Driving License
-    const licFront = claim.drivingLicense?.front || [];
-    const licRear = claim.drivingLicense?.rear || [];
-    const allLicPhotos = [...licFront, ...licRear].filter(Boolean);
-    if (allLicPhotos.length > 0) {
-      uploadedDocsList.push({
-        claimNumber: claim.claimNumber,
-        docName: "Driving License",
-        date: formatDateString(claim.createdAt),
-        files: allLicPhotos
       });
     }
 
@@ -277,16 +274,23 @@ export default function PolicyHolderDocuments() {
     if (claim.additionalDocuments && claim.additionalDocuments.length > 0) {
       claim.additionalDocuments.forEach(doc => {
         if (doc.url) {
-          uploadedDocsList.push({
-            claimNumber: claim.claimNumber,
-            docName: doc.name,
-            date: formatDateString(doc.uploadedAt || claim.createdAt),
+          docs.push({
+            name: doc.name,
             files: [doc.url]
           });
         }
       });
     }
-  });
+
+    const allFiles = docs.flatMap(d => d.files);
+
+    return {
+      claimNumber: claim.claimNumber,
+      date: formatDateString(claim.createdAt),
+      docs,
+      allFiles
+    };
+  }).filter(c => c.docs.length > 0);
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
@@ -398,13 +402,13 @@ export default function PolicyHolderDocuments() {
                 <div key={i} className="h-[90px] bg-slate-100/70 border border-slate-200 animate-pulse rounded-3xl" />
               ))}
             </div>
-          ) : uploadedDocsList.length === 0 ? (
+          ) : groupedClaimsList.length === 0 ? (
             <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center shadow-sm select-none">
               <p className="text-slate-400 font-bold text-sm">You have not uploaded any claim files yet.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {uploadedDocsList.map((doc, idx) => (
+              {groupedClaimsList.map((claim, idx) => (
                 <div 
                   key={idx}
                   className="bg-white border border-emerald-500/20 rounded-[24px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.015)] flex flex-row items-center justify-between gap-6"
@@ -419,20 +423,22 @@ export default function PolicyHolderDocuments() {
 
                     <div className="min-w-0">
                       <h4 className="text-emerald-700 font-extrabold text-base leading-none select-none truncate">
-                        {doc.docName}
+                        {claim.claimNumber}
                       </h4>
-                      <p className="text-slate-400 text-xs font-semibold mt-2.5 leading-none select-none">
-                        Your claim {doc.claimNumber}
-                      </p>
+                      <div className="text-slate-400 text-xs font-semibold mt-2.5 flex flex-col gap-1 leading-tight select-none">
+                        {claim.docs.map((doc, dIdx) => (
+                          <span key={dIdx}>{doc.name}</span>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-6 flex-shrink-0">
                     <span className="hidden sm:inline text-slate-400 text-[13px] font-semibold select-none">
-                      {doc.date}
+                      {claim.date}
                     </span>
                     <button
-                      onClick={() => handleOpenView(doc.docName, doc.files)}
+                      onClick={() => handleOpenView(`Documents – ${claim.claimNumber}`, claim.allFiles)}
                       className="border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-500 hover:text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all duration-150 cursor-pointer bg-white"
                     >
                       View
