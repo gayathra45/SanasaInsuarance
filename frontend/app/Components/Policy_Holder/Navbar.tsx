@@ -108,7 +108,7 @@ export default function PolicyHolderNavbar() {
             </button>
 
             {/* Profile Menu */}
-            <Link href="/Policy_Holder/Profile">
+            <Link href="/Login">
               <button
                 className="transition-colors duration-150 bg-transparent border-none cursor-pointer p-0 text-black hover:text-[#00ddff] focus:outline-none"
                 aria-label="User Profile"

@@ -2,6 +2,7 @@ import express from "express";
 import crypto from "crypto";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
+import { uploadToCloudinary } from "../utils/upload.js";
 
 const router = express.Router();
 
@@ -43,16 +44,17 @@ router.post("/login", async (req, res) => {
 // 2. Fetch user's claims list
 router.get("/user-claims", async (req, res) => {
   try {
-    const { nic } = req.query;
+    const { nic, includeDocs } = req.query;
     if (!nic) {
       return res.status(400).json({ error: "NIC query parameter is required." });
     }
 
     const cleanNic = nic.trim();
-    const claims = await Claim.find(
-      { userNic: cleanNic },
-      { accidentPhotos: 0, drivingLicense: 0 }
-    ).sort({ createdAt: -1 });
+    const projection = includeDocs === "true"
+      ? {}
+      : { accidentPhotos: 0, drivingLicense: 0 };
+
+    const claims = await Claim.find({ userNic: cleanNic }, projection).sort({ createdAt: -1 });
     res.json({ claims });
   } catch (err) {
     console.error("Fetch user claims API error:", err);
@@ -80,11 +82,20 @@ router.get("/track-claim", async (req, res) => {
   }
 });
 
-// 4. Update claim details by office staff (status, amount, currentStep, append message)
+// 4. Update claim details (status, amount, currentStep, append message, upload documents)
 router.patch("/update-claim/:claimNumber", async (req, res) => {
   try {
     const { claimNumber } = req.params;
-    const { status, amount, currentStep, documentsRequested, requestedDocuments, messageText, messageSender } = req.body;
+    const {
+      status,
+      amount,
+      currentStep,
+      documentsRequested,
+      requestedDocuments,
+      messageText,
+      messageSender,
+      uploadedDocuments
+    } = req.body;
 
     const claim = await Claim.findOne({ claimNumber: claimNumber.trim().toUpperCase() });
     if (!claim) {
@@ -103,6 +114,46 @@ router.patch("/update-claim/:claimNumber", async (req, res) => {
         message: messageText,
         sentAt: new Date()
       });
+    }
+
+    // Process additional document uploads
+    if (uploadedDocuments && Array.isArray(uploadedDocuments)) {
+      for (const doc of uploadedDocuments) {
+        const { documentName, fileData } = doc;
+        if (documentName && fileData) {
+          const uploadedUrl = await uploadToCloudinary(fileData, "claims/additional_documents");
+          
+          // Add to additionalDocuments array
+          claim.additionalDocuments.push({
+            name: documentName,
+            url: uploadedUrl,
+            uploadedAt: new Date()
+          });
+
+          // Remove uploaded document from requested list
+          if (claim.requestedDocuments && Array.isArray(claim.requestedDocuments)) {
+            claim.requestedDocuments = claim.requestedDocuments.filter(
+              d => d.trim().toLowerCase() !== documentName.trim().toLowerCase()
+            );
+          }
+
+          // Append audit message to claim history
+          claim.messages.push({
+            sender: "Policy Holder",
+            message: `Uploaded requested document: ${documentName}`,
+            sentAt: new Date()
+          });
+        }
+      }
+
+      // If all requested documents are uploaded, auto-resolve requests
+      if (claim.requestedDocuments && claim.requestedDocuments.length === 0) {
+        claim.documentsRequested = false;
+        
+        // Auto transition to Review status
+        claim.status = "Review";
+        claim.currentStep = 4;
+      }
     }
 
     await claim.save();

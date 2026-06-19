@@ -171,11 +171,11 @@ export default function FileNewClaim() {
             setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
           }
         } catch (geocodeError) {
-          console.error("Reverse geocoding failed, falling back to coordinates:", geocodeError);
+          console.warn("Reverse geocoding failed, falling back to coordinates:", geocodeError);
           setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
         }
       } catch (err: any) {
-        console.error("Geolocation failed:", err);
+        console.warn("Geolocation failed:", err);
         let errorMsg = "Could not retrieve your location.";
         if (err.code === 1) { // PERMISSION_DENIED
           errorMsg = "Location access was denied. Please allow location permissions in your browser settings for this website.";

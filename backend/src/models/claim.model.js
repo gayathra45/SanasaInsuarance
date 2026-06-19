@@ -32,6 +32,16 @@ const claimSchema = new mongoose.Schema({
       sentAt: { type: Date, default: Date.now }
     }
   ],
+  additionalDocuments: {
+    type: [
+      {
+        name: { type: String, required: true },
+        url: { type: String, required: true },
+        uploadedAt: { type: Date, default: Date.now }
+      }
+    ],
+    default: []
+  },
   createdAt: { type: Date, default: Date.now }
 });
 

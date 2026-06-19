@@ -56,7 +56,7 @@ export default function PolicyHolderFooter() {
             <Link href="/Policy_Holder/HelpCentre" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
               Help Centre
             </Link>
-            <Link href="/Policy_Holder/Profile" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
+            <Link href="/Login" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
               My Profile
             </Link>
           </div>
