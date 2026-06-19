@@ -135,6 +135,53 @@ export default function PolicyHolderHome() {
   const [totalClaimsCount, setTotalClaimsCount] = useState(0);
   const [approvedClaimsCount, setApprovedClaimsCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [selectedVehicleForModal, setSelectedVehicleForModal] = useState<any | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 3000);
+  };
+
+  const handleDownloadCoverNote = (vehicle: any) => {
+    triggerToast(`Generating insurance certificate for ${formatNumberPlate(vehicle.numberPlate)}...`);
+    setTimeout(() => {
+      const element = document.createElement("a");
+      const file = new Blob([
+        `SANASA GENERAL INSURANCE COMPANY LIMITED\n`,
+        `POLICY CERTIFICATE / COVER NOTE\n`,
+        `========================================\n`,
+        `Policy Number: ${vehicle.policyNumber}\n`,
+        `Vehicle Number Plate: ${formatNumberPlate(vehicle.numberPlate)}\n`,
+        `Vehicle Type: ${vehicle.vehicleType}\n`,
+        `Make & Model: ${vehicle.company} ${vehicle.model} (${vehicle.year})\n`,
+        `Engine Number: ${vehicle.engineNumber}\n`,
+        `Chassis Number: ${vehicle.chassisNumber}\n`,
+        `Coverage Status: ACTIVE\n`,
+        `Validity Period: 2026-01-01 to 2026-12-31\n`,
+        `Authorized Signature: Sanasa General Insurance Co. LTD.`
+      ], { type: 'text/plain' });
+      element.href = URL.createObjectURL(file);
+      element.download = `Sanasa_Policy_${vehicle.numberPlate}.txt`;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      triggerToast(`Successfully downloaded Cover Note for ${formatNumberPlate(vehicle.numberPlate)}!`);
+    }, 1200);
+  };
+
+  useEffect(() => {
+    if (selectedVehicleForModal) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedVehicleForModal]);
 
   const formatDateString = (dateStr: string) => {
     if (!dateStr) return "";
@@ -518,7 +565,7 @@ export default function PolicyHolderHome() {
 
           {/* Vehicles Column */}
           <div className="lg:col-span-5">
-            <div className="flex items-center gap-2 mb-6 cursor-pointer group">
+            <Link href="/Policy_Holder/MyVehicles" className="flex items-center gap-2 mb-6 cursor-pointer group no-underline text-inherit select-none">
               <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
                 My Vehicles
               </h2>
@@ -531,7 +578,7 @@ export default function PolicyHolderHome() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
               </svg>
-            </div>
+            </Link>
 
             {/* Vehicle List */}
             <div className="flex flex-col gap-5">
@@ -545,12 +592,12 @@ export default function PolicyHolderHome() {
                         <p className="text-slate-400 font-bold text-xs mt-0.5">{vehicle.company} {vehicle.model} {vehicle.year}</p>
                       </div>
                     </div>
-                    <Link
-                      href="/Policy_Holder/MyVehicles"
-                      className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all no-underline"
+                    <button
+                      onClick={() => setSelectedVehicleForModal(vehicle)}
+                      className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all bg-transparent cursor-pointer outline-none"
                     >
                       View
-                    </Link>
+                    </button>
                   </div>
                 ))
               ) : (
@@ -564,6 +611,124 @@ export default function PolicyHolderHome() {
         </section>
 
       </main>
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed top-20 right-8 z-50 bg-[#00ddff] text-black font-extrabold px-6 py-4.5 rounded-2xl shadow-xl animate-bounce flex items-center gap-3 border-2 border-black">
+          <svg className="w-6 h-6 animate-spin" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Vehicle Detail Popup Modal */}
+      {selectedVehicleForModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300 animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-[28px] w-full max-w-[620px] max-h-[90vh] shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col relative overflow-hidden">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center px-8 pt-6 pb-4 border-b border-slate-200 flex-shrink-0">
+              <h2 className="text-[20px] md:text-[22px] font-extrabold text-[#0f2d3a] tracking-tight leading-none text-slate-800">
+                Vehicle Specifications
+              </h2>
+              <button
+                onClick={() => setSelectedVehicleForModal(null)}
+                className="text-slate-400 hover:text-slate-600 text-2xl font-bold border-none bg-transparent cursor-pointer outline-none"
+              >
+                &times;
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-8 flex-1 overflow-y-auto">
+              
+              {/* Profile Card Header inside modal */}
+              <div className="bg-slate-50 border border-slate-200/60 rounded-[22px] p-5 mb-6 flex items-center gap-4.5 shadow-sm select-none text-slate-800">
+                {getVehicleIconContainer(selectedVehicleForModal.vehicleType)}
+                <div>
+                  <h3 className="text-[#0f2d3a] font-black text-xl leading-none tracking-tight">
+                    {selectedVehicleForModal.company} {selectedVehicleForModal.model}
+                  </h3>
+                  <p className="text-slate-400 font-bold text-xs mt-1.5">
+                    Year: {selectedVehicleForModal.year} | Type: {selectedVehicleForModal.vehicleType}
+                  </p>
+                </div>
+              </div>
+
+              {/* 2-Column Specs Layout */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-4 text-sm font-semibold text-slate-700 mb-8 px-2">
+                <div className="flex flex-col gap-1 border-b border-slate-100 pb-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Number Plate</span>
+                  <span className="font-extrabold text-slate-800 text-base">{formatNumberPlate(selectedVehicleForModal.numberPlate)}</span>
+                </div>
+                <div className="flex flex-col gap-1 border-b border-slate-100 pb-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Policy Number</span>
+                  <span className="font-extrabold text-slate-800 text-base tracking-wide">{selectedVehicleForModal.policyNumber || "N/A"}</span>
+                </div>
+                <div className="flex flex-col gap-1 border-b border-slate-100 pb-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Engine Number</span>
+                  <span className="font-bold text-slate-800 font-mono text-[13px]">{selectedVehicleForModal.engineNumber || "N/A"}</span>
+                </div>
+                <div className="flex flex-col gap-1 border-b border-slate-100 pb-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Chassis Number</span>
+                  <span className="font-bold text-slate-800 font-mono text-[13px]">{selectedVehicleForModal.chassisNumber || "N/A"}</span>
+                </div>
+                <div className="flex flex-col gap-1 border-b border-slate-100 pb-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Insurance Coverage</span>
+                  <span className="font-extrabold text-emerald-600 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                    Active Coverage
+                  </span>
+                </div>
+                <div className="flex flex-col gap-1 border-b border-slate-100 pb-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Renewal Cycle</span>
+                  <span className="font-extrabold text-slate-800">Annual (Jan 01 - Dec 31)</span>
+                </div>
+                <div className="flex flex-col gap-1 border-b border-slate-100 pb-2 sm:col-span-2">
+                  <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Insurance Plan Type</span>
+                  <span className="font-extrabold text-slate-800">Comprehensive Vehicle Insurance Plan</span>
+                </div>
+              </div>
+
+              {/* Action Buttons in Modal */}
+              <div className="flex gap-4 border-t border-slate-100 pt-6">
+                <Link
+                  href={`/Policy_Holder/New_Claim?plate=${encodeURIComponent(selectedVehicleForModal.numberPlate)}`}
+                  onClick={() => setSelectedVehicleForModal(null)}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white font-extrabold text-sm py-3.5 rounded-full text-center no-underline shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  File a Claim
+                </Link>
+                <button
+                  onClick={() => handleDownloadCoverNote(selectedVehicleForModal)}
+                  className="flex-1 bg-[#1fcbf2] hover:bg-[#00b2d6] text-white font-extrabold text-sm py-3.5 rounded-full text-center cursor-pointer border-none shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                  </svg>
+                  Cover Note
+                </button>
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 flex justify-end flex-shrink-0">
+              <button
+                onClick={() => setSelectedVehicleForModal(null)}
+                className="bg-[#1a365d] hover:bg-[#0f223f] text-white font-extrabold text-[14px] px-8 py-2.5 rounded-full transition-all border-none cursor-pointer hover:-translate-y-0.5 active:translate-y-0"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* Floating Chat Bubble Button */}
       <button

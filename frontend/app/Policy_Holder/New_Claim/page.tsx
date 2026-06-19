@@ -113,6 +113,22 @@ export default function FileNewClaim() {
     }
   }, []);
 
+  // Pre-select vehicle if plate parameter is present in URL
+  useEffect(() => {
+    if (typeof window !== "undefined" && vehicles.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const plate = urlParams.get("plate");
+      if (plate) {
+        const matchingVehicle = vehicles.find(
+          v => v.numberPlate.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() === plate.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()
+        );
+        if (matchingVehicle) {
+          setSelectedVehicle(matchingVehicle.numberPlate);
+        }
+      }
+    }
+  }, [vehicles]);
+
   // Preset Damage Types
   const damageTypes = [
     "Front Bumper / Grille Damage",
