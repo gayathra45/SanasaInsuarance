@@ -51,3 +51,4 @@ const startServer = async () => {
 };
 
 startServer();
+// Trigger server restart check

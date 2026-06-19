@@ -1,6 +1,7 @@
 import express from "express";
 import User from "../../Signup/user.model.js";
 import Claim from "../claim.model.js";
+import { uploadToCloudinary } from "../../src/utils/upload.js";
 
 const router = express.Router();
 
@@ -78,6 +79,20 @@ router.post("/new-claim", async (req, res) => {
       }
     }
 
+    // Upload photos and license images to Cloudinary in parallel
+    const uploadArray = async (arr, folder) => {
+      if (!arr || !Array.isArray(arr)) return [];
+      return Promise.all(arr.map(item => uploadToCloudinary(item, folder)));
+    };
+
+    const [accidentFront, accidentRear, accidentSide, licenseFront, licenseRear] = await Promise.all([
+      uploadArray(accidentPhotos?.front, "claims/accident_photos"),
+      uploadArray(accidentPhotos?.rear, "claims/accident_photos"),
+      uploadArray(accidentPhotos?.side, "claims/accident_photos"),
+      uploadArray(drivingLicense?.front, "claims/driving_license"),
+      uploadArray(drivingLicense?.rear, "claims/driving_license")
+    ]);
+
     // Save claim payload to MongoDB
     const newClaim = new Claim({
       claimNumber: nextClaimNum,
@@ -90,13 +105,13 @@ router.post("/new-claim", async (req, res) => {
       location,
       branch: getNearestBranch(location),
       accidentPhotos: {
-        front: accidentPhotos?.front || [],
-        rear: accidentPhotos?.rear || [],
-        side: accidentPhotos?.side || []
+        front: accidentFront,
+        rear: accidentRear,
+        side: accidentSide
       },
       drivingLicense: {
-        front: drivingLicense?.front || [],
-        rear: drivingLicense?.rear || []
+        front: licenseFront,
+        rear: licenseRear
       }
     });
 

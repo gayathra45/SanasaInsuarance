@@ -81,18 +81,24 @@ router.get("/dashboard-stats", async (req, res) => {
       status: "Pending"
     });
 
-    // 2. Fetch Lists for Dashboard
+    // 2. Fetch Lists for Dashboard (excluding heavy image/document fields)
     // New Claims for this branch (latest first)
-    const newClaimsList = await Claim.find({
-      ...branchFilter,
-      ...dateFilter
-    }).sort({ createdAt: -1 });
+    const newClaimsList = await Claim.find(
+      {
+        ...branchFilter,
+        ...dateFilter
+      },
+      { accidentPhotos: 0, drivingLicense: 0 }
+    ).sort({ createdAt: -1 });
 
     // New Registrations for this branch (latest first)
-    const newRegistrationsList = await User.find({
-      ...branchFilter,
-      ...dateFilter
-    }).sort({ createdAt: -1 });
+    const newRegistrationsList = await User.find(
+      {
+        ...branchFilter,
+        ...dateFilter
+      },
+      { documents: 0 }
+    ).sort({ createdAt: -1 });
 
     res.json({
       stats: {

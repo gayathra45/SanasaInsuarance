@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const claimSchema = new mongoose.Schema({
   claimNumber: { type: String, required: true, unique: true },
-  userNic: { type: String, required: true },
+  userNic: { type: String, required: true, index: true },
   vehiclePlate: { type: String, required: true },
   incidentDate: { type: String, required: true },
   incidentTime: { type: String, required: true },
@@ -20,7 +20,7 @@ const claimSchema = new mongoose.Schema({
   },
   status: { type: String, default: "Pending" },
   branch: { type: String, default: "Galle" },
-  assignedAgent: { type: String, default: "" },
+  assignedAgent: { type: String, default: "", index: true },
   amount: { type: Number, default: null },
   currentStep: { type: Number, default: 1 },
   documentsRequested: { type: Boolean, default: false },

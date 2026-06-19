@@ -7,6 +7,7 @@ import Admin from "../Admin/admin.model.js";
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import dotenv from "dotenv";
+import { uploadToCloudinary } from "../src/utils/upload.js";
 dotenv.config({ override: true });
 
 const router = express.Router();
@@ -128,10 +129,24 @@ router.post("/", async (req, res) => {
       }
     }
 
+    // Upload documents to Cloudinary in parallel
+    const [uploadedNicFront, uploadedNicBack, uploadedVehicleReg, uploadedRevenueLicense] = await Promise.all([
+      uploadToCloudinary(nicFront, "users/documents"),
+      uploadToCloudinary(nicBack, "users/documents"),
+      uploadToCloudinary(vehicleReg, "users/documents"),
+      uploadToCloudinary(revenueLicense, "users/documents")
+    ]);
+
     const newUser = new User({
       firstName, lastName, nic: cleanNic, mobile: cleanMobile,
       email, dob, address, province, city,
-      password: hashedPassword, vehicles, documents,
+      password: hashedPassword, vehicles,
+      documents: {
+        nicFront: uploadedNicFront,
+        nicBack: uploadedNicBack,
+        vehicleReg: uploadedVehicleReg,
+        revenueLicense: uploadedRevenueLicense
+      },
       branch: getNearestBranch(city, province),
       referenceNumber: nextRefNum,
     });

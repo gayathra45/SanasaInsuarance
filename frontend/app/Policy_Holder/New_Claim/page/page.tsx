@@ -125,6 +125,7 @@ export default function FileNewClaim() {
   ];
 
   // Geolocation Handler
+  // Geolocation Handler
   const handleGPSLocation = () => {
     if (!navigator.geolocation) {
       alert("Geolocation is not supported by your browser.");
@@ -134,34 +135,64 @@ export default function FileNewClaim() {
 
     setIsLocating(true);
 
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
+    const getPosition = (options: PositionOptions): Promise<GeolocationPosition> => {
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+      });
+    };
+
+    const tryGetLocation = async () => {
+      try {
+        let position;
+        try {
+          // Try high accuracy with a shorter 5s timeout
+          position = await getPosition({ enableHighAccuracy: true, timeout: 5000 });
+        } catch (highAccError: any) {
+          console.warn("High accuracy geolocation failed or timed out, trying low accuracy...", highAccError.message);
+          // Fall back to low accuracy with 10s timeout
+          position = await getPosition({ enableHighAccuracy: false, timeout: 10000 });
+        }
+
         const { latitude, longitude } = position.coords;
+
         try {
           // Reverse-geocoding using OpenStreetMap Nominatim API
           const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+            {
+              headers: {
+                "Accept-Language": "en"
+              }
+            }
           );
           const data = await res.json();
           if (data && data.display_name) {
             setAddress(data.display_name);
           } else {
-            setAddress(`${latitude}, ${longitude}`);
+            setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
           }
-        } catch (error) {
-          console.error("Reverse geocoding failed", error);
-          setAddress(`${latitude}, ${longitude}`);
-        } finally {
-          setIsLocating(false);
+        } catch (geocodeError) {
+          console.error("Reverse geocoding failed, falling back to coordinates:", geocodeError);
+          setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
         }
-      },
-      (error) => {
-        console.warn("Geolocation permission denied or error: ", error.message);
+      } catch (err: any) {
+        console.error("Geolocation failed:", err);
+        let errorMsg = "Could not retrieve your location.";
+        if (err.code === 1) { // PERMISSION_DENIED
+          errorMsg = "Location access was denied. Please allow location permissions in your browser settings for this website.";
+        } else if (err.code === 2) { // POSITION_UNAVAILABLE
+          errorMsg = "Location information is unavailable on your device.";
+        } else if (err.code === 3) { // TIMEOUT
+          errorMsg = "Location request timed out. Please check your network or device GPS.";
+        }
+        alert(errorMsg);
         setAddress("123 Galle Road, Colombo, Sri Lanka");
+      } finally {
         setIsLocating(false);
-      },
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
+      }
+    };
+
+    tryGetLocation();
   };
 
   const handleNext = (e: React.FormEvent) => {

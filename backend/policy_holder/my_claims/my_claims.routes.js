@@ -19,7 +19,7 @@ router.post("/login", async (req, res) => {
     }
 
     const cleanNic = nic.trim();
-    const user = await User.findOne({ nic: cleanNic });
+    const user = await User.findOne({ nic: cleanNic }, { documents: 0 });
     if (!user) {
       return res.status(400).json({ error: "Invalid NIC or Password." });
     }
@@ -49,7 +49,10 @@ router.get("/user-claims", async (req, res) => {
     }
 
     const cleanNic = nic.trim();
-    const claims = await Claim.find({ userNic: cleanNic }).sort({ createdAt: -1 });
+    const claims = await Claim.find(
+      { userNic: cleanNic },
+      { accidentPhotos: 0, drivingLicense: 0 }
+    ).sort({ createdAt: -1 });
     res.json({ claims });
   } catch (err) {
     console.error("Fetch user claims API error:", err);

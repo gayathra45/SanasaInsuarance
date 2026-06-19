@@ -47,8 +47,11 @@ router.get("/claims", async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    // Fetch all claims assigned to this agent email from MongoDB
-    const claims = await Claim.find({ assignedAgent: cleanEmail }).sort({ createdAt: -1 });
+    // Fetch all claims assigned to this agent email from MongoDB (excluding heavy image/license fields)
+    const claims = await Claim.find(
+      { assignedAgent: cleanEmail },
+      { accidentPhotos: 0, drivingLicense: 0 }
+    ).sort({ createdAt: -1 });
     res.json(claims);
   } catch (err) {
     console.error("Fetch agent claims error:", err);

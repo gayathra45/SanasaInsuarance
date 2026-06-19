@@ -20,6 +20,7 @@ import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
+import * as Location from "expo-location";
 import PolicyHolderNavbar from "../Components/policy holder/page";
 import { API_BASE_URL } from "../config";
 
@@ -122,13 +123,53 @@ export default function FileNewClaim() {
     }
   };
 
-  const handleGPSLocation = () => {
+  const handleGPSLocation = async () => {
     setIsLocating(true);
-    // Simulate reverse geocoding
-    setTimeout(() => {
-      setAddress("142/A Galle Road, Colombo 03, Sri Lanka");
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "Please enable location permissions in your app settings to retrieve your coordinates.");
+        setIsLocating(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const { latitude, longitude } = location.coords;
+      
+      // Perform reverse geocoding to get address
+      const addressArray = await Location.reverseGeocodeAsync({
+        latitude,
+        longitude
+      });
+
+      if (addressArray && addressArray.length > 0) {
+        const item = addressArray[0];
+        const street = item.street || "";
+        const city = item.city || item.subregion || "";
+        const district = item.district || "";
+        const country = item.country || "";
+        
+        let fullAddress = "";
+        if (street) fullAddress += `${street}, `;
+        if (district) fullAddress += `${district}, `;
+        if (city) fullAddress += `${city}, `;
+        if (country) fullAddress += country;
+
+        // Clean up trailing comma/space
+        fullAddress = fullAddress.trim().replace(/,\s*$/, "");
+        setAddress(fullAddress || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+      } else {
+        setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+      }
+    } catch (e) {
+      console.error("GPS retrieval error:", e);
+      Alert.alert("Error", "Could not retrieve your current location. Please verify that your device GPS is turned on and try again.");
+    } finally {
       setIsLocating(false);
-    }, 1500);
+    }
   };
 
   const selectPhoto = async (stateSetter: React.Dispatch<React.SetStateAction<PhotoState | null>>) => {

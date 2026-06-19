@@ -424,7 +424,7 @@ export default function PolicyHolderHome() {
             {/* Alert List */}
             <div className="flex flex-col gap-6">
               {notifications.length > 0 ? (
-                notifications.map((notif: any) => {
+                notifications.slice(0, 3).map((notif: any) => {
                   const isUrgent = notif.type === "urgent";
                   const isApproved = notif.type === "approved";
                   
