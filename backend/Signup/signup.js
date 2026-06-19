@@ -149,7 +149,12 @@ router.post("/", async (req, res) => {
       city,
       password: hashedPassword,
       vehicles,
-      documents,
+      documents: {
+        nicFront: uploadedNicFront,
+        nicBack: uploadedNicBack,
+        vehicleReg: uploadedVehicleReg,
+        revenueLicense: uploadedRevenueLicense
+      },
       branch: getNearestBranch(city, province),
       referenceNumber: nextRefNum,
     });
