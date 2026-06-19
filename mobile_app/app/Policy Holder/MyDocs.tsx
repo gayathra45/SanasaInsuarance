@@ -435,7 +435,7 @@ export default function MyDocs() {
                       ) : (
                         <View style={styles.modalSelectedFileWrap}>
                           <Text style={styles.modalSelectedFileName} numberOfLines={1}>
-                            ✓ Selected
+                            ✓ {val.name || "Selected"}
                           </Text>
                           <TouchableOpacity onPress={() => handleRemoveFile(docName)} style={styles.modalBinBtn}>
                             <Ionicons name="trash-outline" size={16} color="#ef4444" />
@@ -742,7 +742,7 @@ const styles = StyleSheet.create({
   modalPillActionText: { color: "#dc2626", fontSize: 14, fontWeight: "800" },
 
   modalSelectedFileWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
-  modalSelectedFileName: { fontSize: 12, fontWeight: "700", color: "#10b981", maxWidth: 100 },
+  modalSelectedFileName: { fontSize: 12, fontWeight: "700", color: "#10b981", maxWidth: 150 },
   modalBinBtn: { padding: 4 },
 
   modalFooter: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, gap: 12 },

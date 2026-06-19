@@ -16,6 +16,7 @@ import {
   ImageBackground,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import PolicyHolderNavbar from "../Components/policy holder/page";
@@ -446,10 +447,10 @@ export default function MyClaims() {
                       style={styles.uploadDocBtn}
                       onPress={() => {
                         setSelectedClaim(null);
-                        Alert.alert("Document Upload", "Please contact your assigned agent Saman at +94 112 003 000 or email documents to claims-support@sanasa.lk to submit your requested files.");
+                        router.push("/Policy Holder/MyDocs" as any);
                       }}
                     >
-                      <Text style={styles.uploadDocBtnText}>Contact Support to Upload</Text>
+                      <Text style={styles.uploadDocBtnText}>Go to My Documents to Upload</Text>
                     </TouchableOpacity>
                   </View>
                 )}

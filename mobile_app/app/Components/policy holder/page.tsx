@@ -22,16 +22,21 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
   const indicatorX = useRef(new Animated.Value(0)).current;
   const indicatorOpacity = useRef(new Animated.Value(1)).current;
   const centerPulse = useRef(new Animated.Value(1)).current;
-  const activeIndex = useMemo(
-    () => NAV_ITEMS.findIndex((item) => currentRoute === item.route || currentRoute.startsWith(item.route.replace("/page", ""))),
-    [currentRoute]
-  );
+  const activeIndex = useMemo(() => {
+    return NAV_ITEMS.findIndex((item) => {
+      if (item.route === "/Policy Holder/page") {
+        return currentRoute === "/Policy Holder/page" || currentRoute === "/Policy Holder";
+      }
+      return currentRoute === item.route || currentRoute.startsWith(item.route);
+    });
+  }, [currentRoute]);
 
   useEffect(() => {
     if (!navWidth) return;
     const slot = navWidth / NAV_ITEMS.length;
     const isCenter = activeIndex === 2;
-    const targetX = Math.max(0, activeIndex) * slot + (slot - 34) / 2;
+    const isNotFound = activeIndex === -1;
+    const targetX = (isNotFound ? 0 : activeIndex) * slot + (slot - 34) / 2;
     Animated.parallel([
       Animated.timing(indicatorX, {
         toValue: targetX,
@@ -40,7 +45,7 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
         useNativeDriver: true,
       }),
       Animated.timing(indicatorOpacity, {
-        toValue: isCenter ? 0 : 1,
+        toValue: (isCenter || isNotFound) ? 0 : 1,
         duration: 180,
         useNativeDriver: true,
       }),
@@ -66,7 +71,9 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
       <View style={styles.shell} onLayout={onShellLayout}>
         <Animated.View style={[styles.indicator, { opacity: indicatorOpacity, transform: [{ translateX: indicatorX }] }]} />
       {NAV_ITEMS.map((item) => {
-        const isActive = currentRoute === item.route || currentRoute.startsWith(item.route.replace("/page", ""));
+        const isActive = item.route === "/Policy Holder/page"
+          ? (currentRoute === "/Policy Holder/page" || currentRoute === "/Policy Holder")
+          : (currentRoute === item.route || currentRoute.startsWith(item.route));
         const isCenter = "isCenter" in item && item.isCenter;
 
         if (isCenter) {
@@ -95,12 +102,11 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
             <Ionicons
               name={(isActive ? item.iconActive : item.icon) as any}
               size={22}
-              color={isActive ? "#2dd4bf" : "#94a3b8"}
+              color={isActive ? "#0ea5e9" : "#94a3b8"}
             />
             <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
               {item.label}
             </Text>
-            {isActive && <View style={styles.activeBar} />}
           </TouchableOpacity>
         );
       })}
@@ -145,11 +151,11 @@ const styles = StyleSheet.create({
   },
   indicator: {
     position: "absolute",
-    top: 6,
+    bottom: Platform.OS === "ios" ? 10 : 4,
     width: 34,
-    height: 4,
+    height: 3,
     borderRadius: 999,
-    backgroundColor: "#0f766e",
+    backgroundColor: "#0ea5e9",
   },
 
   navItem: {
@@ -169,14 +175,6 @@ const styles = StyleSheet.create({
     color: "#0f172a",
     fontWeight: "700",
   },
-  activeBar: {
-    position: "absolute",
-    bottom: 4,
-    width: 18,
-    height: 3,
-    borderRadius: 999,
-    backgroundColor: "#0f766e",
-  },
 
   centerWrap: {
     flex: 1,
@@ -189,10 +187,10 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: "#0f766e",
+    backgroundColor: "#0d2a3a",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#0f766e",
+    shadowColor: "#0d2a3a",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -203,6 +201,6 @@ const styles = StyleSheet.create({
   centerLabel: {
     fontSize: 10.5,
     fontWeight: "700",
-    color: "#0f766e",
+    color: "#0d2a3a",
   },
 });
