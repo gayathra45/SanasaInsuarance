@@ -169,8 +169,8 @@ export default function MyVehicles() {
   const handleOpenAddVehicle = () => {
     if (activeCategory === "Car") setNewVehicleType("Car");
     else if (activeCategory === "SUV") setNewVehicleType("SUV");
-    else if (activeCategory === "Bike") setNewVehicleType("Bike");
-    else if (activeCategory === "Truck") setNewVehicleType("Lorry");
+    else if (activeCategory === "Bike") setNewVehicleType("Motorbike");
+    else if (activeCategory === "Truck") setNewVehicleType("Lorry / Truck");
     else if (activeCategory === "Other") setNewVehicleType("Van");
     else setNewVehicleType("Car");
     setIsAddVehicleOpen(true);
@@ -787,27 +787,20 @@ export default function MyVehicles() {
       {/* Add Vehicle Popup Modal */}
       {isAddVehicleOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300 animate-fade-in">
-          <div className="bg-white border border-slate-200 rounded-[28px] w-full max-w-[620px] max-h-[90vh] shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col relative overflow-hidden text-slate-800">
+          <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[720px] max-h-[95vh] shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col relative overflow-hidden text-slate-800">
             
             {/* Modal Header */}
-            <div className="flex justify-between items-center px-8 pt-6 pb-4 border-b border-slate-200 flex-shrink-0">
-              <h2 className="text-[20px] md:text-[22px] font-extrabold text-[#0f2d3a] tracking-tight leading-none text-slate-800">
-                Register New Vehicle
+            <div className="px-10 pt-8 pb-4 border-b border-gray-200 flex-shrink-0">
+              <h2 className="text-2xl font-black text-black tracking-tight leading-none">
+                Add Vehicle
               </h2>
-              <button
-                type="button"
-                onClick={() => setIsAddVehicleOpen(false)}
-                className="text-slate-400 hover:text-slate-600 text-2xl font-bold border-none bg-transparent cursor-pointer outline-none"
-              >
-                &times;
-              </button>
             </div>
 
             {/* Modal Form */}
             <form onSubmit={handleAddVehicleSubmit} className="flex-1 flex flex-col overflow-hidden">
               
               {/* Form Content */}
-              <div className="p-8 overflow-y-auto flex-1 flex flex-col gap-5">
+              <div className="px-10 py-6 overflow-y-auto flex-1 flex flex-col gap-4">
                 
                 {validationError && (
                   <div className="bg-red-50 border border-red-200 text-red-600 font-bold text-xs rounded-xl p-3 select-none">
@@ -815,135 +808,165 @@ export default function MyVehicles() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Vehicle Type select */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-slate-600 text-xs font-bold uppercase tracking-wider">Vehicle Type</label>
-                    <select
-                      value={newVehicleType}
-                      onChange={(e) => setNewVehicleType(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] font-semibold text-slate-700 cursor-pointer"
-                    >
-                      <option value="Car">Car</option>
-                      <option value="SUV">SUV</option>
-                      <option value="Van">Van / Minibus</option>
-                      <option value="Bike">Motorbike / Scooter</option>
-                      <option value="Three Wheel">Three-Wheeler / Tuk</option>
-                      <option value="Lorry">Lorry / Truck</option>
-                      <option value="Bus">Bus</option>
-                      <option value="Tractor">Tractor</option>
-                    </select>
-                  </div>
-
-                  {/* Year input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-slate-600 text-xs font-bold uppercase tracking-wider">Manufacture Year</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. 2020"
-                      value={newYear}
-                      onChange={(e) => setNewYear(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] font-semibold text-slate-850"
-                    />
-                  </div>
-
-                  {/* Company input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-slate-600 text-xs font-bold uppercase tracking-wider">Make / Company</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Toyota"
-                      value={newCompany}
-                      onChange={(e) => setNewCompany(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] font-semibold text-slate-850"
-                    />
-                  </div>
-
-                  {/* Model input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-slate-600 text-xs font-bold uppercase tracking-wider">Model</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Corolla"
-                      value={newModel}
-                      onChange={(e) => setNewModel(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] font-semibold text-slate-850"
-                    />
-                  </div>
-
-                  {/* Number Plate input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-slate-600 text-xs font-bold uppercase tracking-wider">Number Plate</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                  {/* Number Plate */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-black text-[13.5px] font-bold block mb-1">
+                      Number Plate <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. WP-CBH-3202"
                       value={newNumberPlate}
                       onChange={(e) => setNewNumberPlate(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] font-semibold text-slate-850"
+                      className="w-full bg-slate-100/90 text-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:bg-white transition-all border border-transparent font-semibold"
+                    />
+                  </div>
+
+                  {/* Vehicle Type select with dynamic preview */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-black text-[13.5px] font-bold block mb-1">
+                      Vehicle Type <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-slate-100 border border-slate-200 text-slate-800 shadow-inner flex-shrink-0">
+                        {getVehicleIconSvg(newVehicleType, "w-8 h-8 text-slate-700")}
+                      </div>
+                      <select
+                        value={newVehicleType}
+                        onChange={(e) => setNewVehicleType(e.target.value)}
+                        className="flex-1 bg-slate-100/90 text-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:bg-white transition-all border border-transparent font-semibold cursor-pointer"
+                      >
+                        <option value="Car">Car</option>
+                        <option value="SUV">SUV</option>
+                        <option value="Cab / Double Cab">Cab / Double Cab</option>
+                        <option value="Van">Van</option>
+                        <option value="Motorbike">Motorbike</option>
+                        <option value="Three-Wheeler">Three-Wheeler</option>
+                        <option value="Lorry / Truck">Lorry / Truck</option>
+                        <option value="Bus">Bus</option>
+                        <option value="Tractor">Tractor</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Company input */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-black text-[13.5px] font-bold block mb-1">
+                      Company <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Toyota"
+                      value={newCompany}
+                      onChange={(e) => setNewCompany(e.target.value)}
+                      className="w-full bg-slate-100/90 text-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:bg-white transition-all border border-transparent font-semibold"
+                    />
+                  </div>
+
+                  {/* Model input */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-black text-[13.5px] font-bold block mb-1">
+                      Model <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Corolla"
+                      value={newModel}
+                      onChange={(e) => setNewModel(e.target.value)}
+                      className="w-full bg-slate-100/90 text-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:bg-white transition-all border border-transparent font-semibold"
+                    />
+                  </div>
+
+                  {/* Year input */}
+                  <div className="flex flex-col gap-1">
+                    <label className="text-black text-[13.5px] font-bold block mb-1">
+                      Year <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 2020"
+                      value={newYear}
+                      onChange={(e) => setNewYear(e.target.value)}
+                      className="w-full bg-slate-100/90 text-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:bg-white transition-all border border-transparent font-semibold"
                     />
                   </div>
 
                   {/* Policy Number input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-slate-600 text-xs font-bold uppercase tracking-wider">Policy Number (SANxxxxx)</label>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-black text-[13.5px] font-bold block mb-1">
+                      Insurance Policy Number <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. SAN12345"
                       value={newPolicyNumber}
                       onChange={(e) => setNewPolicyNumber(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] font-semibold text-slate-855"
+                      className="w-full bg-slate-100/90 text-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:bg-white transition-all border border-transparent font-semibold"
                     />
                   </div>
 
                   {/* Engine Number input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-slate-600 text-xs font-bold uppercase tracking-wider">Engine Number</label>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-black text-[13.5px] font-bold block mb-1">
+                      Engine Number <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. 1NZ-FE-xxxx"
                       value={newEngineNumber}
                       onChange={(e) => setNewEngineNumber(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] font-semibold text-slate-850 font-mono"
+                      className="w-full bg-slate-100/90 text-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:bg-white transition-all border border-transparent font-semibold font-mono"
                     />
                   </div>
 
                   {/* Chassis Number input */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-slate-600 text-xs font-bold uppercase tracking-wider">Chassis Number</label>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-black text-[13.5px] font-bold block mb-1">
+                      Chassis Number <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
                     <input
                       type="text"
                       required
                       placeholder="e.g. NZE141-xxxx"
                       value={newChassisNumber}
                       onChange={(e) => setNewChassisNumber(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] font-semibold text-slate-850 font-mono"
+                      className="w-full bg-slate-100/90 text-slate-800 rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 focus:ring-[#00ddff] focus:bg-white transition-all border border-transparent font-semibold font-mono"
                     />
                   </div>
+                </div>
+
+                {/* Important warning banner */}
+                <div className="text-[11px] md:text-xs text-slate-600 font-semibold flex items-start gap-1 mt-4 select-none">
+                  <span className="text-yellow-500 mr-1 flex-shrink-0">⚠️</span>
+                  <span>
+                    <strong>Important:</strong> Your vehicle will be reviewed by office staff before submit. This usually takes 1-2 business days. You&apos;ll receive an email once approved
+                  </span>
                 </div>
 
               </div>
 
               {/* Modal Footer actions */}
-              <div className="px-8 py-4.5 bg-slate-50 border-t border-slate-200 flex justify-end gap-3.5 flex-shrink-0">
+              <div className="px-10 pb-8 pt-4 bg-white flex justify-between gap-6 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAddVehicleOpen(false)}
-                  className="bg-transparent border border-slate-300 hover:bg-slate-100 text-slate-600 font-extrabold text-[14px] px-6 py-2.5 rounded-full transition-all cursor-pointer"
+                  className="bg-[#19385a] hover:bg-[#11273f] text-white font-extrabold text-sm py-3.5 px-10 rounded-full transition-all cursor-pointer border-none shadow-md flex items-center justify-center gap-1 hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  Cancel
+                  &lt; Close
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-[#00ddff] hover:bg-[#00c8e6] disabled:bg-cyan-100 text-black font-extrabold text-[14px] px-8 py-2.5 rounded-full transition-all cursor-pointer border-none shadow-sm hover:scale-[1.02] active:scale-[0.98]"
+                  className="bg-[#19385a] hover:bg-[#11273f] disabled:bg-slate-300 text-white font-extrabold text-sm py-3.5 px-12 rounded-full transition-all cursor-pointer border-none shadow-md flex items-center justify-center gap-1 hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  {isSubmitting ? "Registering..." : "Register Vehicle"}
+                  {isSubmitting ? "Submitting..." : "Submit >"}
                 </button>
               </div>
 

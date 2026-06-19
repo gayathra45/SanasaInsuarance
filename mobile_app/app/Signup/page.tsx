@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { router } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import DateTimePicker, { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import * as ImagePicker from "expo-image-picker";
 import { API_BASE_URL } from "../config";
@@ -33,6 +33,19 @@ const provincesData = [
 ];
 
 const vehicleTypes = ["Car", "SUV", "Cab / Double Cab", "Van", "Motorbike", "Three-Wheeler", "Lorry / Truck", "Bus", "Tractor"];
+
+function vehicleIcon(type: string) {
+  const t = (type || "").toLowerCase().trim();
+  if (t.includes("bike") || t.includes("motorcycle") || t.includes("scooter")) return "motorbike";
+  if (t.includes("van") || t.includes("minibus")) return "van-utility";
+  if (t.includes("bus")) return "bus";
+  if (t.includes("truck") || t.includes("lorry")) return "truck";
+  if (t.includes("suv")) return "car-estate";
+  if (t.includes("tuk") || t.includes("three") || t.includes("rickshaw")) return "rickshaw";
+  if (t.includes("tractor")) return "tractor";
+  if (t.includes("cab") || t.includes("pickup")) return "truck-pickup";
+  return "car-side";
+}
 
 interface Vehicle {
   numberPlate: string;
@@ -690,10 +703,18 @@ export default function MobileSignup() {
                       <Text style={styles.inputLabel}>Vehicle Type *</Text>
                       <TouchableOpacity
                         activeOpacity={0.7}
-                        style={styles.pickerSelector}
+                        style={[styles.pickerSelector, { flexDirection: "row", alignItems: "center" }]}
                         onPress={() => setActiveVehicleTypeIndex(activeVehicleTypeIndex === idx ? null : idx)}
                       >
-                        <Text style={[styles.pickerSelectorText, veh.vehicleType ? styles.pickerSelected : null]}>
+                        {veh.vehicleType ? (
+                          <MaterialCommunityIcons
+                            name={vehicleIcon(veh.vehicleType) as any}
+                            size={20}
+                            color="#ff9800"
+                            style={{ marginRight: 10 }}
+                          />
+                        ) : null}
+                        <Text style={[{ flex: 1 }, styles.pickerSelectorText, veh.vehicleType ? styles.pickerSelected : null]}>
                           {veh.vehicleType || "Select Vehicle Type"}
                         </Text>
                         <Ionicons name="chevron-down-outline" size={20} color="#64748b" />

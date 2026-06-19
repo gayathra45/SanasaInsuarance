@@ -28,6 +28,104 @@ const vehicleTypes = [
   "Tractor"
 ];
 
+function getVehicleIconSvg(type: string, className = "w-5 h-5 text-white") {
+  if (!type) type = "car";
+  const t = type.toLowerCase().trim();
+  
+  if (t.includes("suv")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 12h20M17 17h3a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3L14 4H6L3 7v8a2 2 0 0 0 2 2h3" />
+        <circle cx="7" cy="17" r="2" />
+        <path d="M9 17h6" />
+        <circle cx="17" cy="17" r="2" />
+        <path d="M7 7h6M19 10h-3" />
+      </svg>
+    );
+  }
+  if (t.includes("cab") || t.includes("pickup")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 13h13V8H7L4 11H2v2zm13 0h7V10h-7v3z" />
+        <path d="M2 13v3a1 1 0 0 0 1 1h3" />
+        <path d="M9 17h6" />
+        <path d="M19 17h2a1 1 0 0 0 1-1v-3" />
+        <circle cx="7" cy="17" r="2" />
+        <circle cx="17" cy="17" r="2" />
+      </svg>
+    );
+  }
+  if (t.includes("van") || t.includes("minibus")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 15V7a2 2 0 0 1 2-2h12l5 3v7a2 2 0 0 1-2 2h-1" />
+        <path d="M2 15h3" />
+        <path d="M9 17h6" />
+        <circle cx="7" cy="17" r="2" />
+        <circle cx="17" cy="17" r="2" />
+        <path d="M6 8h4v3H6V8zm6 0h3v3h-3V8z" />
+      </svg>
+    );
+  }
+  if (t.includes("bike") || t.includes("motorcycle") || t.includes("scooter")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="5" cy="16" r="3" />
+        <circle cx="19" cy="16" r="3" />
+        <path d="M5 16h8l3-7H9l-2 3M16 9h3M12 9l-3-4H6" />
+      </svg>
+    );
+  }
+  if (t.includes("three") || t.includes("rickshaw") || t.includes("tuk")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="18" cy="18" r="2" />
+        <path d="M3 18h1c.5 0 .9-.4 1-1l1-6h11c.6 0 1-.4 1-1V5h-3l-2 3H8L6 11H3v7z" />
+        <path d="M12 11v7M15 11v7" />
+      </svg>
+    );
+  }
+  if (t.includes("lorry") || t.includes("truck")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 18H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h11v13zm0-8h7l2 3v5a1 1 0 0 1-1 1h-8v-9z" />
+        <circle cx="6" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+      </svg>
+    );
+  }
+  if (t.includes("bus")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 15V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v9M2 15h20v1a2 2 0 0 1-2 2h-1M5 18H3" />
+        <circle cx="7" cy="18" r="2" />
+        <circle cx="17" cy="18" r="2" />
+        <path d="M4 7h3v3H4V7zm5 0h3v3H9V7zm5 0h3v3h-3V7zm5 0h2v3h-2V7z" />
+      </svg>
+    );
+  }
+  if (t.includes("tractor")) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="6" cy="17" r="2.5" />
+        <circle cx="17" cy="15" r="4.5" />
+        <path d="M6 17h6v-2h-3v-4h4v5" />
+        <path d="M12.5 15.5h.5M9 11l-3-4H4" />
+      </svg>
+    );
+  }
+  
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.8C2.1 11 2 11.3 2 11.5V16c0 .6.4 1 1 1h2" />
+      <circle cx="7" cy="17" r="2" />
+      <path d="M9 17h6" />
+      <circle cx="17" cy="17" r="2" />
+    </svg>
+  );
+}
+
 export default function SignUpPage1() {
   const router = useRouter();
   const [validationError, setValidationError] = useState("");
@@ -277,28 +375,33 @@ export default function SignUpPage1() {
                       />
                     </div>
 
-                    {/* Vehicle Type Dropdown with custom chevron */}
+                    {/* Vehicle Type Dropdown with custom chevron and dynamic preview */}
                     <div className="flex flex-col gap-2">
                       <label className="text-white text-sm font-semibold tracking-wide ml-1 flex gap-0.5 select-none">
                         Vehicle Type <span className="text-red-500 font-bold">*</span>
                       </label>
-                      <div className="relative">
-                        <select
-                          required
-                          value={v.vehicleType}
-                          onChange={(e) => handleVehicleChange(idx, "vehicleType", e.target.value)}
-                          className="w-full bg-white text-slate-800 rounded-full py-3 px-6 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all font-medium border border-transparent appearance-none"
-                        >
-                          <option value="" disabled>Select Vehicle Type</option>
-                          {vehicleTypes.map((type) => (
-                            <option key={type} value={type}>{type}</option>
-                          ))}
-                        </select>
-                        <span className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-700">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-                          </svg>
-                        </span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full flex items-center justify-center bg-white/10 border border-white/20 text-white flex-shrink-0">
+                          {getVehicleIconSvg(v.vehicleType, "w-6 h-6 text-white")}
+                        </div>
+                        <div className="relative flex-1">
+                          <select
+                            required
+                            value={v.vehicleType}
+                            onChange={(e) => handleVehicleChange(idx, "vehicleType", e.target.value)}
+                            className="w-full bg-white text-slate-800 rounded-full py-3 px-6 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 transition-all font-medium border border-transparent appearance-none"
+                          >
+                            <option value="" disabled>Select Vehicle Type</option>
+                            {vehicleTypes.map((type) => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                          <span className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-700">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                            </svg>
+                          </span>
+                        </div>
                       </div>
                     </div>
 
