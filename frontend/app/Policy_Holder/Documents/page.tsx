@@ -51,6 +51,10 @@ export default function PolicyHolderDocuments() {
   const [viewModalFiles, setViewModalFiles] = useState<string[]>([]);
   const [viewCurrentIndex, setViewCurrentIndex] = useState(0);
 
+  // Uploaded Documents List Modal State
+  const [uploadedListModalOpen, setUploadedListModalOpen] = useState(false);
+  const [uploadedListTargetClaim, setUploadedListTargetClaim] = useState<any>(null);
+
   // Success Confirmation screen in Modal
   const [uploadSuccess, setUploadSuccess] = useState(false);
 
@@ -74,6 +78,17 @@ export default function PolicyHolderDocuments() {
       }
     }
   }, []);
+
+  useEffect(() => {
+    if (uploadModalOpen || uploadedListModalOpen || viewModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [uploadModalOpen, uploadedListModalOpen, viewModalOpen]);
 
   const fetchClaims = async (nic: string) => {
     try {
@@ -438,7 +453,10 @@ export default function PolicyHolderDocuments() {
                       {claim.date}
                     </span>
                     <button
-                      onClick={() => handleOpenView(`Documents – ${claim.claimNumber}`, claim.allFiles)}
+                      onClick={() => {
+                        setUploadedListTargetClaim(claim);
+                        setUploadedListModalOpen(true);
+                      }}
                       className="border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-500 hover:text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all duration-150 cursor-pointer bg-white"
                     >
                       View
@@ -465,83 +483,62 @@ export default function PolicyHolderDocuments() {
       {/* UPLOAD DOCUMENT DIALOG MODAL */}
       {uploadModalOpen && uploadTargetClaim && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
-          <div className="bg-[#e2e8f0] border border-slate-300 rounded-[35px] md:rounded-[45px] w-full max-w-[520px] p-8 md:p-10 shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col relative animate-fade-in max-h-[90vh] overflow-y-auto">
-            
-            {/* Close Button */}
-            <button
-              onClick={() => setUploadModalOpen(false)}
-              className="absolute top-6 right-6 text-slate-500 hover:text-slate-800 text-2xl font-bold bg-transparent border-none cursor-pointer p-1"
-            >
-              &times;
-            </button>
+          <div className="bg-white rounded-[32px] md:rounded-[40px] w-full max-w-[760px] p-10 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col relative animate-fade-in max-h-[90vh] overflow-y-auto">
 
             {!uploadSuccess ? (
-              <form onSubmit={handleUploadSubmit} className="flex flex-col gap-6">
-                <div className="select-none text-center">
-                  <h2 className="text-[22px] font-black text-[#0f2d3a] tracking-tight leading-tight">
-                    Upload Documents
+              <form onSubmit={handleUploadSubmit} className="flex flex-col">
+                <div className="select-none text-left">
+                  <h2 className="text-[26px] font-bold text-slate-950 tracking-tight leading-tight">
+                    Claim {uploadTargetClaim.claimNumber}
                   </h2>
-                  <p className="text-slate-500 text-xs font-semibold mt-1">
-                    Claim ID: {uploadTargetClaim.claimNumber}
+                  <p className="text-slate-400 text-[14px] font-semibold mt-1">
+                    Staff has requested a {uploadTargetClaim.requestedDocuments && uploadTargetClaim.requestedDocuments.length > 0 
+                      ? uploadTargetClaim.requestedDocuments.join(" & ") 
+                      : "Police Report & Repair Estimate"}
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-5 mt-2">
+                <hr className="border-t border-slate-200 mt-5 mb-5" />
+
+                <div className="flex flex-col gap-4.5 mt-2">
                   {Object.entries(uploadFiles).map(([docName, val]) => (
-                    <div key={docName} className="flex flex-col gap-2">
-                      <label className="text-slate-800 text-[14px] font-extrabold select-none">
-                        {docName} <span className="text-red-500">*</span>
-                      </label>
+                    <div 
+                      key={docName} 
+                      className="w-full border border-slate-300 rounded-full py-4 px-8 flex items-center justify-between min-h-[62px] bg-white transition-all"
+                    >
+                      <span className="text-slate-800 text-[16px] font-bold select-none">
+                        {docName}
+                      </span>
 
-                      {val.file === null ? (
-                        /* Empty State Upload Drop Card */
-                        <div
-                          onClick={() => fileInputRefs.current[docName]?.click()}
-                          className="w-full h-[120px] bg-white hover:bg-slate-50 border border-slate-300 border-dashed rounded-2xl flex flex-col items-center justify-center p-4 text-center cursor-pointer transition-all duration-150 active:scale-[0.98] select-none"
-                        >
-                          <svg className="w-8 h-8 text-slate-400 mb-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                          </svg>
-                          <span className="text-slate-800 text-[12px] font-extrabold block">
-                            Click to upload {docName}
-                          </span>
-                          <span className="text-slate-400 text-[9px] mt-1 font-semibold">
-                            JPG, PNG or PDF · Max 5MB
-                          </span>
-                        </div>
-                      ) : (
-                        /* Selected Image File Preview Card */
-                        <div className="w-full h-[120px] bg-white border border-slate-300 rounded-2xl p-3 flex items-center justify-between shadow-sm">
-                          <div className="flex items-center gap-3.5 min-w-0">
-                            {/* File Type Icon / Thumbnail Preview */}
-                            <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 flex-shrink-0 flex items-center justify-center">
-                              {val.file.type.startsWith("image/") ? (
-                                <img src={val.preview} alt="upload preview" className="w-full h-full object-cover" />
-                              ) : (
-                                <svg className="w-8 h-8 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M4 4a2 2 0 0 1 2-2h4.586A2 2 0 0 1 12 2.586L15.414 6A2 2 0 0 1 16 7.414V16a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4z" />
-                                </svg>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <span className="text-slate-800 font-extrabold text-[13px] block truncate leading-none">
-                                {val.file.name}
-                              </span>
-                              <span className="text-slate-400 text-[10px] font-bold mt-1.5 block select-none">
-                                {(val.file.size / (1024 * 1024)).toFixed(2)} MB
-                              </span>
-                            </div>
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveFile(docName)}
-                            className="bg-red-500 hover:bg-red-600 active:scale-95 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold cursor-pointer border-none shadow-sm flex-shrink-0"
+                      <div className="flex items-center gap-3">
+                        {val.file === null ? (
+                          <span
+                            onClick={() => fileInputRefs.current[docName]?.click()}
+                            className="text-red-500 hover:text-red-600 font-extrabold text-[15px] cursor-pointer hover:underline select-none"
                           >
-                            &times;
-                          </button>
-                        </div>
-                      )}
+                            Upload
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span 
+                              className="text-emerald-600 font-bold text-sm truncate max-w-[200px]"
+                              title={val.file.name}
+                            >
+                              ✓ {val.file.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveFile(docName)}
+                              className="text-red-500 hover:text-red-600 cursor-pointer bg-transparent border-none p-1 transition-colors flex items-center justify-center"
+                              title="Remove file"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Hidden File Input */}
                       <input
@@ -555,26 +552,26 @@ export default function PolicyHolderDocuments() {
                   ))}
                 </div>
 
-                <div className="flex flex-row justify-between items-center mt-4">
+                <div className="flex flex-row justify-between items-center mt-10">
                   <button
                     type="button"
                     onClick={() => setUploadModalOpen(false)}
-                    className="bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-bold text-xs md:text-sm px-6 py-3 rounded-full transition-all duration-150 cursor-pointer border-none"
+                    className="bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-bold text-sm px-14 py-3.5 rounded-full transition-all duration-150 cursor-pointer border-none min-w-[140px] text-center"
                   >
-                    Cancel
+                    &lt; Close
                   </button>
                   <button
                     type="submit"
                     disabled={isUploading}
-                    className="bg-red-600 hover:bg-red-700 disabled:bg-slate-400 active:scale-[0.97] text-white font-extrabold text-xs md:text-sm px-8 py-3 rounded-full shadow-[0_4px_12px_rgba(220,38,38,0.25)] transition-all duration-150 cursor-pointer border-none flex items-center gap-2"
+                    className="bg-[#0f2d3a] hover:bg-[#0b222c] disabled:bg-slate-400 active:scale-[0.97] text-white font-bold text-sm px-14 py-3.5 rounded-full transition-all duration-150 cursor-pointer border-none flex items-center justify-center gap-2 min-w-[140px] text-center"
                   >
                     {isUploading ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
-                        <span>Uploading...</span>
+                        <span>Submitting...</span>
                       </>
                     ) : (
-                      <span>Upload Files</span>
+                      <span>Submit &gt;</span>
                     )}
                   </button>
                 </div>
@@ -589,16 +586,16 @@ export default function PolicyHolderDocuments() {
                   </svg>
                 </div>
 
-                <h3 className="text-[20px] font-black text-[#0f2d3a] mt-5 leading-none">
+                <h3 className="text-[22px] font-black text-[#0f2d3a] mt-5 leading-none">
                   Upload Complete!
                 </h3>
-                <p className="text-slate-600 text-[13px] font-semibold mt-2.5 max-w-[285px] leading-relaxed mx-auto">
+                <p className="text-slate-600 text-[14px] font-semibold mt-2.5 max-w-[325px] leading-relaxed mx-auto">
                   Your files have been submitted successfully. Office staff will review them shortly.
                 </p>
 
                 <button
                   onClick={() => setUploadModalOpen(false)}
-                  className="mt-8 bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-extrabold text-[13px] px-8 py-3 rounded-full transition-all duration-150 shadow-md border-none cursor-pointer"
+                  className="mt-8 bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-extrabold text-[14px] px-10 py-3.5 rounded-full transition-all duration-150 shadow-md border-none cursor-pointer"
                 >
                   Done
                 </button>
@@ -609,36 +606,94 @@ export default function PolicyHolderDocuments() {
         </div>
       )}
 
-      {/* VIEW DOCUMENT VIEWER MODAL */}
-      {viewModalOpen && (
-        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
-          <div className="w-full max-w-[800px] h-[85vh] flex flex-col relative bg-transparent rounded-2xl overflow-hidden">
-            
-            {/* Modal Top Nav Bar */}
-            <div className="flex justify-between items-center bg-black/60 backdrop-blur px-6 py-4 text-white z-10 rounded-t-2xl">
-              <h3 className="text-base font-extrabold truncate pr-4">{viewModalTitle}</h3>
-              <div className="flex items-center gap-6">
-                {viewModalFiles.length > 1 && (
-                  <span className="text-xs font-bold bg-white/20 px-3 py-1 rounded-full">
-                    {viewCurrentIndex + 1} / {viewModalFiles.length}
-                  </span>
-                )}
-                <button
-                  onClick={() => setViewModalOpen(false)}
-                  className="text-white hover:text-red-400 text-3xl font-bold bg-transparent border-none cursor-pointer leading-none p-1"
-                >
-                  &times;
-                </button>
-              </div>
+      {/* UPLOADED DOCUMENTS LIST DIALOG MODAL */}
+      {uploadedListModalOpen && uploadedListTargetClaim && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
+          <div className="bg-white rounded-[32px] md:rounded-[40px] w-full max-w-[760px] p-10 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col relative animate-fade-in max-h-[90vh] overflow-y-auto">
+
+            <div className="select-none text-left">
+              <h2 className="text-[26px] font-bold text-slate-950 tracking-tight leading-tight">
+                Claim {uploadedListTargetClaim.claimNumber}
+              </h2>
+              <p className="text-slate-400 text-[14px] font-semibold mt-1">
+                Uploaded Documents
+              </p>
             </div>
 
-            {/* Viewer Content Frame */}
-            <div className="flex-1 bg-black flex items-center justify-center relative p-6">
-              {viewModalFiles[viewCurrentIndex].startsWith("data:application/pdf") || viewModalFiles[viewCurrentIndex].includes(".pdf") ? (
+            <hr className="border-t border-slate-200 mt-5 mb-5" />
+
+            <div className="flex flex-col gap-4.5 mt-2">
+              {uploadedListTargetClaim.docs.map((doc: any, dIdx: number) => (
+                <div 
+                  key={dIdx} 
+                  className="w-full border border-slate-300 rounded-full py-4 px-8 flex items-center justify-between min-h-[62px] bg-white transition-all"
+                >
+                  <span className="text-slate-800 text-[16px] font-bold select-none">
+                    {doc.name}
+                  </span>
+
+                  <span
+                    onClick={() => handleOpenView(`${doc.name} – ${uploadedListTargetClaim.claimNumber}`, doc.files)}
+                    className="text-red-500 hover:text-red-600 font-extrabold text-[15px] cursor-pointer hover:underline select-none"
+                  >
+                    View
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex flex-row justify-between items-center mt-10">
+              <button
+                type="button"
+                onClick={() => setUploadedListModalOpen(false)}
+                className="bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-bold text-sm px-14 py-3.5 rounded-full transition-all duration-150 cursor-pointer border-none min-w-[140px] text-center"
+              >
+                &lt; Close
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadedListModalOpen(false)}
+                className="bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-bold text-sm px-14 py-3.5 rounded-full transition-all duration-150 cursor-pointer border-none min-w-[140px] text-center"
+              >
+                Submit &gt;
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* VIEW DOCUMENT VIEWER MODAL */}
+      {viewModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
+          <div className="bg-white rounded-[32px] md:rounded-[40px] w-full max-w-[760px] p-10 md:p-14 shadow-[0_20px_50px_rgba(0,0,0,0.12)] flex flex-col relative animate-fade-in max-h-[90vh] overflow-y-auto">
+
+            {/* Header */}
+            {(() => {
+              const [docName, claimNumber] = viewModalTitle.includes(" – ") 
+                ? viewModalTitle.split(" – ") 
+                : [viewModalTitle, ""];
+              return (
+                <div className="select-none text-left">
+                  <h2 className="text-[26px] font-bold text-slate-950 tracking-tight leading-tight">
+                    {docName}
+                  </h2>
+                  <p className="text-slate-400 text-[14px] font-semibold mt-1">
+                    {claimNumber ? `Claim ${claimNumber}` : ""}
+                  </p>
+                </div>
+              );
+            })()}
+
+            <hr className="border-t border-slate-200 mt-5 mb-5" />
+
+            {/* Viewer Content Frame inside a rounded border container */}
+            <div className="relative border border-slate-300 rounded-[28px] p-4 flex items-center justify-center bg-slate-50 min-h-[360px] max-h-[50vh] overflow-hidden select-none">
+              {viewModalFiles[viewCurrentIndex]?.startsWith("data:application/pdf") || viewModalFiles[viewCurrentIndex]?.includes(".pdf") ? (
                 /* PDF Embed Frame */
                 <iframe
                   src={viewModalFiles[viewCurrentIndex]}
-                  className="w-full h-full border-none rounded-xl"
+                  className="w-full h-[400px] border-none rounded-[20px]"
                   title="PDF Document"
                 />
               ) : (
@@ -646,17 +701,18 @@ export default function PolicyHolderDocuments() {
                 <img
                   src={viewModalFiles[viewCurrentIndex]}
                   alt="document display"
-                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+                  className="max-w-full max-h-[360px] object-contain rounded-[20px]"
                 />
               )}
 
               {/* Slider Prev Navigation Arrow */}
               {viewModalFiles.length > 1 && viewCurrentIndex > 0 && (
                 <button
+                  type="button"
                   onClick={() => setViewCurrentIndex(prev => prev - 1)}
-                  className="absolute left-6 w-12 h-12 bg-black/40 hover:bg-black/80 text-white rounded-full flex items-center justify-center transition-all cursor-pointer border-none shadow-md"
+                  className="absolute left-4 w-10 h-10 bg-black/50 hover:bg-black/75 text-white rounded-full flex items-center justify-center transition-all cursor-pointer border-none shadow-md"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
                   </svg>
                 </button>
@@ -665,19 +721,33 @@ export default function PolicyHolderDocuments() {
               {/* Slider Next Navigation Arrow */}
               {viewModalFiles.length > 1 && viewCurrentIndex < viewModalFiles.length - 1 && (
                 <button
+                  type="button"
                   onClick={() => setViewCurrentIndex(prev => prev + 1)}
-                  className="absolute right-6 w-12 h-12 bg-black/40 hover:bg-black/80 text-white rounded-full flex items-center justify-center transition-all cursor-pointer border-none shadow-md"
+                  className="absolute right-4 w-10 h-10 bg-black/50 hover:bg-black/75 text-white rounded-full flex items-center justify-center transition-all cursor-pointer border-none shadow-md"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
                   </svg>
                 </button>
               )}
+
+              {/* Page count indicator overlay */}
+              {viewModalFiles.length > 1 && (
+                <span className="absolute bottom-4 right-4 text-xs font-bold bg-black/60 text-white px-3 py-1 rounded-full">
+                  {viewCurrentIndex + 1} / {viewModalFiles.length}
+                </span>
+              )}
             </div>
 
-            {/* Modal Bottom Status Bar */}
-            <div className="bg-black/60 backdrop-blur px-6 py-3.5 text-center text-[11px] text-white/50 font-bold select-none rounded-b-2xl">
-              Sanasa General Insurance Co. LTD. Document Storage
+            {/* Bottom Button Panel */}
+            <div className="flex flex-row justify-between items-center mt-10">
+              <button
+                type="button"
+                onClick={() => setViewModalOpen(false)}
+                className="bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-bold text-sm px-14 py-3.5 rounded-full transition-all duration-150 cursor-pointer border-none min-w-[140px] text-center"
+              >
+                &lt; Close
+              </button>
             </div>
 
           </div>
