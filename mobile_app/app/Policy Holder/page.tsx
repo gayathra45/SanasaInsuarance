@@ -14,6 +14,8 @@ import {
   Animated,
   Easing,
   ImageBackground,
+  Modal,
+  Linking,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -105,6 +107,16 @@ export default function PolicyHolderDashboard() {
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
   const [hasDocRequest, setHasDocRequest] = useState(false);
+  const [customAlert, setCustomAlert] = useState<{
+    title: string;
+    message: string;
+    type?: "success" | "warning" | "info";
+    onClose?: () => void;
+  } | null>(null);
+
+  const showCustomAlert = (title: string, message: string, type: "success" | "warning" | "info" = "info", onClose?: () => void) => {
+    setCustomAlert({ title, message, type, onClose });
+  };
 
   const contentFadeAnim  = useRef(new Animated.Value(0)).current;
   const headerSlideAnim  = useRef(new Animated.Value(-20)).current;
@@ -252,10 +264,10 @@ export default function PolicyHolderDashboard() {
   };
 
   const showSupportAlert = () => {
-    Alert.alert(
+    showCustomAlert(
       "Sanasa Support 📞",
-      "We are available 24/7 to assist you.\n\nHotline: +94 112 003 000\nEmail: claims-support@sanasa.lk\nAddress: No. 123, Main Street, Colombo",
-      [{ text: "OK", style: "default" }]
+      "We are available 24/7 to assist you.\n\nHotline: +94 112 003 000\nEmail: claims@sanasainsurance.lk\nAddress: No: 172, Elvitigala Mv, Colombo 8",
+      "info"
     );
   };
 
@@ -588,7 +600,7 @@ export default function PolicyHolderDashboard() {
                 <Ionicons name="headset-outline" size={24} color="#0f172a" />
                 <View style={{ marginLeft: 12 }}>
                   <Text style={styles.supportLabel}>Support</Text>
-                  <Text style={styles.supportSub}>Phone: +94 112 003 000{`\n`}Email: claims-support@sanasa.lk</Text>
+                  <Text style={styles.supportSub}>Phone: +94 112 003 000{`\n`}Email: claims@sanasainsurance.lk</Text>
                 </View>
               </View>
             </TouchableOpacity>
@@ -626,6 +638,122 @@ export default function PolicyHolderDashboard() {
       </TouchableOpacity>
 
       <PolicyHolderNavbar />
+
+      {/* Unified Custom Alert Overlay Modal */}
+      {customAlert && (
+        <Modal
+          transparent
+          animationType="fade"
+          visible={!!customAlert}
+          onRequestClose={() => setCustomAlert(null)}
+        >
+          <View style={styles.alertOverlay}>
+            <View style={styles.alertCard}>
+              <View style={[
+                styles.alertIconCircle,
+                customAlert.type === "success" && { backgroundColor: "rgba(74, 222, 128, 0.12)", borderColor: "rgba(74, 222, 128, 0.3)" },
+                customAlert.type === "warning" && { backgroundColor: "rgba(239, 68, 68, 0.12)", borderColor: "rgba(239, 68, 68, 0.3)" },
+              ]}>
+                <Ionicons
+                  name={
+                    customAlert.type === "success"
+                      ? "checkmark-circle-outline"
+                      : customAlert.type === "warning"
+                        ? "alert-circle-outline"
+                        : "information-circle-outline"
+                  }
+                  size={38}
+                  color={
+                    customAlert.type === "success"
+                      ? "#4ade80"
+                      : customAlert.type === "warning"
+                        ? "#f87171"
+                        : "#ff9800"
+                  }
+                />
+              </View>
+              <Text style={styles.alertTitle}>{customAlert.title}</Text>
+
+              {customAlert.title.includes("Support") ? (
+                /* Interactive support list buttons inside modal */
+                <View style={styles.supportAlertContainer}>
+                  {/* Phone Item */}
+                  <TouchableOpacity
+                    style={styles.alertSupportItem}
+                    onPress={() => {
+                      setCustomAlert(null);
+                      Linking.openURL("tel:+94112003000").catch(() => {});
+                    }}
+                  >
+                    <Ionicons name="call" size={18} color="#0ea5e9" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.alertSupportLabel}>Call Hotline</Text>
+                      <Text style={styles.alertSupportValue}>+94 112 003 000</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Email Item */}
+                  <TouchableOpacity
+                    style={styles.alertSupportItem}
+                    onPress={() => {
+                      setCustomAlert(null);
+                      Linking.openURL("mailto:claims@sanasainsurance.lk").catch(() => {});
+                    }}
+                  >
+                    <Ionicons name="mail" size={18} color="#0ea5e9" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.alertSupportLabel}>Email Support</Text>
+                      <Text style={styles.alertSupportValue}>claims@sanasainsurance.lk</Text>
+                    </View>
+                  </TouchableOpacity>
+
+                  {/* Chat Item */}
+                  <TouchableOpacity
+                    style={styles.alertSupportItem}
+                    onPress={() => {
+                      setCustomAlert({
+                        title: "Live Chat 💬",
+                        message: "The live chat feature is currently being developed and will be available soon!",
+                        type: "info",
+                      });
+                    }}
+                  >
+                    <Ionicons name="chatbubbles" size={18} color="#0ea5e9" />
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={styles.alertSupportLabel}>Live Chat</Text>
+                      <Text style={styles.alertSupportValue}>Coming Soon</Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <Text style={styles.alertMsg}>{customAlert.message}</Text>
+              )}
+
+              {customAlert.title.includes("Support") ? (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setCustomAlert(null)}
+                  style={[styles.alertButton, { backgroundColor: "#475569", shadowColor: "#475569", marginTop: 8 }]}
+                >
+                  <Text style={styles.alertButtonText}>Close</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    const cb = customAlert.onClose;
+                    setCustomAlert(null);
+                    if (cb) cb();
+                  }}
+                  style={styles.alertButton}
+                >
+                  <Text style={styles.alertButtonText}>OK</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -950,6 +1078,93 @@ const styles = StyleSheet.create({
   supportLabel: { fontSize: 15, fontWeight: "800", color: "#0f172a" },
   supportSub: { fontSize: 12, color: "#64748b", marginTop: 2 },
 
-
-
+  /* Unified Alert Styles */
+  alertOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  alertCard: {
+    width: "85%",
+    maxWidth: 340,
+    backgroundColor: "#ffffff",
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    padding: 24,
+    alignItems: "center",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  alertIconCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "rgba(14, 165, 233, 0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(14, 165, 233, 0.2)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  alertTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#0f172a",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  alertMsg: {
+    fontSize: 13.5,
+    color: "#475569",
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 20,
+  },
+  alertButton: {
+    backgroundColor: "#0d2a3a",
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 32,
+    shadowColor: "#0d2a3a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  alertButtonText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  supportAlertContainer: {
+    width: "100%",
+    gap: 12,
+    marginBottom: 16,
+  },
+  alertSupportItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 16,
+    padding: 12,
+    width: "100%",
+  },
+  alertSupportLabel: {
+    fontSize: 13,
+    fontWeight: "bold",
+    color: "#0f172a",
+  },
+  alertSupportValue: {
+    fontSize: 12,
+    color: "#64748b",
+    marginTop: 2,
+    fontWeight: "500",
+  },
 });
