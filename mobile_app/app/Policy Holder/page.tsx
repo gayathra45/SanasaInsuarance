@@ -213,7 +213,7 @@ export default function PolicyHolderDashboard() {
       setInProgress(pending.length);
       setApproved(approvedList.length);
       setHasDocRequest(docReq);
-      setNotifications(notifs);
+      setNotifications(notifs.slice(0, 3));
     } catch (e) {
       console.error(e);
     } finally {
@@ -484,15 +484,17 @@ export default function PolicyHolderDashboard() {
                   }
 
                   return (
-                    <View key={n.id} style={[styles.notifCard, borderStyle, bgStyle]}>
-                      <View style={styles.notifHeader}>
-                        <Ionicons name={iconName} size={20} color={iconColor} style={{ marginRight: 8 }} />
-                        <Text style={[styles.notifTitle, { color: titleColor }]}>{n.title}</Text>
+                    <View key={n.id} style={[styles.notifCard, borderStyle]}>
+                      <View style={[styles.notifCardBody, bgStyle]}>
+                        <View style={styles.notifHeader}>
+                          <Ionicons name={iconName} size={20} color={iconColor} style={{ marginRight: 8 }} />
+                          <Text style={[styles.notifTitle, { color: titleColor }]}>{n.title}</Text>
+                        </View>
+                        <Text style={styles.notifDesc}>{n.description}</Text>
+                        {n.subText && <Text style={styles.notifSubtext}>{n.subText}</Text>}
                       </View>
-                      <Text style={styles.notifDesc}>{n.description}</Text>
-                      {n.subText && <Text style={styles.notifSubtext}>{n.subText}</Text>}
 
-                      <View style={styles.notifFooter}>
+                      <View style={styles.notifCardFooter}>
                         <View style={styles.notifActions}>
                           {n.actions?.map((act, i) => (
                             <TouchableOpacity
@@ -743,17 +745,20 @@ const styles = StyleSheet.create({
   /* Notification cards — previous design */
   notificationList: { gap: 14 },
   notifCard: {
-    borderRadius: 20, padding: 16, borderWidth: 1.5,
+    borderRadius: 20, borderWidth: 1.5,
+    backgroundColor: "#ffffff",
+    overflow: "hidden",
     shadowColor: "#0f172a", shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02, shadowRadius: 8, elevation: 1,
   },
-  notifHeader: { flexDirection: "row", alignItems: "center", marginBottom: 6 },
-  notifTitle: { flex: 1, fontSize: 14, fontWeight: "800" },
-  notifDesc: { fontSize: 13, color: "#475569", fontWeight: "600", lineHeight: 19 },
-  notifSubtext: { fontSize: 11, color: "#64748b", fontWeight: "600", marginTop: 4 },
-  notifFooter: {
+  notifCardBody: {
+    padding: 16,
+  },
+  notifCardFooter: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-    marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.04)",
+    paddingHorizontal: 16, paddingBottom: 16, paddingTop: 12,
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1, borderTopColor: "rgba(0,0,0,0.05)",
   },
   notifActions: { flexDirection: "row", gap: 8 },
   notifBtn: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 99 },
