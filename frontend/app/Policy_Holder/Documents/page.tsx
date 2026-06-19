@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
+import { API_URL } from "@/app/config";
 
 interface AdditionalDoc {
   name: string;
@@ -77,7 +78,7 @@ export default function PolicyHolderDocuments() {
   const fetchClaims = async (nic: string) => {
     try {
       setIsLoading(true);
-      const res = await fetch(`http://localhost:5000/api/policy-holder/user-claims?nic=${encodeURIComponent(nic)}&includeDocs=true`);
+      const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(nic)}&includeDocs=true`);
       let databaseClaims: Claim[] = [];
       if (res.ok) {
         const data = await res.json();
@@ -203,7 +204,7 @@ export default function PolicyHolderDocuments() {
         })
       );
 
-      const res = await fetch(`http://localhost:5000/api/policy-holder/update-claim/${uploadTargetClaim.claimNumber}`, {
+      const res = await fetch(`${API_URL}/policy-holder/update-claim/${uploadTargetClaim.claimNumber}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uploadedDocuments: uploadedDocumentsPayload })

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/app/Components/Agent/Navbar";
 import Footer from "@/app/Components/Agent/Footer";
+import { API_URL } from "@/app/config";
 
 // Interface representing a MongoDB Claim document
 interface ClaimMessage {
@@ -49,7 +50,7 @@ export default function AgentDashboard() {
   const fetchClaims = async (email: string) => {
     try {
       setLoading(true);
-      const res = await fetch(`http://localhost:5000/api/agent/claims?email=${email}`);
+      const res = await fetch(`${API_URL}/agent/claims?email=${email}`);
       if (!res.ok) throw new Error("Failed to fetch claims");
       const data = await res.json();
       setClaims(data);
@@ -115,7 +116,7 @@ export default function AgentDashboard() {
         return;
       }
 
-      const res = await fetch(`http://localhost:5000/api/agent/claims/${claimId}/status`, {
+      const res = await fetch(`${API_URL}/agent/claims/${claimId}/status`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "Approved", amount: numAmount })

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { API_URL } from "@/app/config";
 import AdminNavbar from "@/app/Components/Admin/Navbar";
 import AdminFooter from "@/app/Components/Admin/Footer";
 
@@ -39,7 +40,7 @@ export default function AdminDashboard() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        const res = await fetch("http://localhost:5000/api/admin/dashboard-stats");
+        const res = await fetch(`${API_URL}/admin/dashboard-stats`);
         if (!res.ok) {
           throw new Error("Failed to fetch dashboard statistics.");
         }

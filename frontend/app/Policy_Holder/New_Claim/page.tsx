@@ -5,6 +5,7 @@ import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { API_URL } from "@/app/config";
 
 function formatNumberPlate(plate: string): string {
   if (!plate) return "";
@@ -67,7 +68,7 @@ export default function FileNewClaim() {
           try {
             const user = JSON.parse(userStr);
             if (user.nic) {
-              const res = await fetch(`http://localhost:5000/api/policy-holder/vehicles?nic=${user.nic}`);
+              const res = await fetch(`${API_URL}/policy-holder/vehicles?nic=${user.nic}`);
               if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data.vehicles) && data.vehicles.length > 0) {

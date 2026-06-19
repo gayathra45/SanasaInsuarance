@@ -5,6 +5,7 @@ import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { API_URL } from "@/app/config";
 
 interface FileUploadState {
   files: File[];
@@ -167,7 +168,7 @@ export default function UploadDocumentsPage() {
     };
 
     try {
-      const response = await fetch("http://localhost:5000/api/policy-holder/new-claim", {
+      const response = await fetch(`${API_URL}/policy-holder/new-claim`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(claimData)

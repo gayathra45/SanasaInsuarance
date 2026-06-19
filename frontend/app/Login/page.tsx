@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navbar from "@/app/Components/Homepage/Navbar";
+import { API_URL } from "@/app/config";
 import Footer from "@/app/Components/Login/Footer";
 
 type Role = "policy_holder" | "insurance_agent" | "office_staff" | "admin";
@@ -26,7 +27,7 @@ export default function Login() {
     if (activeRole !== "policy_holder") {
       if (activeRole === "admin") {
         try {
-          const response = await fetch("http://localhost:5000/api/admin/login", {
+          const response = await fetch(`${API_URL}/admin/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: loginId, password })
@@ -47,7 +48,7 @@ export default function Login() {
 
       if (activeRole === "office_staff") {
         try {
-          const response = await fetch("http://localhost:5000/api/office-staff/login", {
+          const response = await fetch(`${API_URL}/office-staff/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: loginId, password })
@@ -68,7 +69,7 @@ export default function Login() {
 
       if (activeRole === "insurance_agent") {
         try {
-          const response = await fetch("http://localhost:5000/api/agent/login", {
+          const response = await fetch(`${API_URL}/agent/login`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email: loginId, password })
@@ -98,7 +99,7 @@ export default function Login() {
     }
 
     try {
-      const response = await fetch("http://localhost:5000/api/policy-holder/login", {
+      const response = await fetch(`${API_URL}/policy-holder/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ nic: loginId, password })

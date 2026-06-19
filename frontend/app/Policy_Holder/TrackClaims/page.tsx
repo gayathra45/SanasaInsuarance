@@ -5,6 +5,7 @@ import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { API_URL } from "@/app/config";
 
 interface Claim {
   claimNumber: string;
@@ -52,7 +53,7 @@ function TrackClaimsContent() {
         let databaseClaims: Claim[] = [];
         if (userNic) {
           try {
-            const res = await fetch(`http://localhost:5000/api/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`);
+            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`);
             if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data.claims)) {
@@ -149,7 +150,7 @@ function TrackClaimsContent() {
 
     try {
       // 1. Try fetching from Backend API first
-      const res = await fetch(`http://localhost:5000/api/policy-holder/track-claim?claimNumber=${encodeURIComponent(cleanId)}`);
+      const res = await fetch(`${API_URL}/policy-holder/track-claim?claimNumber=${encodeURIComponent(cleanId)}`);
       if (res.ok) {
         const data = await res.json();
         if (data.claim) {

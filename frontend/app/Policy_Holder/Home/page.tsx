@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
+import { API_URL } from "@/app/config";
 
 function formatNumberPlate(plate: string): string {
   if (!plate) return "";
@@ -163,7 +164,7 @@ export default function PolicyHolderHome() {
           if (user.nic) {
             const fetchClaims = async () => {
               try {
-                const res = await fetch(`http://localhost:5000/api/policy-holder/user-claims?nic=${encodeURIComponent(user.nic)}`);
+                const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(user.nic)}`);
                 let dbClaims: any[] = [];
                 if (res.ok) {
                   const data = await res.json();

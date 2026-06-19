@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
+import { API_URL } from "@/app/config";
 
 interface Claim {
   claimNumber: string;
@@ -54,7 +55,7 @@ export default function MyClaims() {
         // 2. Fetch Claims from MongoDB API (if NIC exists)
         if (userNic) {
           try {
-            const res = await fetch(`http://localhost:5000/api/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`);
+            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`);
             if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data.claims)) {

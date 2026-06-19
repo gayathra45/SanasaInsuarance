@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { API_URL } from "@/app/config";
 import OfficeStaffNavbar from "@/app/Components/Office Staff/Navbar";
 import OfficeStaffFooter from "@/app/Components/Office Staff/Footer";
 
@@ -53,7 +54,7 @@ export default function OfficeStaffDashboard() {
 
     async function fetchStats() {
       try {
-        const res = await fetch(`http://localhost:5000/api/office-staff/dashboard-stats?branch=${currentBranch}`);
+        const res = await fetch(`${API_URL}/office-staff/dashboard-stats?branch=${currentBranch}`);
         if (!res.ok) {
           throw new Error("Failed to load dashboard metrics.");
         }

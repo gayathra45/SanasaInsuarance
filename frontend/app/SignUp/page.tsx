@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/app/Components/Homepage/Navbar";
 import LoginFooter from "@/app/Components/Login/Footer";
+import { API_URL } from "@/app/config";
 
 // Province and Cities Sri Lanka Data
 const provincesData = [
@@ -150,7 +151,7 @@ export default function SignUp() {
 
     // Check database if NIC or Email is already registered
     try {
-      const res = await fetch(`http://localhost:5000/api/signup/check?email=${encodeURIComponent(email)}&nic=${encodeURIComponent(cleanNic)}`);
+      const res = await fetch(`${API_URL}/signup/check?email=${encodeURIComponent(email)}&nic=${encodeURIComponent(cleanNic)}`);
       if (!res.ok) {
         throw new Error("Failed to verify credentials with the database.");
       }

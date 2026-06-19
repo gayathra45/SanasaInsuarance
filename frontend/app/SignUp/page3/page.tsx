@@ -4,6 +4,7 @@ import React, { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/app/Components/Homepage/Navbar";
 import LoginFooter from "@/app/Components/Login/Footer";
+import { API_URL } from "@/app/config";
 
 function formatNumberPlate(plate: string): string {
   if (!plate) return "";
@@ -203,7 +204,7 @@ export default function SignUpPage3() {
         }
       };
 
-      const res = await fetch("http://localhost:5000/api/signup", {
+      const res = await fetch(`${API_URL}/signup`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
