@@ -138,15 +138,18 @@ router.post("/", async (req, res) => {
     ]);
 
     const newUser = new User({
-      firstName, lastName, nic: cleanNic, mobile: cleanMobile,
-      email, dob, address, province, city,
-      password: hashedPassword, vehicles,
-      documents: {
-        nicFront: uploadedNicFront,
-        nicBack: uploadedNicBack,
-        vehicleReg: uploadedVehicleReg,
-        revenueLicense: uploadedRevenueLicense
-      },
+      firstName,
+      lastName,
+      nic: cleanNic,
+      mobile: cleanMobile,
+      email,
+      dob,
+      address,
+      province,
+      city,
+      password: hashedPassword,
+      vehicles,
+      documents,
       branch: getNearestBranch(city, province),
       referenceNumber: nextRefNum,
     });
