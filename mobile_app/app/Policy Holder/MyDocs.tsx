@@ -518,18 +518,12 @@ export default function MyDocs() {
                 ))}
               </ScrollView>
 
-              <View style={styles.modalFooter}>
+              <View style={[styles.modalFooter, { justifyContent: "flex-start" }]}>
                 <TouchableOpacity 
                   style={styles.modalCloseBtn}
                   onPress={() => setUploadedListModalOpen(false)}
                 >
                   <Text style={styles.modalBtnText}>&lt; Close</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={styles.modalSubmitBtn}
-                  onPress={() => setUploadedListModalOpen(false)}
-                >
-                  <Text style={styles.modalBtnText}>Submit &gt;</Text>
                 </TouchableOpacity>
               </View>
             </View>

@@ -642,20 +642,13 @@ export default function PolicyHolderDocuments() {
               ))}
             </div>
 
-            <div className="flex flex-row justify-between items-center mt-10">
+            <div className="flex flex-row justify-start items-center mt-10">
               <button
                 type="button"
                 onClick={() => setUploadedListModalOpen(false)}
                 className="bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-bold text-sm px-14 py-3.5 rounded-full transition-all duration-150 cursor-pointer border-none min-w-[140px] text-center"
               >
                 &lt; Close
-              </button>
-              <button
-                type="button"
-                onClick={() => setUploadedListModalOpen(false)}
-                className="bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-bold text-sm px-14 py-3.5 rounded-full transition-all duration-150 cursor-pointer border-none min-w-[140px] text-center"
-              >
-                Submit &gt;
               </button>
             </div>
 
