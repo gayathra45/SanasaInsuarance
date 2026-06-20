@@ -116,4 +116,44 @@ router.get("/dashboard-stats", async (req, res) => {
   }
 });
 
+// GET all registrations for a specific branch: /api/office-staff/registrations
+router.get("/registrations", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+    const registrations = await User.find({ branch: branch.trim(), status: { $ne: "Approved" } }, { password: 0 }).sort({ createdAt: -1 });
+    res.json({ registrations });
+  } catch (err) {
+    console.error("Fetch office staff registrations error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// PATCH update user registration status: /api/office-staff/registrations/:id/status
+router.patch("/registrations/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["Pending", "Approved", "Rejected"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value. Must be Pending, Approved, or Rejected." });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    user.status = status;
+    await user.save();
+
+    res.json({ message: `Registration status updated to ${status}`, user });
+  } catch (err) {
+    console.error("Update registration status error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
 export default router;

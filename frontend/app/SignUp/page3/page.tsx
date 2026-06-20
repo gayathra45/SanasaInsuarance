@@ -134,6 +134,14 @@ export default function SignUpPage3() {
   // Data retrieved from session cache
   const [personal, setPersonal] = useState<any>(null);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  
+  // Base64 document contents
+  const [nicFrontData, setNicFrontData] = useState("");
+  const [nicBackData, setNicBackData] = useState("");
+  const [vehicleRegData, setVehicleRegData] = useState("");
+  const [revenueLicenseData, setRevenueLicenseData] = useState("");
+
+  // Filenames for display
   const [nicFrontName, setNicFrontName] = useState("");
   const [nicBackName, setNicBackName] = useState("");
   const [vehicleRegName, setVehicleRegName] = useState("");
@@ -151,10 +159,16 @@ export default function SignUpPage3() {
     if (typeof window !== "undefined") {
       const savedPersonal = sessionStorage.getItem("signup_personal_details");
       const savedVehicles = sessionStorage.getItem("signup_vehicle_details");
+      
       const savedFront = sessionStorage.getItem("signup_nic_front_uploaded");
       const savedBack = sessionStorage.getItem("signup_nic_back_uploaded");
       const savedVehicleReg = sessionStorage.getItem("signup_vehicle_reg_uploaded");
       const savedRevenueLicense = sessionStorage.getItem("signup_revenue_license_uploaded");
+
+      const savedFrontName = sessionStorage.getItem("signup_nic_front_name");
+      const savedBackName = sessionStorage.getItem("signup_nic_back_name");
+      const savedVehicleRegName = sessionStorage.getItem("signup_vehicle_reg_name");
+      const savedRevenueLicenseName = sessionStorage.getItem("signup_revenue_license_name");
 
       if (savedPersonal) {
         try {
@@ -170,10 +184,15 @@ export default function SignUpPage3() {
           console.error(e);
         }
       }
-      if (savedFront) setNicFrontName(savedFront);
-      if (savedBack) setNicBackName(savedBack);
-      if (savedVehicleReg) setVehicleRegName(savedVehicleReg);
-      if (savedRevenueLicense) setRevenueLicenseName(savedRevenueLicense);
+      if (savedFront) setNicFrontData(savedFront);
+      if (savedBack) setNicBackData(savedBack);
+      if (savedVehicleReg) setVehicleRegData(savedVehicleReg);
+      if (savedRevenueLicense) setRevenueLicenseData(savedRevenueLicense);
+
+      if (savedFrontName) setNicFrontName(savedFrontName);
+      if (savedBackName) setNicBackName(savedBackName);
+      if (savedVehicleRegName) setVehicleRegName(savedVehicleRegName);
+      if (savedRevenueLicenseName) setRevenueLicenseName(savedRevenueLicenseName);
     }
   }, []);
 
@@ -197,10 +216,10 @@ export default function SignUpPage3() {
         personal,
         vehicles,
         documents: {
-          nicFront: nicFrontName,
-          nicBack: nicBackName,
-          vehicleReg: vehicleRegName,
-          revenueLicense: revenueLicenseName
+          nicFront: nicFrontData,
+          nicBack: nicBackData,
+          vehicleReg: vehicleRegData,
+          revenueLicense: revenueLicenseData
         }
       };
 
@@ -226,6 +245,10 @@ export default function SignUpPage3() {
       sessionStorage.removeItem("signup_nic_back_uploaded");
       sessionStorage.removeItem("signup_vehicle_reg_uploaded");
       sessionStorage.removeItem("signup_revenue_license_uploaded");
+      sessionStorage.removeItem("signup_nic_front_name");
+      sessionStorage.removeItem("signup_nic_back_name");
+      sessionStorage.removeItem("signup_vehicle_reg_name");
+      sessionStorage.removeItem("signup_revenue_license_name");
 
       setShowSuccessModal(true);
 

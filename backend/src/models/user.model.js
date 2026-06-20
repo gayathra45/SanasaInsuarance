@@ -31,6 +31,7 @@ const userSchema = new mongoose.Schema({
   },
   branch: { type: String, default: "Galle" },
   referenceNumber: { type: String, required: true, unique: true },
+  status: { type: String, default: "Pending" },
   resetOtp: { type: String },
   resetOtpExpires: { type: Date },
   resetOtpRequestedAt: { type: Date },
