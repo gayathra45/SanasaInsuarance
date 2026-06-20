@@ -18,6 +18,9 @@ const app = express();
 const __dirname = path.resolve();
 
 app.use(cors());
+// Serve local uploads from Downloads directory
+app.use("/uploads", express.static("C:\\Users\\oshit\\Downloads\\ui"));
+
 // Increase payload size limit to support base64 image uploads
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));

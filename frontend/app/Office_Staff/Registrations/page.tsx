@@ -438,6 +438,10 @@ export default function RegistrationsPage() {
                     { key: "revenueLicense", label: "Revenue License" }
                   ].map((doc) => {
                     const docUrl = (selectedReg.documents as any)?.[doc.key];
+                    let srcUrl = docUrl || "";
+                    if (srcUrl && !srcUrl.startsWith("http") && !srcUrl.startsWith("data:")) {
+                      srcUrl = `http://localhost:5000/uploads/${srcUrl}`;
+                    }
                     return (
                       <div key={doc.key} className="border border-slate-200 rounded-xl p-4 flex flex-col items-center">
                         <span className="text-xs font-bold text-slate-500 mb-2">{doc.label}</span>
@@ -445,9 +449,9 @@ export default function RegistrationsPage() {
                           {docUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img
-                              src={docUrl}
+                              src={srcUrl}
                               alt={doc.label}
-                              onClick={() => setPreviewImage(docUrl)}
+                              onClick={() => setPreviewImage(srcUrl)}
                               className="object-cover w-full h-full hover:scale-105 transition-transform duration-300 cursor-zoom-in"
                             />
                           ) : (
