@@ -83,32 +83,21 @@ function vehicleIcon(type: string) {
   return "car-side";
 }
 
-/* Quick actions — moved to bottom, clean minimal design */
-const QUICK_ACTIONS = [
-  { label: "New Claim",   icon: "add-circle-outline",   route: "/Policy Holder/New_Claim",   color: "#0f172a" },
-  { label: "My Claims",   icon: "document-text-outline", route: "/Policy Holder/My_claims",   color: "#0f172a" },
-  { label: "Track Claim", icon: "locate-outline",        route: "/Policy Holder/TrackClaims", color: "#0f172a" },
-  { label: "My Vehicles", icon: "car-outline",           route: "/Policy Holder/MyVehicles",  color: "#0f172a" },
-  { label: "My Docs",     icon: "folder-open-outline",   route: "/Policy Holder/MyDocs",      color: "#0f172a" },
-  { label: "Support",     icon: "headset-outline",       route: "support",                    color: "#0f172a" },
-];
+
 
 export default function PolicyHolderDashboard() {
   const [userName, setUserName]       = useState("");
   const [userNic, setUserNic]         = useState("");
   const [vehicles, setVehicles]       = useState<Vehicle[]>([]);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [totalClaims, setTotalClaims] = useState(0);
   const [inProgress, setInProgress]   = useState(0);
   const [approved, setApproved]       = useState(0);
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
   const [hasDocRequest, setHasDocRequest] = useState(false);
-
   const contentFadeAnim  = useRef(new Animated.Value(0)).current;
   const headerSlideAnim  = useRef(new Animated.Value(-20)).current;
   const heroPulse        = useRef(new Animated.Value(1)).current;
-  const bellScale        = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     (async () => {
@@ -208,12 +197,10 @@ export default function PolicyHolderDashboard() {
         }
       });
 
-      notifs.sort((a, b) => (a.isUrgent === b.isUrgent ? 0 : a.isUrgent ? -1 : 1));
       setTotalClaims(all.length);
       setInProgress(pending.length);
       setApproved(approvedList.length);
       setHasDocRequest(docReq);
-      setNotifications(notifs);
     } catch (e) {
       console.error(e);
     } finally {
@@ -240,26 +227,7 @@ export default function PolicyHolderDashboard() {
     ]);
   };
 
-  const showSupportAlert = () => {
-    Alert.alert(
-      "Sanasa Support 📞",
-      "We are available 24/7 to assist you.\n\nHotline: +94 112 003 000\nEmail: claims-support@sanasa.lk\nAddress: No. 123, Main Street, Colombo",
-      [{ text: "OK", style: "default" }]
-    );
-  };
 
-  const openNotifications = () => {
-    Animated.sequence([
-      Animated.timing(bellScale, { toValue: 0.8, duration: 70, useNativeDriver: true }),
-      Animated.timing(bellScale, { toValue: 1.15, duration: 90, useNativeDriver: true }),
-      Animated.timing(bellScale, { toValue: 1,   duration: 70, useNativeDriver: true }),
-    ]).start(() => router.push("/Policy Holder/Notifications" as any));
-  };
-
-  const handleQuickAction = (route: string) => {
-    if (route === "support") { showSupportAlert(); return; }
-    router.push(route as any);
-  };
 
   if (loading) {
     return (
@@ -272,7 +240,6 @@ export default function PolicyHolderDashboard() {
   }
 
   const hasAlerts  = inProgress > 0 || hasDocRequest;
-  const unreadCount = notifications.length;
 
   return (
     <View style={styles.root}>
@@ -303,25 +270,7 @@ export default function PolicyHolderDashboard() {
                   <Text style={styles.welcomeName}>{userName} 👋</Text>
                 </View>
 
-                {/* Bell → opens Notifications page */}
-                <Animated.View style={{ transform: [{ scale: bellScale }], marginRight: 10 }}>
-                  <TouchableOpacity
-                    style={[styles.headerIconBtn, unreadCount > 0 && styles.headerIconBtnAlert]}
-                    onPress={openNotifications}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name={unreadCount > 0 ? "notifications" : "notifications-outline"}
-                      size={22}
-                      color={unreadCount > 0 ? "#fbbf24" : "#ffffff"}
-                    />
-                    {unreadCount > 0 && (
-                      <View style={styles.notifBadge}>
-                        <Text style={styles.notifBadgeText}>{unreadCount > 9 ? "9+" : unreadCount}</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
+
 
                 {/* Avatar / logout */}
                 <TouchableOpacity style={styles.avatarButton} onPress={handleLogout} activeOpacity={0.85}>
@@ -417,124 +366,10 @@ export default function PolicyHolderDashboard() {
 
         <Animated.View style={{ opacity: contentFadeAnim }}>
 
-          {/* ── MY DOCUMENTS HIGHLIGHT ── */}
-          <View style={{ paddingHorizontal: 16, marginTop: 22 }}>
-            <TouchableOpacity
-              style={styles.myDocsCard}
-              onPress={() => router.push("/Policy Holder/MyDocs")}
-              activeOpacity={0.88}
-            >
-              <LinearGradient
-                colors={["#1e3a8a", "#2563eb"]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.myDocsGradient}
-              >
-                <View style={styles.myDocsLeft}>
-                  <View style={styles.myDocsIconWrap}>
-                    <Ionicons name="folder-open" size={26} color="#ffffff" />
-                  </View>
-                  <View>
-                    <Text style={styles.myDocsLabel}>My Documents</Text>
-                    <Text style={styles.myDocsSub}>Policy files, NIC, License & more</Text>
-                  </View>
-                </View>
-                <View style={styles.myDocsArrow}>
-                  <Ionicons name="arrow-forward" size={16} color="#ffffff" />
-                </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-
-          {/* ── NOTIFICATIONS & REMINDERS ── */}
-          <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
-            <TouchableOpacity
-              style={styles.sectionHeader}
-              onPress={openNotifications}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.sectionTitle}>Notifications & Reminders</Text>
-              <Ionicons name="chevron-forward" size={18} color="#64748b" />
-            </TouchableOpacity>
-
-            {notifications.length > 0 ? (
-              <View style={styles.notificationList}>
-                {notifications.map((n) => {
-                  const isUrgent   = n.type === "urgent";
-                  const isApproved = n.type === "approved";
-
-                  let borderStyle = styles.notifBlue;
-                  let bgStyle     = styles.bgBlue;
-                  let iconColor   = "#2563eb";
-                  let iconName: "time" | "alert-circle" | "checkmark-circle" = "time";
-                  let titleColor  = "#1e40af";
-
-                  if (isUrgent) {
-                    borderStyle = styles.notifRed;
-                    bgStyle     = styles.bgRed;
-                    iconColor   = "#dc2626";
-                    iconName    = "alert-circle" as const;
-                    titleColor  = "#991b1b";
-                  } else if (isApproved) {
-                    borderStyle = styles.notifGreen;
-                    bgStyle     = styles.bgGreen;
-                    iconColor   = "#16a34a";
-                    iconName    = "checkmark-circle" as const;
-                    titleColor  = "#166534";
-                  }
-
-                  return (
-                    <View key={n.id} style={[styles.notifCard, borderStyle, bgStyle]}>
-                      <View style={styles.notifHeader}>
-                        <Ionicons name={iconName} size={20} color={iconColor} style={{ marginRight: 8 }} />
-                        <Text style={[styles.notifTitle, { color: titleColor }]}>{n.title}</Text>
-                      </View>
-                      <Text style={styles.notifDesc}>{n.description}</Text>
-                      {n.subText && <Text style={styles.notifSubtext}>{n.subText}</Text>}
-
-                      <View style={styles.notifFooter}>
-                        <View style={styles.notifActions}>
-                          {n.actions?.map((act, i) => (
-                            <TouchableOpacity
-                              key={i}
-                              style={[
-                                styles.notifBtn,
-                                act.primary ? styles.notifBtnPrimary : styles.notifBtnSecondary,
-                              ]}
-                              onPress={() => router.push(act.route as any)}
-                            >
-                              <Text
-                                style={[
-                                  styles.notifBtnText,
-                                  act.primary ? styles.notifBtnTextPrimary : styles.notifBtnTextSecondary,
-                                ]}
-                              >
-                                {act.label}
-                              </Text>
-                            </TouchableOpacity>
-                          ))}
-                        </View>
-                        <Text style={styles.notifDate}>{n.date}</Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : (
-              <View style={styles.emptyCard}>
-                <Ionicons name="notifications-off-outline" size={32} color="#cbd5e1" />
-                <Text style={styles.emptyText}>No notifications or reminders at this time.</Text>
-              </View>
-            )}
-          </View>
-
           {/* ── MY VEHICLES ── */}
           <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>My Vehicles</Text>
-              <TouchableOpacity onPress={() => router.push("/Policy Holder/MyVehicles")}>
-                <Ionicons name="chevron-forward" size={18} color="#64748b" />
-              </TouchableOpacity>
             </View>
 
             {vehicles.length > 0 ? (
@@ -548,12 +383,6 @@ export default function PolicyHolderDashboard() {
                       <Text style={styles.vehiclePlate}>{formatPlate(v.numberPlate)}</Text>
                       <Text style={styles.vehicleDetails}>{[v.company, v.model, v.year].filter(Boolean).join(" · ")}</Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.vehicleViewBtn}
-                      onPress={() => router.push("/Policy Holder/MyVehicles")}
-                    >
-                      <Text style={styles.vehicleViewBtnText}>View</Text>
-                    </TouchableOpacity>
                   </View>
                 ))}
               </View>
@@ -564,52 +393,9 @@ export default function PolicyHolderDashboard() {
               </View>
             )}
           </View>
-          {/* ── CONTACT SUPPORT ── */}
-          <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Contact Support</Text>
-            </View>
-            <TouchableOpacity style={styles.supportCard} onPress={showSupportAlert} activeOpacity={0.8}>
-              <View style={styles.supportContent}>
-                <Ionicons name="headset-outline" size={24} color="#0f172a" />
-                <View style={{ marginLeft: 12 }}>
-                  <Text style={styles.supportLabel}>Support</Text>
-                  <Text style={styles.supportSub}>Phone: +94 112 003 000{`\n`}Email: claims-support@sanasa.lk</Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          {/* ── QUICK ACTIONS — bottom, clean minimal design ── */}
-          <View style={{ paddingHorizontal: 16, marginTop: 28 }}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
-            </View>
-
-            <View style={styles.quickGrid}>
-              {QUICK_ACTIONS.map((action, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.quickItem}
-                  onPress={() => handleQuickAction(action.route)}
-                  activeOpacity={0.75}
-                >
-                  <View style={styles.quickIconBox}>
-                    <Ionicons name={action.icon as any} size={24} color="#0f172a" />
-                  </View>
-                  <Text style={styles.quickLabel}>{action.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
 
         </Animated.View>
       </ScrollView>
-
-      {/* Floating support */}
-      <TouchableOpacity style={styles.floatingSupport} onPress={showSupportAlert} activeOpacity={0.8}>
-        <Ionicons name="chatbubble-ellipses" size={26} color="#ffffff" />
-      </TouchableOpacity>
 
       <PolicyHolderNavbar />
     </View>

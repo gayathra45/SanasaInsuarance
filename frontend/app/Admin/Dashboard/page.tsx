@@ -4,74 +4,19 @@ import React, { useState, useEffect } from "react";
 import AdminNavbar from "@/app/Components/Admin/Navbar";
 import AdminFooter from "@/app/Components/Admin/Footer";
 
-interface Branch {
-  name: string;
-  percentage: number;
-  count: number;
-  color?: string;
-}
-
-interface MonthlyClaim {
-  month: string;
-  submitted: number;
-  approved: number;
-}
-
 export default function AdminDashboard() {
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     policyHolders: 0,
     totalClaims: 0,
     activeClaims: 0,
     pendingClaims: 0,
   });
-  const [branches, setBranches] = useState<Branch[]>([]);
-  const [monthlyClaims, setMonthlyClaims] = useState<MonthlyClaim[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const branchColorMap: Record<string, string> = {
-    Galle: "bg-red-500",
-    Matara: "bg-green-500",
-    Anuradhapura: "bg-blue-500",
-    Embilipitiya: "bg-orange-400",
-  };
-
   useEffect(() => {
-    async function fetchStats() {
-      try {
-        const res = await fetch("http://localhost:5000/api/admin/dashboard-stats");
-        if (!res.ok) {
-          throw new Error("Failed to fetch dashboard statistics.");
-        }
-        const data = await res.json();
-        
-        setStats(data.stats);
-        
-        // Map color configuration to branches
-        const mappedBranches = data.branches.map((b: any) => ({
-          ...b,
-          color: branchColorMap[b.name] || "bg-slate-400",
-        }));
-        setBranches(mappedBranches);
-        setMonthlyClaims(data.monthlyClaims);
-      } catch (err: any) {
-        console.error(err);
-        setError(err.message || "Failed to load dashboard metrics");
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchStats();
+    setLoading(false);
   }, []);
-
-  // Calculate dynamic max height for bar chart to accommodate any data volume
-  const maxVal = monthlyClaims.length > 0 
-    ? Math.max(...monthlyClaims.map((d) => Math.max(d.submitted, d.approved))) 
-    : 0;
-  
-  // Set chart upper limit (defaults to 30, scales dynamically in multiples of 30)
-  const maxLimit = maxVal > 30 ? Math.ceil(maxVal / 30) * 30 : 30;
-  const step = maxLimit / 3;
 
   return (
     <div className="flex flex-col min-h-screen bg-white font-sans">
@@ -144,121 +89,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Branch Performance & Monthly Claims split section */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
-                  
-                  {/* Branch Performances List (Left: 5 cols) */}
-                  <div className="lg:col-span-5 flex flex-col select-none">
-                    <h2 className="text-lg font-black text-slate-800 mb-8 tracking-wide">
-                      Branch Performances
-                    </h2>
-                    
-                    <div className="flex flex-col gap-6">
-                      {branches.map((branch) => (
-                        <div key={branch.name} className="flex flex-col">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-bold text-slate-700 text-sm">
-                              {branch.name}
-                            </span>
-                            <span className="text-xs text-slate-400 font-bold">
-                              {branch.count} {branch.count === 1 ? "claim" : "claims"}
-                            </span>
-                          </div>
-                          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${branch.color} rounded-full transition-all duration-500`}
-                              style={{ width: `${branch.percentage}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
 
-                  {/* Monthly Claims Chart (Right: 7 cols) */}
-                  <div className="lg:col-span-7 flex flex-col select-none">
-                    <h2 className="text-lg font-black text-slate-800 mb-8 tracking-wide">
-                      Monthly Claims
-                    </h2>
-                    
-                    {/* Visual Chart Area */}
-                    <div className="relative flex flex-col w-full bg-white pl-8 pr-4 py-4 min-h-[260px]">
-                      
-                      {/* Grid background lines and Y-axis labels */}
-                      <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-12">
-                        <div className="w-full border-t border-dashed border-slate-200/60 relative">
-                          <span className="absolute -left-7 -top-2 text-[10px] text-slate-400 font-bold">{maxLimit}</span>
-                        </div>
-                        <div className="w-full border-t border-dashed border-slate-200/60 relative">
-                          <span className="absolute -left-7 -top-2 text-[10px] text-slate-400 font-bold">{step * 2}</span>
-                        </div>
-                        <div className="w-full border-t border-dashed border-slate-200/60 relative">
-                          <span className="absolute -left-7 -top-2 text-[10px] text-slate-400 font-bold">{step}</span>
-                        </div>
-                        <div className="w-full border-t border-slate-300 relative">
-                          <span className="absolute -left-7 -top-2 text-[10px] text-slate-400 font-bold">0</span>
-                        </div>
-                      </div>
-
-                      {/* Bars wrapper */}
-                      <div className="relative flex-1 flex items-end justify-between w-full h-[200px] z-10 pb-[2px]">
-                        {monthlyClaims.map((data) => {
-                          const submittedPercent = data.submitted > 0 ? Math.min((data.submitted / maxLimit) * 100, 100) : 0;
-                          const approvedPercent = data.approved > 0 ? Math.min((data.approved / maxLimit) * 100, 100) : 0;
-
-                          return (
-                            <div key={data.month} className="flex-1 flex flex-col items-center group min-w-0">
-                              {/* Bars container */}
-                              <div className="h-[180px] w-full flex items-end justify-center gap-[4px] relative">
-                                {/* Submitted Bar (Blue) */}
-                                {submittedPercent > 0 && (
-                                  <div
-                                    className="w-[10px] bg-[#3b82f6] rounded-t-sm transition-all duration-300 hover:brightness-110 relative group/bar cursor-pointer"
-                                    style={{ height: `${submittedPercent}%` }}
-                                  >
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap mb-1 z-20 pointer-events-none">
-                                      Submitted: {data.submitted}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {/* Approved Bar (Green) */}
-                                {approvedPercent > 0 && (
-                                  <div
-                                    className="w-[10px] bg-[#10b981] rounded-t-sm transition-all duration-300 hover:brightness-110 relative group/bar cursor-pointer"
-                                    style={{ height: `${approvedPercent}%` }}
-                                  >
-                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1 px-2 rounded opacity-0 group-hover/bar:opacity-100 transition-opacity whitespace-nowrap mb-1 z-20 pointer-events-none">
-                                      Approved: {data.approved}
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                              {/* Month Label */}
-                              <span className="text-[10px] text-slate-400 font-bold mt-2.5">
-                                {data.month}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Legend underneath the chart */}
-                      <div className="flex items-center gap-6 mt-8 pl-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3.5 h-3.5 bg-[#3b82f6] rounded-[3px]"></div>
-                          <span className="text-xs text-slate-500 font-bold">Submitted</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="w-3.5 h-3.5 bg-[#10b981] rounded-[3px]"></div>
-                          <span className="text-xs text-slate-500 font-bold">Approved</span>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-
-                </div>
               </>
             )}
           </main>

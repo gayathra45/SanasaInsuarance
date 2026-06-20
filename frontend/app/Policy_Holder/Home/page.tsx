@@ -133,7 +133,6 @@ export default function PolicyHolderHome() {
   const [hasDocumentRequest, setHasDocumentRequest] = useState(false);
   const [totalClaimsCount, setTotalClaimsCount] = useState(0);
   const [approvedClaimsCount, setApprovedClaimsCount] = useState(0);
-  const [notifications, setNotifications] = useState<any[]>([]);
 
   const formatDateString = (dateStr: string) => {
     if (!dateStr) return "";
@@ -198,61 +197,10 @@ export default function PolicyHolderHome() {
 
                 const docRequest = allClaims.some(c => c.documentsRequested === true);
 
-                // Compile dynamic notifications list
-                const compiledNotifications: any[] = [];
-                allClaims.forEach((claim: any) => {
-                  if (claim.documentsRequested) {
-                    compiledNotifications.push({
-                      id: claim.claimNumber + "-doc",
-                      type: "urgent",
-                      title: "Documents Requested – Action Required",
-                      description: `Staff has requested a ${claim.requestedDocuments && claim.requestedDocuments.length > 0 ? claim.requestedDocuments.join(' & ') : 'Police Report & Repair Estimate'} for ${claim.claimNumber}.`,
-                      subText: "Please upload within 3 days...",
-                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
-                      actions: [
-                        { label: "Upload", href: "/Policy_Holder/Documents", primary: true },
-                        { label: "View", href: "/Policy_Holder/My_claims" }
-                      ],
-                      isUrgent: true
-                    });
-                  }
-
-                  const s = (claim.status || "").toLowerCase();
-                  if (["approved", "done", "active"].some(val => s.includes(val))) {
-                    compiledNotifications.push({
-                      id: claim.claimNumber + "-approved",
-                      type: "approved",
-                      title: `Claim ${claim.claimNumber} Approved!`,
-                      description: `Your claim for LKR ${claim.amount ? Number(claim.amount).toLocaleString() : '85,000'} has been approved. Payment processed within 5 days.`,
-                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
-                      actions: [
-                        { label: "View", href: "/Policy_Holder/My_claims" }
-                      ],
-                      isUrgent: false
-                    });
-                  } else if (!claim.documentsRequested) {
-                    compiledNotifications.push({
-                      id: claim.claimNumber + "-status",
-                      type: "status",
-                      title: `Claim ${claim.claimNumber} Status: ${claim.status || "Pending"}`,
-                      description: `Your claim is currently in ${claim.status || "Pending"} stage. Agent is reviewing details.`,
-                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
-                      actions: [
-                        { label: "View", href: "/Policy_Holder/My_claims" }
-                      ],
-                      isUrgent: false
-                    });
-                  }
-                });
-
-                // Sort: Urgent first
-                compiledNotifications.sort((a, b) => (a.isUrgent === b.isUrgent ? 0 : a.isUrgent ? -1 : 1));
-
                 setTotalClaimsCount(allClaims.length);
                 setPendingClaimsCount(pendingClaims.length);
                 setApprovedClaimsCount(approvedClaims.length);
                 setHasDocumentRequest(docRequest);
-                setNotifications(compiledNotifications);
               } catch (err) {
                 console.error("Error fetching claims for home page banner:", err);
               }
@@ -401,122 +349,11 @@ export default function PolicyHolderHome() {
 
         </section>
 
-        {/* Dashboard Grid - Notifications & Vehicles */}
+        {/* Dashboard Grid - Vehicles only (full 12 columns) */}
         <section className="grid grid-cols-1 lg:grid-cols-12 gap-10">
           
-          {/* Notifications Column */}
-          <div className="lg:col-span-7">
-            <div className="flex items-center gap-2 mb-6 cursor-pointer group">
-              <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
-                Notifications & Reminders
-              </h2>
-              <svg
-                className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </div>
-
-            {/* Alert List */}
-            <div className="flex flex-col gap-6">
-              {notifications.length > 0 ? (
-                notifications.slice(0, 3).map((notif: any) => {
-                  const isUrgent = notif.type === "urgent";
-                  const isApproved = notif.type === "approved";
-                  
-                  let cardClass = "";
-                  let iconClass = "";
-                  let iconSvg = null;
-                  let titleClass = "";
-                  
-                  if (isUrgent) {
-                    cardClass = "bg-red-50/15 border-2 border-red-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px]";
-                    iconClass = "p-1.5 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5";
-                    iconSvg = (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                        <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.522a.75.75 0 01-.297 1.228 35.754 35.754 0 01-16.142 0 .75.75 0 01-.297-1.228A9.013 9.013 0 005.25 9.75V9zm4.5 8.25a3.75 3.75 0 007.5 0H9.75z" clipRule="evenodd" />
-                      </svg>
-                    );
-                    titleClass = "text-red-600 font-extrabold text-base leading-none";
-                  } else if (isApproved) {
-                    cardClass = "bg-emerald-50/15 border-2 border-emerald-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]";
-                    iconClass = "p-1.5 bg-emerald-100 rounded-xl text-emerald-500 flex-shrink-0 mt-0.5";
-                    iconSvg = (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                        <path fillRule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm13.36-1.814a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.74-5.24z" clipRule="evenodd" />
-                      </svg>
-                    );
-                    titleClass = "text-emerald-600 font-extrabold text-base leading-none";
-                  } else {
-                    cardClass = "bg-blue-50/15 border-2 border-blue-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[140px]";
-                    iconClass = "p-1.5 bg-blue-100 rounded-xl text-blue-500 flex-shrink-0 mt-0.5";
-                    iconSvg = (
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                        <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
-                      </svg>
-                    );
-                    titleClass = "text-blue-600 font-extrabold text-base leading-none";
-                  }
-
-                  return (
-                    <div key={notif.id} className={`${cardClass} animate-fade-in`}>
-                      <div className="flex items-start gap-4">
-                        <div className={iconClass}>
-                          {iconSvg}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className={titleClass}>
-                            {notif.title}
-                          </h4>
-                          <p className="text-slate-600 text-sm font-semibold mt-2 leading-relaxed">
-                            {notif.description}
-                          </p>
-                          {notif.subText && (
-                            <p className="text-slate-400 text-xs font-bold mt-2">
-                              {notif.subText}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100/50">
-                        <div className="flex gap-2">
-                          {notif.actions.map((act: any, idx: number) => {
-                            const isPrimary = act.primary;
-                            return (
-                              <Link
-                                key={idx}
-                                href={act.href}
-                                className={`${
-                                  isPrimary 
-                                    ? "bg-red-600 hover:bg-red-700 text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline shadow-sm"
-                                    : "bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-5 py-1.5 rounded-full transition-all duration-150 no-underline"
-                                }`}
-                              >
-                                {act.label}
-                              </Link>
-                            );
-                          })}
-                        </div>
-                        <span className="text-slate-400 text-xs font-bold">{notif.date}</span>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="bg-white border border-slate-200 rounded-[24px] p-8 text-center shadow-[0_8px_30px_rgba(0,0,0,0.02)]">
-                  <p className="text-slate-400 font-bold text-sm">No notifications or reminders at this time.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Vehicles Column */}
-          <div className="lg:col-span-5">
+          <div className="lg:col-span-12">
             <div className="flex items-center gap-2 mb-6 cursor-pointer group">
               <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
                 My Vehicles
@@ -532,10 +369,10 @@ export default function PolicyHolderHome() {
               </svg>
             </div>
 
-            {/* Vehicle List */}
-            <div className="flex flex-col gap-5">
-              {vehicles.length > 0 ? (
-                vehicles.map((vehicle, idx) => (
+            {/* Vehicle List Grid */}
+            {vehicles.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {vehicles.map((vehicle, idx) => (
                   <div key={idx} className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       {getVehicleIconContainer(vehicle.vehicleType)}
@@ -551,13 +388,13 @@ export default function PolicyHolderHome() {
                       View
                     </Link>
                   </div>
-                ))
-              ) : (
-                <div className="bg-white border border-slate-200 rounded-[22px] p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                  <p className="text-slate-400 font-bold text-sm">No vehicles registered under this policy.</p>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-white border border-slate-200 rounded-[22px] p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                <p className="text-slate-400 font-bold text-sm">No vehicles registered under this policy.</p>
+              </div>
+            )}
           </div>
 
         </section>
