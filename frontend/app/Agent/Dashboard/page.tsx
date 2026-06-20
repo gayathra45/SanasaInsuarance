@@ -32,6 +32,7 @@ interface Claim {
   createdAt: string;
   severity: "Urgent" | "Medium" | "Low";
   messages: ClaimMessage[];
+  priority?: string;
 }
 
 export default function AgentDashboard() {
@@ -457,7 +458,9 @@ export default function AgentDashboard() {
                   </div>
                   <div>
                     <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Assigned Agent</span>
-                    <span className="font-bold text-slate-900 text-sm">{selectedClaim.assignedAgent}</span>
+                    <span className="font-bold text-slate-900 text-sm" title={selectedClaim.assignedAgent}>
+                      {agentName || selectedClaim.assignedAgent}
+                    </span>
                   </div>
                   <div>
                     <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Created At</span>

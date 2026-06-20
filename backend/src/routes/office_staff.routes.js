@@ -66,7 +66,8 @@ router.get("/dashboard-stats", async (req, res) => {
 
     const newRegistrationsCount = await User.countDocuments({
       ...branchFilter,
-      ...dateFilter
+      ...dateFilter,
+      status: { $nin: ["Approved", "Rejected"] }
     });
 
     const activeClaimsCount = await Claim.countDocuments({
@@ -95,7 +96,8 @@ router.get("/dashboard-stats", async (req, res) => {
     const newRegistrationsList = await User.find(
       {
         ...branchFilter,
-        ...dateFilter
+        ...dateFilter,
+        status: { $nin: ["Approved", "Rejected"] }
       },
       { documents: 0 }
     ).sort({ createdAt: -1 });
@@ -205,7 +207,7 @@ router.patch("/registrations/:id/status", async (req, res) => {
 router.patch("/claims/:claimNumber", async (req, res) => {
   try {
     const { claimNumber } = req.params;
-    const { status, amount, currentStep, assignedAgent, messageText, messageSender } = req.body;
+    const { status, amount, currentStep, assignedAgent, messageText, messageSender, priority, requestedDocuments, documentsRequested } = req.body;
 
     const claim = await Claim.findOne({ claimNumber: claimNumber.trim().toUpperCase() });
     if (!claim) {
@@ -216,6 +218,9 @@ router.patch("/claims/:claimNumber", async (req, res) => {
     if (amount !== undefined) claim.amount = amount === "" ? null : Number(amount);
     if (currentStep !== undefined) claim.currentStep = Number(currentStep);
     if (assignedAgent !== undefined) claim.assignedAgent = assignedAgent;
+    if (priority !== undefined) claim.priority = priority;
+    if (requestedDocuments !== undefined) claim.requestedDocuments = requestedDocuments;
+    if (documentsRequested !== undefined) claim.documentsRequested = documentsRequested;
 
     if (messageText) {
       claim.messages.push({

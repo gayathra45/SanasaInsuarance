@@ -603,7 +603,7 @@ export default function AgentDashboard() {
                           { label: "Location",       value: selectedClaim.location },
                           { label: "Incident Date",  value: selectedClaim.incidentDate },
                           { label: "Incident Time",  value: selectedClaim.incidentTime },
-                          { label: "Assigned Agent", value: selectedClaim.assignedAgent },
+                          { label: "Assigned Agent", value: agentName || selectedClaim.assignedAgent },
                           { label: "Submitted",      value: formatDate(selectedClaim.createdAt) },
                         ].map((item, i) => (
                           <View key={i} style={styles.modalInfoItem}>
