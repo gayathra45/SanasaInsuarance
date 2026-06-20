@@ -1,15 +1,10 @@
 import express from "express";
-import crypto from "crypto";
 import Admin from "../models/admin.model.js";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
+import { hashPassword } from "../utils/crypto.js";
 
 const router = express.Router();
-
-// Helper to hash password matching the project's standard hashing logic (SHA-256)
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
 
 // POST admin login: /api/admin/login
 router.post("/login", async (req, res) => {

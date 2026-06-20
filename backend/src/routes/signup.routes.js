@@ -8,24 +8,14 @@ import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import dotenv from "dotenv";
 import { uploadToCloudinary } from "../utils/upload.js";
+import { hashPassword } from "../utils/crypto.js";
+import { getNearestBranch } from "../utils/branch.js";
 dotenv.config({ override: true });
 
 const router = express.Router();
 
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
 
-function getNearestBranch(city = "", province = "") {
-  const cleanCity = city.trim().toLowerCase();
 
-  if (cleanCity.includes("galle") || cleanCity.includes("hambantota")) return "Galle";
-  if (cleanCity.includes("matara")) return "Matara";
-  if (cleanCity.includes("colombo") || cleanCity.includes("gampaha") || cleanCity.includes("kalutara")) return "Colombo";
-  if (cleanCity.includes("anuradhapura") || cleanCity.includes("polonnaruwa")) return "Anuradhapura";
-  if (cleanCity.includes("embilipitiya") || cleanCity.includes("ratnapura")) return "Embilipitiya";
-  return "Galle";
-}
 
 // ─── CHECK: Email / NIC availability ─────────────────────────────────────────
 router.get("/check", async (req, res) => {
@@ -155,7 +145,7 @@ router.post("/", async (req, res) => {
         vehicleReg: uploadedVehicleReg,
         revenueLicense: uploadedRevenueLicense
       },
-      branch: getNearestBranch(city, province),
+      branch: getNearestBranch(city),
       referenceNumber: nextRefNum,
     });
 

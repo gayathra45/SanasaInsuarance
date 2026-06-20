@@ -1,13 +1,9 @@
 import express from "express";
-import crypto from "crypto";
 import Agent from "../models/agent.model.js";
 import Claim from "../models/claim.model.js";
+import { hashPassword } from "../utils/crypto.js";
 
 const router = express.Router();
-
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
 
 // POST agent login: /api/agent/login
 router.post("/login", async (req, res) => {

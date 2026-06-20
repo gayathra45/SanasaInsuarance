@@ -1,14 +1,9 @@
 import express from "express";
-import crypto from "crypto";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
+import { hashPassword } from "../utils/crypto.js";
 
 const router = express.Router();
-
-// Helper to hash password matching the signup hashing logic
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
 
 // 1. Authenticate user session (login)
 router.post("/login", async (req, res) => {

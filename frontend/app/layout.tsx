@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Afacad } from "next/font/google";
 // @ts-ignore: allow side-effect CSS import without explicit module declarations
 import "./globals.css";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const afacad = Afacad({
   variable: "--font-afacad",
@@ -29,7 +28,6 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         {children}
-        <SpeedInsights />
       </body>
     </html>
   );

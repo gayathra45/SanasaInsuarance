@@ -15,7 +15,6 @@ export default function Navbar() {
     const handleScroll = () => {
       if (isOpen) return; // Keep visible if mobile menu is open
       const currentScrollY = window.scrollY;
-      console.log("SCROLL EVENT:", { currentScrollY, lastScrollY: lastScrollY.current });
       
       if (currentScrollY <= 50) {
         // Always show near the very top of the page

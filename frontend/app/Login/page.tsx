@@ -86,15 +86,6 @@ export default function Login() {
         }
         return;
       }
-
-      const isGmail = loginId.trim().toLowerCase().endsWith("@gmail.com");
-      if (!isGmail) {
-        alert("Please enter a valid Gmail address.");
-        return;
-      }
-      alert(`Logging in as ${(activeRole as string).replace("_", " ").toUpperCase()}\nGmail: ${loginId}`);
-      router.push("/Policy_Holder/Home");
-      return;
     }
 
     try {
