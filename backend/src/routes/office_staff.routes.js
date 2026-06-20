@@ -2,6 +2,7 @@ import express from "express";
 import OfficeStaff from "../models/office_staff.model.js";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
+import Agent from "../models/agent.model.js";
 import { hashPassword } from "../utils/crypto.js";
 
 const router = express.Router();
@@ -108,6 +109,98 @@ router.get("/dashboard-stats", async (req, res) => {
   } catch (err) {
     console.error("Office staff dashboard stats API error:", err);
     res.status(500).json({ error: "An internal server error occurred fetching dashboard statistics." });
+  }
+});
+
+// GET all claims for a specific branch: /api/office-staff/claims
+router.get("/claims", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+    const claims = await Claim.find({ branch: branch.trim() }).sort({ createdAt: -1 });
+    res.json({ claims });
+  } catch (err) {
+    console.error("Fetch office staff claims error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET all policy holders for a specific branch: /api/office-staff/policy-holders
+router.get("/policy-holders", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+    const policyHolders = await User.find({ branch: branch.trim() }, { password: 0 }).sort({ createdAt: -1 });
+    res.json({ policyHolders });
+  } catch (err) {
+    console.error("Fetch office staff policy holders error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET all agents for a specific branch: /api/office-staff/agents
+router.get("/agents", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+    const agents = await Agent.find({ branch: branch.trim() }, { password: 0 }).sort({ createdAt: -1 });
+    res.json({ agents });
+  } catch (err) {
+    console.error("Fetch office staff agents error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET all registrations for a specific branch: /api/office-staff/registrations
+router.get("/registrations", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+    const registrations = await User.find({ branch: branch.trim() }, { password: 0 }).sort({ createdAt: -1 });
+    res.json({ registrations });
+  } catch (err) {
+    console.error("Fetch office staff registrations error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// PATCH update claim details: /api/office-staff/claims/:claimNumber
+router.patch("/claims/:claimNumber", async (req, res) => {
+  try {
+    const { claimNumber } = req.params;
+    const { status, amount, currentStep, assignedAgent, messageText, messageSender } = req.body;
+
+    const claim = await Claim.findOne({ claimNumber: claimNumber.trim().toUpperCase() });
+    if (!claim) {
+      return res.status(404).json({ error: "Claim not found." });
+    }
+
+    if (status !== undefined) claim.status = status;
+    if (amount !== undefined) claim.amount = amount === "" ? null : Number(amount);
+    if (currentStep !== undefined) claim.currentStep = Number(currentStep);
+    if (assignedAgent !== undefined) claim.assignedAgent = assignedAgent;
+
+    if (messageText) {
+      claim.messages.push({
+        sender: messageSender || "Office Staff",
+        message: messageText,
+        sentAt: new Date()
+      });
+    }
+
+    await claim.save();
+    res.json({ message: "Claim updated successfully", claim });
+  } catch (err) {
+    console.error("Update claim error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 

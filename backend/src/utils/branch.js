@@ -6,20 +6,26 @@
 export function getNearestBranch(location = "") {
   const cleanLocation = location.trim().toLowerCase();
 
-  if (cleanLocation.includes("galle") || cleanLocation.includes("hambantota")) {
-    return "Galle";
+  const keywords = [
+    { name: "Galle", keys: ["galle", "hambantota"] },
+    { name: "Matara", keys: ["matara"] },
+    { name: "Colombo", keys: ["colombo", "gampaha", "kalutara"] },
+    { name: "Anuradhapura", keys: ["anuradhapura", "polonnaruwa"] },
+    { name: "Embilipitiya", keys: ["embilipitiya", "ratnapura"] }
+  ];
+
+  let bestBranch = "Galle";
+  let maxIndex = -1;
+
+  for (const b of keywords) {
+    for (const key of b.keys) {
+      const idx = cleanLocation.lastIndexOf(key);
+      if (idx > maxIndex) {
+        maxIndex = idx;
+        bestBranch = b.name;
+      }
+    }
   }
-  if (cleanLocation.includes("matara")) {
-    return "Matara";
-  }
-  if (cleanLocation.includes("colombo") || cleanLocation.includes("gampaha") || cleanLocation.includes("kalutara")) {
-    return "Colombo";
-  }
-  if (cleanLocation.includes("anuradhapura") || cleanLocation.includes("polonnaruwa")) {
-    return "Anuradhapura";
-  }
-  if (cleanLocation.includes("embilipitiya") || cleanLocation.includes("ratnapura")) {
-    return "Embilipitiya";
-  }
-  return "Galle";
+
+  return bestBranch;
 }
