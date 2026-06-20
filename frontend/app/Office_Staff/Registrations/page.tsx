@@ -48,6 +48,7 @@ export default function RegistrationsPage() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedReg, setSelectedReg] = useState<Registration | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   useEffect(() => {
     let currentBranch = "";
@@ -446,7 +447,8 @@ export default function RegistrationsPage() {
                             <img
                               src={docUrl}
                               alt={doc.label}
-                              className="object-cover w-full h-full hover:scale-105 transition-transform duration-300"
+                              onClick={() => setPreviewImage(docUrl)}
+                              className="object-cover w-full h-full hover:scale-105 transition-transform duration-300 cursor-zoom-in"
                             />
                           ) : (
                             <span className="text-xs text-slate-400 italic font-semibold">No Document Uploaded</span>
@@ -469,6 +471,32 @@ export default function RegistrationsPage() {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Document Preview Lightbox Modal */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 select-none cursor-zoom-out animate-fade-in"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[85vh] overflow-hidden rounded-2xl border border-white/10 shadow-2xl flex items-center justify-center bg-[#0a0a0a]/30" onClick={(e) => e.stopPropagation()}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={previewImage}
+              alt="Document Full View"
+              className="max-w-full max-h-[85vh] object-contain rounded-2xl"
+            />
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full transition-colors cursor-pointer border border-white/20 select-none shadow-md"
+              aria-label="Close preview"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="3" stroke="currentColor" className="w-5 h-5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}
