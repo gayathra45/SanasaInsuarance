@@ -2,29 +2,10 @@ import express from "express";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
 import { uploadToCloudinary } from "../utils/upload.js";
+import { getNearestBranch } from "../utils/branch.js";
 
 const router = express.Router();
 
-function getNearestBranch(location = "") {
-  const cleanLocation = location.trim().toLowerCase();
-
-  if (cleanLocation.includes("galle") || cleanLocation.includes("hambantota")) {
-    return "Galle";
-  }
-  if (cleanLocation.includes("matara")) {
-    return "Matara";
-  }
-  if (cleanLocation.includes("colombo") || cleanLocation.includes("gampaha") || cleanLocation.includes("kalutara")) {
-    return "Colombo";
-  }
-  if (cleanLocation.includes("anuradhapura") || cleanLocation.includes("polonnaruwa")) {
-    return "Anuradhapura";
-  }
-  if (cleanLocation.includes("embilipitiya") || cleanLocation.includes("ratnapura")) {
-    return "Embilipitiya";
-  }
-  return "Galle";
-}
 
 // 1. Fetch user's registered vehicles list
 router.get("/vehicles", async (req, res) => {

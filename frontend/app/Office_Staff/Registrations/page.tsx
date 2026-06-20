@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import OfficeStaffNavbar from "@/app/Components/Office Staff/Navbar";
 import OfficeStaffFooter from "@/app/Components/Office Staff/Footer";
+import { API_URL } from "@/app/config";
+
 
 interface Vehicle {
   numberPlate: string;
@@ -76,7 +78,7 @@ export default function RegistrationsPage() {
 
     async function loadRegistrations() {
       try {
-        const res = await fetch(`http://localhost:5000/api/office-staff/registrations?branch=${currentBranch}`);
+        const res = await fetch(`${API_URL}/office-staff/registrations?branch=${currentBranch}`);
         if (!res.ok) {
           throw new Error("Failed to fetch registrations.");
         }
@@ -95,9 +97,22 @@ export default function RegistrationsPage() {
     }
   }, [router]);
 
+  // Lock background scroll when any modal is open
+  useEffect(() => {
+    const isAnyModalOpen = !!selectedReg || !!previewImage;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedReg, previewImage]);
+
   const handleStatusUpdate = async (id: string, newStatus: string) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/office-staff/registrations/${id}/status`, {
+      const res = await fetch(`${API_URL}/office-staff/registrations/${id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -440,7 +455,7 @@ export default function RegistrationsPage() {
                     const docUrl = (selectedReg.documents as any)?.[doc.key];
                     let srcUrl = docUrl || "";
                     if (srcUrl && !srcUrl.startsWith("http") && !srcUrl.startsWith("data:")) {
-                      srcUrl = `http://localhost:5000/uploads/${srcUrl}`;
+                      srcUrl = `${API_URL.replace("/api", "")}/uploads/${srcUrl}`;
                     }
                     return (
                       <div key={doc.key} className="border border-slate-200 rounded-xl p-4 flex flex-col items-center">

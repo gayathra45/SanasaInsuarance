@@ -86,6 +86,18 @@ export default function AgentDashboard() {
     }
   }, [selectedClaim]);
 
+  // Lock background scroll when selectedClaim is open
+  useEffect(() => {
+    if (selectedClaim) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedClaim]);
+
   const getSeverity = (damageType: string): "Urgent" | "Medium" | "Low" => {
     const type = (damageType || "").toLowerCase();
     if (type.includes("fire")) return "Urgent";

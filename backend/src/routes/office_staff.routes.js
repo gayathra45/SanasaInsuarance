@@ -5,6 +5,7 @@ import Claim from "../models/claim.model.js";
 import Agent from "../models/agent.model.js";
 import Admin from "../models/admin.model.js";
 import { hashPassword } from "../utils/crypto.js";
+import { uploadToCloudinary } from "../utils/upload.js";
 
 const router = express.Router();
 
@@ -233,10 +234,25 @@ router.patch("/claims/:claimNumber", async (req, res) => {
 // POST create a new agent: /api/office-staff/agents
 router.post("/agents", async (req, res) => {
   try {
-    const { name, email, nic, address, dob, password, branch } = req.body;
+    const {
+      name,
+      email,
+      nic,
+      address,
+      dob,
+      password,
+      branch,
+      phone,
+      city,
+      province,
+      nicFront,
+      nicBack,
+      birthCertificate,
+      policeReport
+    } = req.body;
 
     if (!name || !email || !nic || !address || !dob || !password || !branch) {
-      return res.status(400).json({ error: "All fields are required." });
+      return res.status(400).json({ error: "All standard fields are required." });
     }
 
     const cleanEmail = email.trim().toLowerCase();
@@ -279,6 +295,25 @@ router.post("/agents", async (req, res) => {
 
     const hashedPassword = hashPassword(password);
 
+    // Upload documents to Cloudinary if they exist
+    let nicFrontUrl = "";
+    let nicBackUrl = "";
+    let birthCertificateUrl = "";
+    let policeReportUrl = "";
+
+    if (nicFront) {
+      nicFrontUrl = await uploadToCloudinary(nicFront, "agents/documents");
+    }
+    if (nicBack) {
+      nicBackUrl = await uploadToCloudinary(nicBack, "agents/documents");
+    }
+    if (birthCertificate) {
+      birthCertificateUrl = await uploadToCloudinary(birthCertificate, "agents/documents");
+    }
+    if (policeReport) {
+      policeReportUrl = await uploadToCloudinary(policeReport, "agents/documents");
+    }
+
     const newAgent = new Agent({
       agentId: nextAgentId,
       name: name.trim(),
@@ -287,7 +322,14 @@ router.post("/agents", async (req, res) => {
       nic: cleanNic,
       address: address.trim(),
       dob: dob.trim(),
-      branch: branch.trim()
+      branch: branch.trim(),
+      phone: phone ? phone.trim() : "",
+      city: city ? city.trim() : "",
+      province: province ? province.trim() : "",
+      nicFront: nicFrontUrl,
+      nicBack: nicBackUrl,
+      birthCertificate: birthCertificateUrl,
+      policeReport: policeReportUrl
     });
 
     await newAgent.save();
@@ -299,6 +341,94 @@ router.post("/agents", async (req, res) => {
     res.status(201).json({ message: "Agent registered successfully", agent: agentObj });
   } catch (err) {
     console.error("Create agent API error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// DELETE agent: /api/office-staff/agents/:id
+router.delete("/agents/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedAgent = await Agent.findByIdAndDelete(id);
+    if (!deletedAgent) {
+      return res.status(404).json({ error: "Agent not found." });
+    }
+    res.json({ message: "Agent removed successfully." });
+  } catch (err) {
+    console.error("Delete agent error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// PATCH update agent: /api/office-staff/agents/:id
+router.patch("/agents/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      email,
+      nic,
+      dob,
+      address,
+      password,
+      phone,
+      city,
+      province,
+      bankName,
+      bankBranch,
+      accountNumber,
+      accountType,
+      accountHolderName,
+      nicFront,
+      nicBack,
+      birthCertificate,
+      policeReport
+    } = req.body;
+
+    const agent = await Agent.findById(id);
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found." });
+    }
+
+    if (name !== undefined) agent.name = name.trim();
+    if (email !== undefined) agent.email = email.trim().toLowerCase();
+    if (nic !== undefined) agent.nic = nic.trim().toUpperCase();
+    if (dob !== undefined) agent.dob = dob.trim();
+    if (address !== undefined) agent.address = address.trim();
+    if (phone !== undefined) agent.phone = phone.trim();
+    if (city !== undefined) agent.city = city.trim();
+    if (province !== undefined) agent.province = province.trim();
+    if (bankName !== undefined) agent.bankName = bankName.trim();
+    if (bankBranch !== undefined) agent.bankBranch = bankBranch.trim();
+    if (accountNumber !== undefined) agent.accountNumber = accountNumber.trim();
+    if (accountType !== undefined) agent.accountType = accountType.trim();
+    if (accountHolderName !== undefined) agent.accountHolderName = accountHolderName.trim();
+    
+    if (nicFront !== undefined) {
+      agent.nicFront = nicFront ? await uploadToCloudinary(nicFront, "agents/documents") : "";
+    }
+    if (nicBack !== undefined) {
+      agent.nicBack = nicBack ? await uploadToCloudinary(nicBack, "agents/documents") : "";
+    }
+    if (birthCertificate !== undefined) {
+      agent.birthCertificate = birthCertificate ? await uploadToCloudinary(birthCertificate, "agents/documents") : "";
+    }
+    if (policeReport !== undefined) {
+      agent.policeReport = policeReport ? await uploadToCloudinary(policeReport, "agents/documents") : "";
+    }
+
+    if (password) {
+      agent.password = hashPassword(password);
+    }
+
+    await agent.save();
+
+    const agentObj = agent.toObject();
+    delete agentObj.password;
+
+    res.json({ message: "Agent updated successfully", agent: agentObj });
+  } catch (err) {
+    console.error("Update agent error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });
