@@ -24,6 +24,12 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid NIC or Password." });
     }
 
+    if (user.status === "Rejected") {
+      return res.status(400).json({ error: "Your registration has been rejected by the office staff." });
+    } else if (user.status !== "Approved") {
+      return res.status(400).json({ error: "Your account is pending approval from the office staff of your nearest branch." });
+    }
+
     // Return user details excluding password
     const userObj = user.toObject();
     delete userObj.password;
