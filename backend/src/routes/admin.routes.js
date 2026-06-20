@@ -2,6 +2,8 @@ import express from "express";
 import Admin from "../models/admin.model.js";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
+import OfficeStaff from "../models/office_staff.model.js";
+import Agent from "../models/agent.model.js";
 import { hashPassword } from "../utils/crypto.js";
 
 const router = express.Router();
@@ -108,6 +110,74 @@ router.get("/dashboard-stats", async (req, res) => {
   } catch (err) {
     console.error("Admin dashboard stats API error:", err);
     res.status(500).json({ error: "An internal server error occurred fetching dashboard statistics." });
+  }
+});
+
+// GET all office staff: /api/admin/staff
+router.get("/staff", async (req, res) => {
+  try {
+    const staff = await OfficeStaff.find({}, { password: 0 }).sort({ createdAt: -1 });
+    res.json({ staff });
+  } catch (err) {
+    console.error("Fetch admin staff error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// POST create a new office staff member: /api/admin/staff
+router.post("/staff", async (req, res) => {
+  try {
+    const { name, email, mobile, branch, province, location, staffCount, password } = req.body;
+
+    if (!name || !email || !mobile || !branch || !province || !location || staffCount === undefined || !password) {
+      return res.status(400).json({ error: "All fields are required." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if email already exists in OfficeStaff, User, Agent, or Admin
+    const existingOfficeStaff = await OfficeStaff.findOne({ email: cleanEmail });
+    if (existingOfficeStaff) {
+      return res.status(400).json({ error: "An office staff account with this Email is already registered." });
+    }
+
+    const existingUser = await User.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({ error: "A user with this Email is already registered." });
+    }
+
+    const existingAgent = await Agent.findOne({ email: cleanEmail });
+    if (existingAgent) {
+      return res.status(400).json({ error: "An agent with this Email is already registered." });
+    }
+
+    const existingAdmin = await Admin.findOne({ email: cleanEmail });
+    if (existingAdmin) {
+      return res.status(400).json({ error: "An admin account with this Email is already registered." });
+    }
+
+    const hashedPassword = hashPassword(password);
+
+    const newStaff = new OfficeStaff({
+      name: name.trim(),
+      email: cleanEmail,
+      mobile: mobile.trim(),
+      branch: branch.trim(),
+      province: province.trim(),
+      location: location.trim(),
+      staffCount: Number(staffCount),
+      password: hashedPassword
+    });
+
+    await newStaff.save();
+
+    const staffObj = newStaff.toObject();
+    delete staffObj.password;
+
+    res.status(201).json({ message: "Office staff registered successfully", staff: staffObj });
+  } catch (err) {
+    console.error("Create staff API error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
   }
 });
 
