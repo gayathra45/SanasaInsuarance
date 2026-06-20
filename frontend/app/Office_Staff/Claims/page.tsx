@@ -55,6 +55,18 @@ interface Claim {
   inspectionReport?: string;
   inspectionSubmitted?: boolean;
   paymentReceipt?: string;
+  bankName?: string;
+  bankBranch?: string;
+  bankAccount?: string;
+  rejectionReason?: string;
+  notes?: ClaimNote[];
+}
+
+interface ClaimNote {
+  text: string;
+  addedBy: string;
+  addedAt: string;
+  _id?: string;
 }
 
 interface PolicyHolder {
@@ -100,6 +112,13 @@ export default function OfficeStaffClaimsPage() {
   const [newMessageText, setNewMessageText] = useState("");
   const [activeDetailsPanel, setActiveDetailsPanel] = useState<"tracking" | "request_docs" | null>(null);
   const [tempRequestedDocs, setTempRequestedDocs] = useState<string[]>([]);
+  const [decisionAction, setDecisionAction] = useState<"Approve" | "Reject" | null>(null);
+  const [rejectionReasonText, setRejectionReasonText] = useState("");
+  const [bankName, setBankName] = useState("");
+  const [bankBranch, setBankBranch] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
+  const [paymentReceiptFile, setPaymentReceiptFile] = useState<File | null>(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
 
   // Sub-modal overlay states
   const [activeSubModal, setActiveSubModal] = useState<"documents" | "contact" | "request_docs" | "add_note" | "update_tracking" | null>(null);
@@ -190,6 +209,18 @@ export default function OfficeStaffClaimsPage() {
       document.body.style.overflow = "";
     };
   }, [selectedClaim, previewImage, showAssignModal]);
+
+  useEffect(() => {
+    if (selectedClaim) {
+      setAssessmentAmount(selectedClaim.amount !== null ? selectedClaim.amount.toString() : "");
+      setBankName(selectedClaim.bankName || "");
+      setBankBranch(selectedClaim.bankBranch || "");
+      setBankAccount(selectedClaim.bankAccount || "");
+      setRejectionReasonText(selectedClaim.rejectionReason || "");
+      setDecisionAction(null);
+      setPaymentReceiptFile(null);
+    }
+  }, [selectedClaim]);
 
   // Handle agent assignment
   const handleAssignAgent = async (
@@ -321,11 +352,11 @@ export default function OfficeStaffClaimsPage() {
   };
 
   const getStepperSteps = (claim: Claim) => {
-    const isAssigned = !!claim.assignedAgent;
-    const isInspection = claim.currentStep >= 2 || claim.status === "In Progress" || claim.status === "Approved";
-    const isReview = claim.currentStep >= 3 || claim.status === "Approved";
-    const isDecision = claim.status === "Approved" || claim.status === "Rejected" || claim.currentStep >= 4;
-    const isPayment = claim.status === "Approved" && claim.amount !== null;
+    const isAssigned = claim.currentStep >= 2;
+    const isInspection = claim.currentStep >= 3;
+    const isReview = claim.currentStep >= 4;
+    const isDecision = claim.currentStep >= 5 || claim.status === "Approved" || claim.status === "Rejected";
+    const isPayment = claim.currentStep >= 6 || (claim.status === "Approved" && claim.amount !== null);
 
     return [
       { num: "01", label: "Submitted", active: true },
@@ -439,9 +470,8 @@ export default function OfficeStaffClaimsPage() {
                     No claims found in {branch} Branch under active filters.
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3 animate-fade-in">
-                    {/* Header Row for Desktop */}
-                    <div className="hidden md:grid md:grid-cols-[1.3fr_0.9fr_1.4fr_1.3fr_2fr_1fr_0.9fr_1.5fr] items-center gap-4 px-5 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border border-transparent border-l-4 border-l-transparent">
+                  <div className="flex flex-col gap-3 animate-fade-in">                    {/* Header Row for Desktop */}
+                    <div className="hidden md:grid md:grid-cols-[1.5fr_0.8fr_1.3fr_1.2fr_1.9fr_1fr_0.9fr_1.5fr] items-center gap-4 px-5 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border border-transparent border-l-4 border-l-transparent">
                       <div className="flex flex-col select-none min-w-0">Claim Info</div>
                       <div className="flex flex-col select-none min-w-0">Vehicle No</div>
                       <div className="flex flex-col select-none min-w-0">Damage Type</div>
@@ -451,7 +481,7 @@ export default function OfficeStaffClaimsPage() {
                       <div className="flex flex-col select-none min-w-0">Status</div>
                       <div className="flex flex-col select-none min-w-0 text-right">Actions</div>
                     </div>
-
+ 
                     {filteredClaims.map((claim) => {
                       const isUrgent = claim.priority === "Urgent" || claim.damageType.toLowerCase().includes("severe") || claim.description.toLowerCase().includes("urgent");
                       return (
@@ -461,18 +491,18 @@ export default function OfficeStaffClaimsPage() {
                             setSelectedClaim(claim);
                             setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
                           }}
-                          className={`bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex flex-col md:grid md:grid-cols-[1.3fr_0.9fr_1.4fr_1.3fr_2fr_1fr_0.9fr_1.5fr] md:items-center gap-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-[#0f2d4a] relative overflow-hidden ${
+                          className={`bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex flex-col md:grid md:grid-cols-[1.5fr_0.8fr_1.3fr_1.2fr_1.9fr_1fr_0.9fr_1.5fr] md:items-center gap-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-[#0f2d4a] relative overflow-hidden ${
                             isUrgent ? "border-l-4 border-l-red-500" : "border-l-4 border-l-[#0f2d4a]"
                           }`}
                         >
                           {/* Claim ID & Date */}
                           <div className="flex flex-col select-none min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <h3 className={`font-black text-sm ${isUrgent ? "text-red-600" : "text-slate-800"}`}>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <h3 className="font-black text-sm text-slate-800 whitespace-nowrap">
                                 {claim.claimNumber}
                               </h3>
                               {isUrgent && (
-                                <span className="bg-red-100 text-red-700 text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md">Urgent</span>
+                                <span className="bg-red-100 text-red-700 text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md whitespace-nowrap">Urgent</span>
                               )}
                             </div>
                             <span className="text-[10px] text-slate-400 font-bold tracking-wider block mt-0.5">
@@ -1124,70 +1154,308 @@ export default function OfficeStaffClaimsPage() {
                   <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Current Portal Step :</label>
-                    <select
-                      value={selectedClaim.currentStep}
-                      onChange={(e) => handleUpdateClaim(selectedClaim.claimNumber, { currentStep: Number(e.target.value) })}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
-                    >
-                      <option value={1}>01 - Submitted</option>
-                      <option value={2}>02 - Assigned</option>
-                      <option value={3}>03 - Inspection</option>
-                      <option value={4}>04 - Review</option>
-                      <option value={5}>05 - Decision</option>
-                      <option value={6}>06 - Payment</option>
-                    </select>
+                {selectedClaim.status === "Rejected" ? (
+                  <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center space-y-2">
+                    <p className="text-red-700 font-bold text-sm">
+                      This claim has been Rejected.
+                    </p>
+                    {selectedClaim.rejectionReason && (
+                      <p className="text-xs text-red-600 font-semibold leading-relaxed">
+                        Reason: {selectedClaim.rejectionReason}
+                      </p>
+                    )}
                   </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Render Step-Specific UI */}
+                    {selectedClaim.currentStep === 1 && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                        <p className="text-slate-600 font-bold text-sm">
+                          Policy holder has applied for the claim. Waiting to assign an agent.
+                        </p>
+                      </div>
+                    )}
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Assessment Amount (Rs.) :</label>
-                    <input
-                      type="number"
-                      value={assessmentAmount}
-                      onChange={(e) => setAssessmentAmount(e.target.value)}
-                      placeholder="Not Assessed"
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
-                    />
-                  </div>
+                    {selectedClaim.currentStep === 2 && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                        <p className="text-slate-600 font-bold text-sm">
+                          Agent assigned. Waiting for the agent to accept the claim.
+                        </p>
+                      </div>
+                    )}
 
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Claim Status :</label>
-                    <select
-                      value={selectedClaim.status}
-                      onChange={(e) => handleUpdateClaim(selectedClaim.claimNumber, { status: e.target.value })}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
-                    >
-                      <option value="Pending">Pending</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Approved">Approved</option>
-                      <option value="Rejected">Rejected</option>
-                    </select>
+                    {selectedClaim.currentStep === 3 && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                        <p className="text-slate-600 font-bold text-sm">
+                          Inspection in progress. Waiting for agent report.
+                        </p>
+                      </div>
+                    )}
+
+                    {selectedClaim.currentStep === 4 && (
+                      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center space-y-4">
+                        <p className="text-slate-600 font-bold text-sm">
+                          Inspection report has been submitted by the agent. Please review the details.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            await handleUpdateClaim(selectedClaim.claimNumber, { currentStep: 5 });
+                            alert("Advanced to Decision (Step 5) successfully!");
+                          }}
+                          disabled={updatingClaim}
+                          className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-extrabold text-xs px-6 py-3 rounded-full transition-all border-none cursor-pointer disabled:opacity-50"
+                        >
+                          {updatingClaim ? "Updating..." : "Proceed to Decision (Step 5)"}
+                        </button>
+                      </div>
+                    )}
+
+                    {selectedClaim.currentStep === 5 && (
+                      <div className="space-y-4">
+                        <div className="flex gap-4">
+                          <button
+                            type="button"
+                            onClick={() => setDecisionAction("Approve")}
+                            className={`flex-1 py-3 px-6 rounded-xl text-xs font-black tracking-wide uppercase transition-all border cursor-pointer ${
+                              decisionAction === "Approve"
+                                ? "bg-emerald-600 text-white border-transparent shadow-sm"
+                                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                            }`}
+                          >
+                            Approve Claim
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDecisionAction("Reject")}
+                            className={`flex-1 py-3 px-6 rounded-xl text-xs font-black tracking-wide uppercase transition-all border cursor-pointer ${
+                              decisionAction === "Reject"
+                                ? "bg-red-600 text-white border-transparent shadow-sm"
+                                : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                            }`}
+                          >
+                            Reject Claim
+                          </button>
+                        </div>
+
+                        {decisionAction === "Approve" && (
+                          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 animate-fade-in">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[13px] font-bold text-slate-800 ml-1">Estimate Amount (LKR) :</label>
+                              <input
+                                type="number"
+                                value={assessmentAmount}
+                                onChange={(e) => setAssessmentAmount(e.target.value)}
+                                placeholder="Enter estimate amount"
+                                className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const amountNum = parseFloat(assessmentAmount);
+                                if (isNaN(amountNum) || amountNum <= 0) {
+                                  alert("Please enter a valid estimate amount.");
+                                  return;
+                                }
+                                await handleUpdateClaim(selectedClaim.claimNumber, {
+                                  status: "Approved",
+                                  amount: amountNum,
+                                  currentStep: 6
+                                });
+                                alert("Claim approved and advanced to Payment step!");
+                              }}
+                              disabled={updatingClaim}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs px-6 py-3 rounded-full transition-all border-none cursor-pointer disabled:opacity-50"
+                            >
+                              {updatingClaim ? "Processing..." : "Confirm Approval"}
+                            </button>
+                          </div>
+                        )}
+
+                        {decisionAction === "Reject" && (
+                          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 animate-fade-in">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[13px] font-bold text-slate-800 ml-1">Rejection Reason :</label>
+                              <textarea
+                                rows={3}
+                                value={rejectionReasonText}
+                                onChange={(e) => setRejectionReasonText(e.target.value)}
+                                placeholder="Enter reason for rejection"
+                                className="w-full p-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] resize-none"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!rejectionReasonText.trim()) {
+                                  alert("Please specify a rejection reason.");
+                                  return;
+                                }
+                                await handleUpdateClaim(selectedClaim.claimNumber, {
+                                  status: "Rejected",
+                                  rejectionReason: rejectionReasonText.trim(),
+                                  currentStep: 5
+                                });
+                                alert("Claim has been rejected.");
+                              }}
+                              disabled={updatingClaim}
+                              className="bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs px-6 py-3 rounded-full transition-all border-none cursor-pointer disabled:opacity-50"
+                            >
+                              {updatingClaim ? "Processing..." : "Confirm Rejection"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedClaim.currentStep === 6 && (
+                      <div className="space-y-4">
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                          <h3 className="text-sm font-black text-slate-800 border-b pb-2 uppercase tracking-wide">
+                            Policy Holder Bank Details
+                          </h3>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[11px] font-bold text-slate-500 uppercase">Bank Name</label>
+                              <input
+                                type="text"
+                                value={bankName}
+                                onChange={(e) => setBankName(e.target.value)}
+                                placeholder="e.g. Bank of Ceylon"
+                                className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[11px] font-bold text-slate-500 uppercase">Branch Name</label>
+                              <input
+                                type="text"
+                                value={bankBranch}
+                                onChange={(e) => setBankBranch(e.target.value)}
+                                placeholder="e.g. Colombo Fort"
+                                className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                              <label className="text-[11px] font-bold text-slate-500 uppercase">Account Number</label>
+                              <input
+                                type="text"
+                                value={bankAccount}
+                                onChange={(e) => setBankAccount(e.target.value)}
+                                placeholder="e.g. 12345678"
+                                className="px-3.5 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+                          <h3 className="text-sm font-black text-slate-800 border-b pb-2 uppercase tracking-wide">
+                            Payment Receipt
+                          </h3>
+                          
+                          {selectedClaim.paymentReceipt ? (
+                            <div className="flex items-center justify-between bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
+                              <span className="text-xs font-bold text-emerald-600 flex items-center gap-1.5 select-none">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Receipt Uploaded
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  let docUrl = selectedClaim.paymentReceipt;
+                                  if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                                    docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                                  }
+                                  setPreviewImage(docUrl || null);
+                                }}
+                                className="text-xs font-extrabold text-cyan-600 hover:text-cyan-700 bg-transparent border-none cursor-pointer"
+                              >
+                                View Receipt File
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-2">
+                              <label className="text-xs font-bold text-slate-600 select-none">Upload Bank Transfer Receipt (Image/PDF) :</label>
+                              <input
+                                type="file"
+                                accept="image/*,application/pdf"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    setPaymentReceiptFile(e.target.files[0]);
+                                  }
+                                }}
+                                className="text-xs font-semibold text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-extrabold file:bg-slate-200 file:text-slate-800 file:cursor-pointer"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!bankName.trim() || !bankBranch.trim() || !bankAccount.trim()) {
+                              alert("Please fill in all policy holder bank details first.");
+                              return;
+                            }
+
+                            try {
+                              setIsUploadingReceipt(true);
+                              let receiptBase64 = undefined;
+                              
+                              if (paymentReceiptFile) {
+                                const convertToBase64 = (file: File): Promise<string> => {
+                                  return new Promise((resolve, reject) => {
+                                    const reader = new FileReader();
+                                    reader.readAsDataURL(file);
+                                    reader.onload = () => resolve(reader.result as string);
+                                    reader.onerror = error => reject(error);
+                                  });
+                                };
+                                receiptBase64 = await convertToBase64(paymentReceiptFile);
+                              }
+
+                              await handleUpdateClaim(selectedClaim.claimNumber, {
+                                bankName: bankName.trim(),
+                                bankBranch: bankBranch.trim(),
+                                bankAccount: bankAccount.trim(),
+                                paymentReceipt: receiptBase64,
+                                status: "Approved"
+                              });
+
+                              alert("Claim details and bank transfer receipt updated successfully! Claim process completed.");
+                              setActiveSubModal(null);
+                            } catch (uploadErr) {
+                              console.error(uploadErr);
+                              alert("An error occurred while uploading the receipt.");
+                            } finally {
+                              setIsUploadingReceipt(false);
+                            }
+                          }}
+                          disabled={updatingClaim || isUploadingReceipt}
+                          className="w-full bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-extrabold text-xs py-3.5 rounded-xl border-none cursor-pointer text-center select-none shadow-sm active:scale-95 disabled:opacity-50"
+                        >
+                          {isUploadingReceipt ? "Uploading Receipt..." : updatingClaim ? "Completing claim..." : "Complete Claim Process"}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
+                )}
               </div>
 
               {/* Footer */}
-              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-between flex-shrink-0">
+              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-end flex-shrink-0">
                 <button
                   type="button"
-                  onClick={() => setActiveSubModal(null)}
+                  onClick={() => {
+                    setActiveSubModal(null);
+                    setDecisionAction(null);
+                  }}
                   className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
                 >
-                  &lt; Close
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await handleUpdateClaim(selectedClaim.claimNumber, { amount: assessmentAmount === "" ? null : Number(assessmentAmount) });
-                    setActiveSubModal(null);
-                    alert("Valuation updated successfully!");
-                  }}
-                  disabled={updatingClaim}
-                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95 disabled:opacity-50"
-                >
-                  Submit &gt;
+                  Close
                 </button>
               </div>
             </div>
@@ -1272,9 +1540,11 @@ export default function OfficeStaffClaimsPage() {
                   <div className="flex items-center justify-between relative max-w-[650px] mx-auto">
                     {/* Connecting Line background (navy) */}
                     <div className="absolute top-[18px] left-[20px] right-[20px] h-1 bg-[#0f2d4a] -z-10 rounded-full" />
-                    {/* Connecting Line active fill (green) */}
+                    {/* Connecting Line active fill (green or red) */}
                     <div 
-                      className="absolute top-[18px] left-[20px] h-1 bg-[#22c55e] -z-10 rounded-full transition-all duration-500" 
+                      className={`absolute top-[18px] left-[20px] h-1 -z-10 rounded-full transition-all duration-500 ${
+                        selectedClaim.status === "Rejected" ? "bg-red-500" : "bg-[#22c55e]"
+                      }`} 
                       style={{ width: `${getStepperPercent(selectedClaim)}%` }} 
                     />
 
@@ -1285,7 +1555,9 @@ export default function OfficeStaffClaimsPage() {
                           {/* Step Circle */}
                           <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs border-2 bg-white transition-all duration-300 ${
                             isActive 
-                              ? "text-[#22c55e] border-[#22c55e] shadow-sm shadow-[#22c55e]/10" 
+                              ? selectedClaim.status === "Rejected"
+                                ? "text-red-500 border-red-500 shadow-sm shadow-red-500/10"
+                                : "text-[#22c55e] border-[#22c55e] shadow-sm shadow-[#22c55e]/10" 
                               : "text-[#0f2d4a] border-[#0f2d4a]"
                           }`}>
                             {stepObj.num}
@@ -1323,6 +1595,55 @@ export default function OfficeStaffClaimsPage() {
                   >
                     Add Note
                   </button>
+                </div>
+
+                {/* Internal Notes — Bottom Section */}
+                <div className="border-t border-slate-100 pt-5 select-none">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      Internal Notes
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setActiveSubModal("add_note")}
+                      className="text-[#f97316] hover:text-orange-600 p-1.5 rounded-xl hover:bg-orange-50 transition-all border-none cursor-pointer flex items-center justify-center bg-transparent"
+                      title="Add Note"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {selectedClaim.notes && selectedClaim.notes.length > 0 ? (
+                    <div className="bg-amber-50/50 border border-amber-100 rounded-2xl p-4 space-y-3">
+                      {selectedClaim.notes.map((note, idx) => (
+                        <div key={idx} className="flex gap-3 border-b border-amber-100/50 last:border-0 pb-3 last:pb-0">
+                          <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                            <svg className="w-3.5 h-3.5 text-amber-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                            </svg>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[12px] font-semibold text-slate-700 leading-relaxed">{note.text}</p>
+                            <span className="text-[10px] text-slate-400 font-bold block mt-0.5">
+                              {note.addedBy} &middot; {formatMessageTime(note.addedAt)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-5 text-center">
+                      <svg className="w-8 h-8 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      <span className="text-[12px] text-slate-400 font-semibold italic">No notes added yet. Click the icon above to add a note.</span>
+                    </div>
+                  )}
                 </div>
 
               </div>

@@ -30,6 +30,10 @@ const claimSchema = new mongoose.Schema({
   inspectionReport: { type: String, default: "" },
   inspectionSubmitted: { type: Boolean, default: false },
   paymentReceipt: { type: String, default: "" },
+  bankName: { type: String, default: "" },
+  bankBranch: { type: String, default: "" },
+  bankAccount: { type: String, default: "" },
+  rejectionReason: { type: String, default: "" },
   messages: [
     {
       sender: { type: String, default: "Office Staff" },

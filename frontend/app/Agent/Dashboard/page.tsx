@@ -63,6 +63,7 @@ export default function AgentDashboard() {
   const [agentUploadFile, setAgentUploadFile] = useState<File | null>(null);
   const [agentUploadDocName, setAgentUploadDocName] = useState<string>("Repair Estimate");
   const [isAgentUploading, setIsAgentUploading] = useState(false);
+  const [isAcceptingClaim, setIsAcceptingClaim] = useState(false);
 
   const fetchClaims = async (email: string) => {
     try {
@@ -161,6 +162,36 @@ export default function AgentDashboard() {
     } catch (e) {
       console.error(e);
       alert("Error sending update request.");
+    }
+  };
+
+  const handleAcceptClaim = async (claimId: string) => {
+    try {
+      setIsAcceptingClaim(true);
+      const res = await fetch(`${API_URL}/agent/claims/${claimId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acceptClaim: true })
+      });
+      if (!res.ok) {
+        alert("Failed to accept claim.");
+        return;
+      }
+      alert("Claim accepted successfully! Proceed with vehicle inspection.");
+      // Refresh claims list
+      await fetchClaims(agentEmail);
+      // Also refresh the selectedClaim state with the new data
+      const updatedRes = await fetch(`${API_URL}/agent/claims?email=${agentEmail}`);
+      if (updatedRes.ok) {
+        const data = await updatedRes.json();
+        const freshClaim = data.find((c: Claim) => c._id === claimId);
+        if (freshClaim) setSelectedClaim(freshClaim);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error accepting claim.");
+    } finally {
+      setIsAcceptingClaim(false);
     }
   };
 
@@ -577,8 +608,27 @@ export default function AgentDashboard() {
                 </p>
               </div>
 
+              {/* Accept Claim Assignment Section */}
+              {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && selectedClaim.currentStep === 2 && (
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2.5 animate-fade-in">
+                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b pb-2 border-slate-200">
+                    Accept Claim Assignment
+                  </h4>
+                  <p className="text-xs text-slate-500 font-semibold select-none leading-relaxed">
+                    This claim has been assigned to you. Accept the assignment to begin the vehicle inspection process.
+                  </p>
+                  <button
+                    onClick={() => handleAcceptClaim(selectedClaim._id)}
+                    disabled={isAcceptingClaim}
+                    className="bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold text-xs py-2.5 rounded-xl border-none cursor-pointer self-start px-5 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
+                  >
+                    {isAcceptingClaim ? "Accepting..." : "Accept Claim Assignment"}
+                  </button>
+                </div>
+              )}
+
               {/* Inspection Report Section */}
-              {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && !selectedClaim.inspectionSubmitted && (
+              {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && selectedClaim.currentStep === 3 && !selectedClaim.inspectionSubmitted && (
                 <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2.5">
                   <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b pb-2 border-slate-200">
                     Submit Inspection Report
@@ -586,7 +636,7 @@ export default function AgentDashboard() {
                   <textarea
                     value={inspectionReportText}
                     onChange={(e) => setInspectionReportText(e.target.value)}
-                    placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)..."
+                    placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)...."
                     rows={4}
                     className="w-full p-3 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-cyan-500 bg-white"
                   />

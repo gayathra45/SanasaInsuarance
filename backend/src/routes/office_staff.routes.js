@@ -222,7 +222,11 @@ router.patch("/claims/:claimNumber", async (req, res) => {
       inspectionReport,
       inspectionSubmitted,
       paymentReceipt,
-      noteText
+      noteText,
+      bankName,
+      bankBranch,
+      bankAccount,
+      rejectionReason
     } = req.body;
 
     const claim = await Claim.findOne({ claimNumber: claimNumber.trim().toUpperCase() });
@@ -232,17 +236,10 @@ router.patch("/claims/:claimNumber", async (req, res) => {
 
     if (status !== undefined) {
       claim.status = status;
-      if (status === "Approved" && claim.currentStep < 5) {
-        claim.currentStep = 5;
-      }
     }
     
     if (amount !== undefined) {
       claim.amount = amount === "" ? null : Number(amount);
-      // Auto-advance to Step 4 (Review) if amount is added and step is 3
-      if (claim.amount !== null && claim.currentStep === 3) {
-        claim.currentStep = 4;
-      }
     }
 
     if (currentStep !== undefined) {
@@ -265,17 +262,26 @@ router.patch("/claims/:claimNumber", async (req, res) => {
     
     if (inspectionSubmitted !== undefined) {
       claim.inspectionSubmitted = inspectionSubmitted;
-      if (inspectionSubmitted && claim.currentStep < 3) {
-        claim.currentStep = 3;
+      if (inspectionSubmitted && claim.currentStep < 4) {
+        claim.currentStep = 4;
       }
     }
 
     if (paymentReceipt !== undefined) {
-      claim.paymentReceipt = paymentReceipt;
-      if (paymentReceipt && claim.currentStep < 6) {
+      let receiptUrl = paymentReceipt;
+      if (paymentReceipt && paymentReceipt.startsWith("data:")) {
+        receiptUrl = await uploadToCloudinary(paymentReceipt, "claims/payment_receipts");
+      }
+      claim.paymentReceipt = receiptUrl;
+      if (receiptUrl && claim.currentStep < 6) {
         claim.currentStep = 6;
       }
     }
+
+    if (bankName !== undefined) claim.bankName = bankName;
+    if (bankBranch !== undefined) claim.bankBranch = bankBranch;
+    if (bankAccount !== undefined) claim.bankAccount = bankAccount;
+    if (rejectionReason !== undefined) claim.rejectionReason = rejectionReason;
 
     if (messageText) {
       claim.messages.push({

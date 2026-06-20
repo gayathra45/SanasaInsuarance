@@ -91,6 +91,7 @@ export default function AgentDashboard() {
   const [customAlert, setCustomAlert] = useState<{ title: string; message: string } | null>(null);
   const [inspectionReportText, setInspectionReportText] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [isAcceptingClaim, setIsAcceptingClaim] = useState(false);
 
   // Animations
   const contentFadeAnim = useRef(new Animated.Value(0)).current;
@@ -218,6 +219,33 @@ export default function AgentDashboard() {
       showAlert("Error", "Failed to update claim. Please try again.");
     } finally {
       setSavingAssessment(false);
+    }
+  };
+
+  const handleAcceptClaim = async () => {
+    if (!selectedClaim) return;
+    setIsAcceptingClaim(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/agent/claims/${selectedClaim._id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ acceptClaim: true }),
+      });
+      if (!res.ok) throw new Error("Failed to accept");
+      showAlert("Success", "Claim accepted successfully! Proceed with vehicle inspection.");
+      // Refresh list
+      await fetchClaims(agentEmail);
+      // Refresh local selected claim
+      const listRes = await fetch(`${API_BASE_URL}/api/agent/claims?email=${encodeURIComponent(agentEmail)}`);
+      if (listRes.ok) {
+        const data = await listRes.json();
+        const freshClaim = data.find((c: Claim) => c._id === selectedClaim._id);
+        if (freshClaim) setSelectedClaim(freshClaim);
+      }
+    } catch (e) {
+      showAlert("Error", "Failed to accept claim assignment. Please try again.");
+    } finally {
+      setIsAcceptingClaim(false);
     }
   };
 
@@ -654,12 +682,31 @@ export default function AgentDashboard() {
                         <Text style={styles.modalDescText}>{selectedClaim.description}</Text>
                       </View>
 
+                      {/* Accept Claim Assignment Section */}
+                      {isActive && selectedClaim.currentStep === 2 && (
+                        <View style={styles.modalDescBox}>
+                          <Text style={styles.modalDescLabel}>Accept Claim Assignment</Text>
+                          <Text style={[styles.modalDescText, { fontSize: 11, color: '#64748b', marginBottom: 8 }]}>
+                            This claim has been assigned to you. Accept the assignment to begin the vehicle inspection process.
+                          </Text>
+                          <TouchableOpacity
+                            style={[styles.approveBtn, { backgroundColor: "#0ea5e9", paddingHorizontal: 16, height: 36, alignSelf: 'flex-start' }]}
+                            onPress={handleAcceptClaim}
+                            disabled={isAcceptingClaim}
+                          >
+                            <Text style={styles.approveBtnText}>
+                              {isAcceptingClaim ? "Accepting..." : "Accept Claim Assignment"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
                       {/* Submit Inspection Report Section */}
-                      {isActive && !selectedClaim.inspectionSubmitted && (
+                      {isActive && selectedClaim.currentStep === 3 && !selectedClaim.inspectionSubmitted && (
                         <View style={styles.modalDescBox}>
                           <Text style={styles.modalDescLabel}>Submit Inspection Report</Text>
                           <TextInput
-                            style={[styles.modalAssessField, { height: 80, textAlignVertical: 'top', padding: 10, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, color: '#1e293b' }]}
+                            style={[styles.modalAssessField, { height: 80, textAlignVertical: 'top', padding: 10, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, color: '#1e293b', marginBottom: 8 }]}
                             placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)..."
                             placeholderTextColor="#94a3b8"
                             multiline

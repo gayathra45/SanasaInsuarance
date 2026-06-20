@@ -190,6 +190,8 @@ export default function TrackClaims() {
       else if (s.includes("approved") || s.includes("done")) currentStep = 6;
     }
 
+    const isRejected = status.toLowerCase() === "rejected";
+
     const steps = [
       { num: "01", label: "Submitted" },
       { num: "02", label: "Assigned" },
@@ -203,10 +205,11 @@ export default function TrackClaims() {
       <View style={styles.wizardContainer}>
         {/* Grey background connection line */}
         <View style={styles.wizardBgLine} />
-        {/* Green progress connection line */}
+        {/* Green/Red progress connection line */}
         <View
           style={[
             styles.wizardProgressLine,
+            isRejected && { backgroundColor: "#ef4444" },
             { width: `${((currentStep - 1) / 5) * 100}%` }
           ]}
         />
@@ -217,24 +220,24 @@ export default function TrackClaims() {
             const isCompleted = stepNum < currentStep;
             const isActive = stepNum === currentStep;
 
-            let circleStyle = styles.stepCircleInactive;
-            let textStyle = styles.stepTextInactive;
+            let circleStyle: any = styles.stepCircleInactive;
+            let textStyle: any = styles.stepTextInactive;
 
             if (isCompleted) {
-              circleStyle = styles.stepCircleCompleted;
-              textStyle = styles.stepTextCompleted;
+              circleStyle = isRejected ? { borderColor: "#ef4444" } : styles.stepCircleCompleted;
+              textStyle = isRejected ? { color: "#ef4444" } : styles.stepTextCompleted;
             } else if (isActive) {
-              circleStyle = styles.stepCircleActive;
-              textStyle = styles.stepTextActive;
+              circleStyle = isRejected ? { borderColor: "#ef4444", backgroundColor: "#fef2f2" } : styles.stepCircleActive;
+              textStyle = isRejected ? { color: "#ef4444", fontWeight: "800" } : styles.stepTextActive;
             }
 
             return (
               <View key={step.num} style={styles.stepItem}>
                 <View style={[styles.stepCircle, circleStyle]}>
                   {isCompleted ? (
-                    <Ionicons name="checkmark" size={14} color="#00b050" />
+                    <Ionicons name="checkmark" size={14} color={isRejected ? "#ef4444" : "#00b050"} />
                   ) : (
-                    <Text style={[styles.stepNumber, isActive && { color: "#2563eb" }]}>{step.num}</Text>
+                    <Text style={[styles.stepNumber, isActive && { color: isRejected ? "#ef4444" : "#2563eb" }]}>{step.num}</Text>
                   )}
                 </View>
                 <Text style={[styles.stepLabel, textStyle]}>{step.label}</Text>
