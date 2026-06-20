@@ -23,7 +23,12 @@ Agent         - email - oshitha@gmail.com
                 password - oshitha123
 
 Office Staff  - email - galle@gmail.com
-                password - galle123
+                password - galle12
+
+Office Staff  - email - matara@gmail.com
+                password - matara123
+
+                
 
 admin         - email - admin@gmail.com
                 password - admin123          

@@ -63,7 +63,7 @@ router.get("/dashboard-stats", async (req, res) => {
 
     const newRegistrationsCount = await User.countDocuments({
       ...branchFilter,
-      ...dateFilter
+      status: "Pending"
     });
 
     const activeClaimsCount = await Claim.countDocuments({
@@ -92,7 +92,7 @@ router.get("/dashboard-stats", async (req, res) => {
     const newRegistrationsList = await User.find(
       {
         ...branchFilter,
-        ...dateFilter
+        status: "Pending"
       },
       { documents: 0 }
     ).sort({ createdAt: -1 });
