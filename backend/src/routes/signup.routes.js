@@ -8,24 +8,14 @@ import nodemailer from "nodemailer";
 import { Resend } from "resend";
 import dotenv from "dotenv";
 import { uploadToCloudinary } from "../utils/upload.js";
+import { hashPassword } from "../utils/crypto.js";
+import { getNearestBranch } from "../utils/branch.js";
 dotenv.config({ override: true });
 
 const router = express.Router();
 
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
 
-function getNearestBranch(city = "", province = "") {
-  const cleanCity = city.trim().toLowerCase();
 
-  if (cleanCity.includes("galle") || cleanCity.includes("hambantota")) return "Galle";
-  if (cleanCity.includes("matara")) return "Matara";
-  if (cleanCity.includes("colombo") || cleanCity.includes("gampaha") || cleanCity.includes("kalutara")) return "Colombo";
-  if (cleanCity.includes("anuradhapura") || cleanCity.includes("polonnaruwa")) return "Anuradhapura";
-  if (cleanCity.includes("embilipitiya") || cleanCity.includes("ratnapura")) return "Embilipitiya";
-  return "Galle";
-}
 
 // ─── CHECK: Email / NIC availability ─────────────────────────────────────────
 router.get("/check", async (req, res) => {
@@ -112,9 +102,31 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "All four required verification documents must be uploaded." });
     }
 
-    const existingUser = await User.findOne({ $or: [{ email }, { nic: cleanNic }] });
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanNicCheck = cleanNic.trim().toUpperCase();
+
+    // Check if email or nic already exists in User collection
+    const existingUser = await User.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNicCheck }] });
     if (existingUser) {
       return res.status(400).json({ error: "A user with this Email or NIC is already registered." });
+    }
+
+    // Check if email or nic already exists in Agent collection
+    const existingAgent = await Agent.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNicCheck }] });
+    if (existingAgent) {
+      return res.status(400).json({ error: "An agent with this Email or NIC is already registered." });
+    }
+
+    // Check if email or nic already exists in Admin collection
+    const existingAdmin = await Admin.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNicCheck }] });
+    if (existingAdmin) {
+      return res.status(400).json({ error: "An admin with this Email or NIC is already registered." });
+    }
+
+    // Check if email already exists in OfficeStaff collection
+    const existingOfficeStaff = await OfficeStaff.findOne({ email: cleanEmail });
+    if (existingOfficeStaff) {
+      return res.status(400).json({ error: "An office staff account with this Email is already registered." });
     }
 
     const hashedPassword = hashPassword(password);
@@ -155,7 +167,7 @@ router.post("/", async (req, res) => {
         vehicleReg: uploadedVehicleReg,
         revenueLicense: uploadedRevenueLicense
       },
-      branch: getNearestBranch(city, province),
+      branch: getNearestBranch(city),
       referenceNumber: nextRefNum,
     });
 
@@ -206,33 +218,71 @@ async function findUserByRole(role, cleanNic, cleanMobile, cleanEmail) {
 
 // ─── Helper: send email via Gmail SMTP or Resend ─────────────────────────────
 async function sendEmail(toEmail, subject, htmlBody, textBody) {
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT || 587;
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
+  const senderEmail = process.env.SENDER_EMAIL || "codemapper71@gmail.com";
   const resendKey = process.env.RESEND_API_KEY;
 
+  // 1. Check for Mailtrap / Custom SMTP
+  const hasCustomSmtp = smtpHost && smtpUser && smtpPass &&
+                        !smtpHost.includes("your-") &&
+                        !smtpUser.includes("your-") &&
+                        !smtpPass.includes("your-");
+
+  if (hasCustomSmtp) {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: Number(smtpPort),
+      secure: smtpPort == 465, // true for 465, false for others
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await transporter.sendMail({
+      from: `"Sanasa Insurance" <${senderEmail}>`,
+      to: toEmail,
+      subject,
+      html: htmlBody,
+      text: textBody,
+    });
+    console.log(`✅ Email sent to ${toEmail} via SMTP Server (${smtpHost})`);
+    return { sent: true };
+  }
+
+  // 2. Fallback: Check for legacy Gmail SMTP
   const hasGmail = smtpUser && smtpPass &&
+                   smtpUser.includes("@gmail.com") &&
                    !smtpUser.includes("your-gmail") &&
                    !smtpPass.includes("your-16-char");
-  const hasResend = resendKey && !resendKey.includes("re_your");
 
   if (hasGmail) {
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com", port: 587, secure: false,
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
       auth: { user: smtpUser, pass: smtpPass },
     });
     await transporter.sendMail({
       from: `"Sanasa Insurance" <${smtpUser}>`,
-      to: toEmail, subject, html: htmlBody, text: textBody,
+      to: toEmail,
+      subject,
+      html: htmlBody,
+      text: textBody,
     });
     console.log(`✅ Email sent to ${toEmail} via Gmail SMTP`);
     return { sent: true };
   }
 
+  // 3. Fallback: Check for Resend
+  const hasResend = resendKey && !resendKey.includes("re_your");
   if (hasResend) {
     const resend = new Resend(resendKey);
     const { error } = await resend.emails.send({
       from: "Sanasa Insurance <onboarding@resend.dev>",
-      to: [toEmail], subject, html: htmlBody, text: textBody,
+      to: [toEmail],
+      subject,
+      html: htmlBody,
+      text: textBody,
     });
     if (error) throw new Error(error.message || "Resend failed.");
     console.log(`✅ Email sent to ${toEmail} via Resend`);

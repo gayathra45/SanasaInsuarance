@@ -1,15 +1,12 @@
 import express from "express";
-import crypto from "crypto";
 import OfficeStaff from "../models/office_staff.model.js";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
+import Agent from "../models/agent.model.js";
+import Admin from "../models/admin.model.js";
+import { hashPassword } from "../utils/crypto.js";
 
 const router = express.Router();
-
-// Helper to hash password matching the project's standard hashing logic (SHA-256)
-function hashPassword(password) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
 
 // POST login: /api/office-staff/login
 router.post("/login", async (req, res) => {
@@ -116,6 +113,51 @@ router.get("/dashboard-stats", async (req, res) => {
   }
 });
 
+// GET all claims for a specific branch: /api/office-staff/claims
+router.get("/claims", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+    const claims = await Claim.find({ branch: branch.trim() }).sort({ createdAt: -1 });
+    res.json({ claims });
+  } catch (err) {
+    console.error("Fetch office staff claims error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET all policy holders for a specific branch: /api/office-staff/policy-holders
+router.get("/policy-holders", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+    const policyHolders = await User.find({ branch: branch.trim(), status: "Approved" }, { password: 0 }).sort({ createdAt: -1 });
+    res.json({ policyHolders });
+  } catch (err) {
+    console.error("Fetch office staff policy holders error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET all agents for a specific branch: /api/office-staff/agents
+router.get("/agents", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+    const agents = await Agent.find({ branch: branch.trim() }, { password: 0 }).sort({ createdAt: -1 });
+    res.json({ agents });
+  } catch (err) {
+    console.error("Fetch office staff agents error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
 // GET all registrations for a specific branch: /api/office-staff/registrations
 router.get("/registrations", async (req, res) => {
   try {
@@ -152,6 +194,111 @@ router.patch("/registrations/:id/status", async (req, res) => {
     res.json({ message: `Registration status updated to ${status}`, user });
   } catch (err) {
     console.error("Update registration status error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// PATCH update claim details: /api/office-staff/claims/:claimNumber
+router.patch("/claims/:claimNumber", async (req, res) => {
+  try {
+    const { claimNumber } = req.params;
+    const { status, amount, currentStep, assignedAgent, messageText, messageSender } = req.body;
+
+    const claim = await Claim.findOne({ claimNumber: claimNumber.trim().toUpperCase() });
+    if (!claim) {
+      return res.status(404).json({ error: "Claim not found." });
+    }
+
+    if (status !== undefined) claim.status = status;
+    if (amount !== undefined) claim.amount = amount === "" ? null : Number(amount);
+    if (currentStep !== undefined) claim.currentStep = Number(currentStep);
+    if (assignedAgent !== undefined) claim.assignedAgent = assignedAgent;
+
+    if (messageText) {
+      claim.messages.push({
+        sender: messageSender || "Office Staff",
+        message: messageText,
+        sentAt: new Date()
+      });
+    }
+
+    await claim.save();
+    res.json({ message: "Claim updated successfully", claim });
+  } catch (err) {
+    console.error("Update claim error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// POST create a new agent: /api/office-staff/agents
+router.post("/agents", async (req, res) => {
+  try {
+    const { name, email, nic, address, dob, password, branch } = req.body;
+
+    if (!name || !email || !nic || !address || !dob || !password || !branch) {
+      return res.status(400).json({ error: "All fields are required." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanNic = nic.trim().toUpperCase();
+
+    // Check if email or nic already exists in Agent collection
+    const existingAgent = await Agent.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNic }] });
+    if (existingAgent) {
+      return res.status(400).json({ error: "An agent with this Email or NIC is already registered." });
+    }
+
+    // Check if email or nic already exists in User collection
+    const existingUser = await User.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNic }] });
+    if (existingUser) {
+      return res.status(400).json({ error: "A user with this Email or NIC is already registered." });
+    }
+
+    // Check if email or nic already exists in Admin collection
+    const existingAdmin = await Admin.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNic }] });
+    if (existingAdmin) {
+      return res.status(400).json({ error: "An admin with this Email or NIC is already registered." });
+    }
+
+    // Check if email already exists in OfficeStaff collection
+    const existingOfficeStaff = await OfficeStaff.findOne({ email: cleanEmail });
+    if (existingOfficeStaff) {
+      return res.status(400).json({ error: "An office staff account with this Email is already registered." });
+    }
+
+    // Auto-generate agentId (e.g. AGT-0001)
+    const lastAgent = await Agent.findOne({}, { agentId: 1 }).sort({ createdAt: -1 });
+    let nextAgentId = "AGT-0001";
+    if (lastAgent && lastAgent.agentId) {
+      const match = lastAgent.agentId.match(/AGT-(\d+)/i);
+      if (match) {
+        const currentNum = parseInt(match[1], 10);
+        nextAgentId = `AGT-${String(currentNum + 1).padStart(4, "0")}`;
+      }
+    }
+
+    const hashedPassword = hashPassword(password);
+
+    const newAgent = new Agent({
+      agentId: nextAgentId,
+      name: name.trim(),
+      email: cleanEmail,
+      password: hashedPassword,
+      nic: cleanNic,
+      address: address.trim(),
+      dob: dob.trim(),
+      branch: branch.trim()
+    });
+
+    await newAgent.save();
+
+    // Return agent details without password
+    const agentObj = newAgent.toObject();
+    delete agentObj.password;
+
+    res.status(201).json({ message: "Agent registered successfully", agent: agentObj });
+  } catch (err) {
+    console.error("Create agent API error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });

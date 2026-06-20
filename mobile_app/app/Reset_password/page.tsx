@@ -50,6 +50,7 @@ export default function MobileResetPassword() {
 
   // UI
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [redirectCountdown, setRedirectCountdown] = useState(3);
 
   // OTP countdown timer
   useEffect(() => {
@@ -59,6 +60,16 @@ export default function MobileResetPassword() {
     }
     return () => clearInterval(timer);
   }, [stage, timerSeconds]);
+
+  // Success redirect countdown timer
+  useEffect(() => {
+    if (stage === 4 && redirectCountdown > 0) {
+      const t = setTimeout(() => setRedirectCountdown((p) => p - 1), 1000);
+      return () => clearTimeout(t);
+    } else if (stage === 4 && redirectCountdown === 0) {
+      router.push("/login/page");
+    }
+  }, [stage, redirectCountdown]);
 
   // OTP digit handler
   const handleOtpChange = (idx: number, val: string) => {
@@ -399,18 +410,33 @@ export default function MobileResetPassword() {
 
             {/* ── STAGE 4: Success ── */}
             {stage === 4 && (
-              <View style={[styles.form, { alignItems: "center", gap: 20, paddingVertical: 16 }]}>
-                <View style={[styles.iconCircle, { width: 80, height: 80, borderRadius: 40, borderColor: "rgba(255,152,0,0.4)" }]}>
-                  <Ionicons name="checkmark-outline" size={42} color="#ff9800" />
+              <View style={[styles.form, { alignItems: "center", gap: 16, paddingVertical: 16 }]}>
+                {/* Glowing Checkmark Icon */}
+                <View style={[styles.iconCircle, { width: 88, height: 88, borderRadius: 44, borderColor: "#ff9800", backgroundColor: "rgba(255,152,0,0.15)" }]}>
+                  <Ionicons name="checkmark-done-outline" size={46} color="#ff9800" />
                 </View>
-                <Text style={[styles.label, { fontSize: 22, fontWeight: "bold", textAlign: "center" }]}>
+                
+                <Text style={[styles.label, { fontSize: 24, fontWeight: "bold", textAlign: "center", color: "#ffffff" }]}>
                   Password Updated!
                 </Text>
-                <Text style={[styles.subtitleSmall, { textAlign: "center", paddingHorizontal: 12 }]}>
+                
+                <Text style={[styles.subtitleSmall, { textAlign: "center", paddingHorizontal: 12, color: "rgba(255,255,255,0.75)", lineHeight: 18 }]}>
                   Your password has been successfully changed. You can now log in with your new password.
                 </Text>
-                <TouchableOpacity activeOpacity={0.8} style={styles.primaryBtn} onPress={() => router.push("/login/page")}>
-                  <Text style={styles.primaryBtnText}>Go to Login</Text>
+
+                {/* Progress bar and countdown */}
+                <View style={{ alignItems: "center", width: "100%", marginTop: 12 }}>
+                  <View style={{ width: 180, height: 6, backgroundColor: "rgba(255,255,255,0.12)", borderRadius: 3, overflow: "hidden" }}>
+                    <View style={{ height: "100%", backgroundColor: "#ff9800", borderRadius: 3, width: `${(redirectCountdown / 3) * 100}%` }} />
+                  </View>
+                  <Text style={[styles.subtitleSmall, { marginTop: 10, color: "rgba(255,255,255,0.5)", fontWeight: "500" }]}>
+                    Redirecting to login in <Text style={{ color: "#ff9800", fontWeight: "bold" }}>{redirectCountdown}s</Text>
+                  </Text>
+                </View>
+
+                {/* Manual Go to Login Button */}
+                <TouchableOpacity activeOpacity={0.8} style={[styles.primaryBtn, { width: "100%", marginTop: 16 }]} onPress={() => router.push("/login/page")}>
+                  <Text style={styles.primaryBtnText}>Go to Login Now</Text>
                 </TouchableOpacity>
               </View>
             )}
