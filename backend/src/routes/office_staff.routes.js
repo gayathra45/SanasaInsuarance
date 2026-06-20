@@ -134,7 +134,7 @@ router.get("/policy-holders", async (req, res) => {
     if (!branch) {
       return res.status(400).json({ error: "Branch query parameter is required." });
     }
-    const policyHolders = await User.find({ branch: branch.trim() }, { password: 0 }).sort({ createdAt: -1 });
+    const policyHolders = await User.find({ branch: branch.trim(), status: "Approved" }, { password: 0 }).sort({ createdAt: -1 });
     res.json({ policyHolders });
   } catch (err) {
     console.error("Fetch office staff policy holders error:", err);
@@ -164,10 +164,35 @@ router.get("/registrations", async (req, res) => {
     if (!branch) {
       return res.status(400).json({ error: "Branch query parameter is required." });
     }
-    const registrations = await User.find({ branch: branch.trim() }, { password: 0 }).sort({ createdAt: -1 });
+    const registrations = await User.find({ branch: branch.trim(), status: { $ne: "Approved" } }, { password: 0 }).sort({ createdAt: -1 });
     res.json({ registrations });
   } catch (err) {
     console.error("Fetch office staff registrations error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// PATCH update user registration status: /api/office-staff/registrations/:id/status
+router.patch("/registrations/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!["Pending", "Approved", "Rejected"].includes(status)) {
+      return res.status(400).json({ error: "Invalid status value. Must be Pending, Approved, or Rejected." });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: "User not found." });
+    }
+
+    user.status = status;
+    await user.save();
+
+    res.json({ message: `Registration status updated to ${status}`, user });
+  } catch (err) {
+    console.error("Update registration status error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });
