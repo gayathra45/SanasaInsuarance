@@ -38,7 +38,7 @@ interface Claim {
   documentsRequested?: boolean;
   requestedDocuments?: string[];
   currentStep?: number;
-  messages?: { sender: string; message: string; sentAt: string }[];
+  messages?: { sender: string; message: string; sentAt: string; recipient?: string }[];
 }
 
 export default function MyClaims() {
@@ -458,21 +458,28 @@ export default function MyClaims() {
                 {/* Messages & Logs */}
                 <View style={styles.messagesSection}>
                   <Text style={styles.messagesHeader}>Messages & Updates</Text>
-                  {selectedClaim.messages && selectedClaim.messages.length > 0 ? (
-                    <View style={styles.messagesList}>
-                      {selectedClaim.messages.map((msg, i) => (
-                        <View key={i} style={styles.messageBox}>
-                          <View style={styles.messageSubHeader}>
-                            <Text style={styles.messageSender}>{msg.sender}</Text>
-                            <Text style={styles.messageTime}>{formatDateString(msg.sentAt)}</Text>
-                          </View>
-                          <Text style={styles.messageBody}>{msg.message}</Text>
+                  {(() => {
+                    const filteredMessages = (selectedClaim.messages || []).filter(msg => msg.recipient !== "Agent");
+                    if (filteredMessages.length > 0) {
+                      return (
+                        <View style={styles.messagesList}>
+                          {filteredMessages.map((msg, i) => (
+                            <View key={i} style={styles.messageBox}>
+                              <View style={styles.messageSubHeader}>
+                                <Text style={styles.messageSender}>{msg.sender}</Text>
+                                <Text style={styles.messageTime}>{formatDateString(msg.sentAt)}</Text>
+                              </View>
+                              <Text style={styles.messageBody}>{msg.message}</Text>
+                            </View>
+                          ))}
                         </View>
-                      ))}
-                    </View>
-                  ) : (
-                    <Text style={styles.noMessagesText}>No notifications or messages have been sent for this claim.</Text>
-                  )}
+                      );
+                    } else {
+                      return (
+                        <Text style={styles.noMessagesText}>No notifications or messages have been sent for this claim.</Text>
+                      );
+                    }
+                  })()}
                 </View>
               </ScrollView>
 

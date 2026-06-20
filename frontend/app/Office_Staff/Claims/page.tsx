@@ -10,6 +10,7 @@ interface ClaimMessage {
   sender: string;
   message: string;
   sentAt: string;
+  recipient?: string;
   _id?: string;
 }
 
@@ -18,6 +19,7 @@ interface AdditionalDoc {
   url: string;
   uploadedAt: string;
   _id?: string;
+  uploadedBy?: string;
 }
 
 interface Claim {
@@ -50,6 +52,9 @@ interface Claim {
   };
   createdAt: string;
   priority?: string;
+  inspectionReport?: string;
+  inspectionSubmitted?: boolean;
+  paymentReceipt?: string;
 }
 
 interface PolicyHolder {
@@ -95,6 +100,13 @@ export default function OfficeStaffClaimsPage() {
   const [newMessageText, setNewMessageText] = useState("");
   const [activeDetailsPanel, setActiveDetailsPanel] = useState<"tracking" | "request_docs" | null>(null);
   const [tempRequestedDocs, setTempRequestedDocs] = useState<string[]>([]);
+
+  // Sub-modal overlay states
+  const [activeSubModal, setActiveSubModal] = useState<"documents" | "contact" | "request_docs" | "add_note" | "update_tracking" | null>(null);
+  const [documentRequestTo, setDocumentRequestTo] = useState<"User" | "Agent">("User");
+  const [selectedRequestDocType, setSelectedRequestDocType] = useState("NIC Front Page");
+  const [documentRequestMessage, setDocumentRequestMessage] = useState("");
+  const [contactRecipient, setContactRecipient] = useState<"Policy Holder" | "Agent">("Policy Holder");
 
   // Load claims and agents
   const loadClaimsAndAgents = async (currentBranch: string) => {
@@ -221,7 +233,10 @@ export default function OfficeStaffClaimsPage() {
   };
 
   // Handle general updates (status, amount, etc.)
-  const handleUpdateClaim = async (claimNumber: string, updates: Partial<Claim> & { messageText?: string }) => {
+  const handleUpdateClaim = async (
+    claimNumber: string,
+    updates: Partial<Claim> & { messageText?: string; messageRecipient?: string; noteText?: string; documentRequestTo?: string }
+  ) => {
     try {
       setUpdatingClaim(true);
       const res = await fetch(`${API_URL}/office-staff/claims/${claimNumber}`, {
@@ -532,6 +547,11 @@ export default function OfficeStaffClaimsPage() {
                               onClick={() => {
                                 setSelectedClaim(claim);
                                 setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
+                                setActiveSubModal(null);
+                                setDocumentRequestTo("User");
+                                setSelectedRequestDocType("NIC Front Page");
+                                setDocumentRequestMessage("");
+                                setContactRecipient("Policy Holder");
                               }}
                               className="border border-slate-300 hover:bg-slate-50 text-slate-600 font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all cursor-pointer focus:outline-none shadow-sm bg-white whitespace-nowrap"
                             >
@@ -548,461 +568,790 @@ export default function OfficeStaffClaimsPage() {
           </main>
         </div>
       </div>
-
       {/* Detail Inspection Modal */}
       {selectedClaim && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
-          <div className="bg-white border border-slate-200 rounded-[24px] w-full max-w-[800px] max-h-[90vh] shadow-2xl flex flex-col relative animate-fade-in overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex justify-between items-center px-8 pt-6 pb-4 border-b border-slate-200 flex-shrink-0 select-none bg-slate-50/50">
-              <div>
-                <h2 className="text-[20px] font-black text-[#0f2d4a] tracking-tight leading-none flex items-center gap-2">
-                  Claim Detail - {selectedClaim.claimNumber}
-                  <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide ${getStatusStyle(selectedClaim.status, selectedClaim.damageType, selectedClaim.priority)}`}>
-                    {selectedClaim.status}
-                  </span>
+          
+          {/* SUB-MODAL 1: DOCUMENTS */}
+          {activeSubModal === "documents" && (
+            <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[800px] h-[650px] max-h-[90vh] shadow-2xl flex flex-col relative animate-fade-in overflow-hidden">
+              {/* Header */}
+              <div className="px-8 pt-6 pb-2 select-none bg-white">
+                <h2 className="text-[24px] font-black text-slate-900 tracking-tight leading-none">
+                  Documents - {selectedClaim.claimNumber}
                 </h2>
-                <p className="text-xs text-slate-400 font-bold mt-1.5">Registered on: {formatDate(selectedClaim.createdAt)} | Nic: {selectedClaim.userNic}</p>
               </div>
-              <button
-                onClick={() => {
-                  setSelectedClaim(null);
-                  setActiveDetailsPanel(null);
-                }}
-                className="text-slate-400 hover:text-slate-600 text-2xl font-bold border-none bg-transparent cursor-pointer"
-              >
-                &times;
-              </button>
-            </div>
+              <div className="border-b border-black mx-8 mb-6" />
 
-            {/* Modal Body */}
-            <div className="p-8 flex-1 overflow-y-auto space-y-6">
-              
-              {/* Restructured Detail Section (Left column for user & claim details, Right column for agent & status, documents jump, contact jump) */}
-              <div className="grid grid-cols-1 md:grid-cols-[1.8fr_1fr] gap-6 select-none">
-                {/* Left Side Details Grid */}
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-semibold text-slate-600">
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Vehicle No</span>
-                    <span className="text-sm font-extrabold text-slate-800">{formatPlate(selectedClaim.vehiclePlate)}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Policy Holder Name</span>
-                    <span className="text-sm font-extrabold text-slate-800">{getPolicyHolderName(selectedClaim.userNic)}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Contact</span>
-                    <span className="text-sm font-extrabold text-slate-800">{getPolicyHolderContact(selectedClaim.userNic)}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Location</span>
-                    <span className="text-sm font-extrabold text-slate-800 truncate block" title={selectedClaim.location}>{selectedClaim.location}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Time</span>
-                    <span className="text-sm font-extrabold text-slate-800">{claimDateString(selectedClaim.incidentDate)} @ {selectedClaim.incidentTime}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Est. Amount</span>
-                    <span className="text-sm font-extrabold text-[#0f2d4a]">
-                      {selectedClaim.amount ? `LKR ${selectedClaim.amount.toLocaleString()}` : "Not Assessed"}
-                    </span>
-                  </div>
-                  <div className="col-span-1 md:col-span-2 border-t border-slate-200/60 pt-3 mt-1">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-1">Incident Description</span>
-                    <p className="text-xs text-slate-700 font-medium leading-relaxed bg-white p-3 rounded-lg border border-slate-150 line-clamp-3" title={selectedClaim.description}>{selectedClaim.description}</p>
-                  </div>
+              {/* Body */}
+              <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+                {/* Claim Summary */}
+                <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed">
+                  <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
                 </div>
-
-                {/* Right Side Column */}
-                <div className="flex flex-col justify-between border border-slate-200 rounded-2xl p-5 shadow-sm bg-white">
-                  <div className="space-y-4">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Agent</span>
-                      <strong className="text-slate-800 text-sm font-black block" title={selectedClaim.assignedAgent || undefined}>
-                        {selectedClaim.assignedAgent ? getAgentName(selectedClaim.assignedAgent) : "Unassigned"}
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Type</span>
-                      <span className="text-slate-800 text-sm font-extrabold block">{selectedClaim.damageType}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block mb-0.5">Status / Priority</span>
-                      <span className="flex items-center gap-1.5 mt-1">
-                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide text-center ${getStatusStyle(selectedClaim.status, selectedClaim.damageType, selectedClaim.priority)}`}>
-                          {selectedClaim.status}
-                        </span>
-                        {selectedClaim.priority === "Urgent" && (
-                          <span className="bg-red-100 text-red-700 text-[9px] font-black tracking-wider uppercase px-2 py-1 rounded-full border border-red-200">Urgent</span>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Stack of Cyan buttons */}
-                  <div className="mt-6 flex flex-col gap-2.5">
-                    <button
-                      onClick={() => document.getElementById("documents-section")?.scrollIntoView({ behavior: "smooth" })}
-                      className="w-full bg-[#00c5ff] hover:bg-[#00b0e6] text-white font-extrabold text-xs py-2.5 rounded-lg transition-all border-none cursor-pointer text-center select-none shadow-sm active:scale-95"
-                    >
-                      Documents
-                    </button>
-                    <button
-                      onClick={() => document.getElementById("messages-section")?.scrollIntoView({ behavior: "smooth" })}
-                      className="w-full bg-[#00c5ff] hover:bg-[#00b0e6] text-white font-extrabold text-xs py-2.5 rounded-lg transition-all border-none cursor-pointer text-center select-none shadow-sm active:scale-95"
-                    >
-                      Contact
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Progress Stepper Section */}
-              <div className="py-6 px-4 border-t border-b border-slate-100 select-none">
-                <div className="flex items-center justify-between relative max-w-[650px] mx-auto">
-                  {/* Connecting Line background */}
-                  <div className="absolute top-[18px] left-[20px] right-[20px] h-1 bg-slate-200 -z-10 rounded-full" />
-                  {/* Connecting Line active fill */}
-                  <div 
-                    className="absolute top-[18px] left-[20px] h-1 bg-[#0f2d4a] -z-10 rounded-full transition-all duration-500" 
-                    style={{ width: `${getStepperPercent(selectedClaim)}%` }} 
-                  />
-
-                  {getStepperSteps(selectedClaim).map((stepObj, idx) => {
-                    const isActive = stepObj.active;
-                    return (
-                      <div key={idx} className="flex flex-col items-center flex-1 relative">
-                        {/* Step Circle */}
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all duration-300 ${
-                          isActive 
-                            ? "bg-[#0f2d4a] text-white border-[#0f2d4a] shadow-md shadow-[#0f2d4a]/20" 
-                            : "bg-white text-slate-400 border-slate-200"
-                        }`}>
-                          {stepObj.num}
-                        </div>
-                        {/* Step Label */}
-                        <span className={`text-[10px] font-black mt-2 tracking-wide uppercase ${
-                          isActive ? "text-[#0f2d4a]" : "text-slate-400"
-                        }`}>
-                          {stepObj.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Action Section (Orange Buttons in Row) */}
-              <div className="grid grid-cols-3 gap-4 select-none">
-                <button
-                  onClick={() => setActiveDetailsPanel(activeDetailsPanel === "tracking" ? null : "tracking")}
-                  className={`py-3 px-4 rounded-xl text-xs font-black tracking-wide uppercase transition-all border cursor-pointer ${
-                    activeDetailsPanel === "tracking"
-                      ? "bg-[#d97706] text-white border-transparent shadow-md"
-                      : "bg-[#f59e0b] hover:bg-[#d97706] text-white border-transparent shadow-sm"
-                  }`}
-                >
-                  Update Tracking
-                </button>
-                <button
-                  onClick={() => setActiveDetailsPanel(activeDetailsPanel === "request_docs" ? null : "request_docs")}
-                  className={`py-3 px-4 rounded-xl text-xs font-black tracking-wide uppercase transition-all border cursor-pointer ${
-                    activeDetailsPanel === "request_docs"
-                      ? "bg-[#d97706] text-white border-transparent shadow-md"
-                      : "bg-[#f59e0b] hover:bg-[#d97706] text-white border-transparent shadow-sm"
-                  }`}
-                >
-                  Request Documents
-                </button>
-                <button
-                  onClick={() => {
-                    document.getElementById("messages-section")?.scrollIntoView({ behavior: "smooth" });
-                    setTimeout(() => {
-                      document.getElementById("message-input")?.focus();
-                    }, 400);
-                  }}
-                  className="py-3 px-4 rounded-xl text-xs font-black tracking-wide uppercase transition-all border border-transparent bg-[#f59e0b] hover:bg-[#d97706] text-white cursor-pointer shadow-sm"
-                >
-                  Add Note
-                </button>
-              </div>
-
-              {/* Dynamic Edit Panel for Tracking */}
-              {activeDetailsPanel === "tracking" && (
-                <div className="bg-slate-50 border border-[#f59e0b]/20 p-5 rounded-2xl space-y-4 animate-fade-in">
-                  <h4 className="text-xs font-black text-slate-700 uppercase tracking-wide border-b border-slate-200/60 pb-2">Update Claim Tracking & Status</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider ml-1">Current Portal Step</label>
-                      <select
-                        value={selectedClaim.currentStep}
-                        onChange={(e) => handleUpdateClaim(selectedClaim.claimNumber, { currentStep: Number(e.target.value) })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
-                      >
-                        <option value={1}>01 - Submitted</option>
-                        <option value={2}>02 - Assigned</option>
-                        <option value={3}>03 - Inspection</option>
-                        <option value={4}>04 - Review</option>
-                        <option value={5}>05 - Decision</option>
-                        <option value={6}>06 - Payment</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider ml-1">Assessment Amount (Rs.)</label>
-                      <input
-                        type="number"
-                        value={assessmentAmount}
-                        onChange={(e) => setAssessmentAmount(e.target.value)}
-                        placeholder="Not Assessed"
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider ml-1">Claim Status</label>
-                      <select
-                        value={selectedClaim.status}
-                        onChange={(e) => handleUpdateClaim(selectedClaim.claimNumber, { status: e.target.value })}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="In Progress">In Progress</option>
-                        <option value="Approved">Approved</option>
-                        <option value="Rejected">Rejected</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/60">
-                    <button
-                      onClick={() => handleUpdateClaim(selectedClaim.claimNumber, { amount: assessmentAmount === "" ? null : Number(assessmentAmount) })}
-                      disabled={updatingClaim}
-                      className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-extrabold text-xs px-4 py-2 rounded-lg transition-all border-none cursor-pointer"
-                    >
-                      Save Valuation
-                    </button>
-                    <button
-                      onClick={() => setActiveDetailsPanel(null)}
-                      className="border border-slate-200 text-slate-500 hover:bg-slate-100 font-extrabold text-xs px-4 py-2 rounded-lg transition-all cursor-pointer bg-white"
-                    >
-                      Close Panel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Dynamic Edit Panel for Request Documents */}
-              {activeDetailsPanel === "request_docs" && (
-                <div className="bg-slate-50 border border-[#f59e0b]/20 p-5 rounded-2xl space-y-4 animate-fade-in select-none">
-                  <h4 className="text-xs font-black text-slate-700 uppercase tracking-wide border-b border-slate-200/60 pb-2">Request Additional Documents</h4>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {[
-                      { key: "nicFront", label: "NIC Front Page" },
-                      { key: "nicBack", label: "NIC Back Page" },
-                      { key: "drivingLicenseFront", label: "License Front" },
-                      { key: "drivingLicenseRear", label: "License Rear" },
-                      { key: "vehicleRegistration", label: "Vehicle Registration" },
-                      { key: "revenueLicense", label: "Revenue License" },
-                      { key: "accidentPhotos", label: "Accident Photos" },
-                      { key: "repairEstimate", label: "Repair Estimate" },
-                    ].map((docItem) => {
-                      const isChecked = tempRequestedDocs.includes(docItem.key);
-                      return (
-                        <label key={docItem.key} className="flex items-center gap-2 cursor-pointer p-2 bg-white rounded-lg border border-slate-150 hover:bg-slate-50">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              setTempRequestedDocs(prev => 
-                                isChecked ? prev.filter(k => k !== docItem.key) : [...prev, docItem.key]
-                              );
-                            }}
-                            className="w-4 h-4 accent-[#0f2d4a]"
-                          />
-                          <span className="text-xs font-bold text-slate-700">{docItem.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/60">
-                    <button
-                      onClick={async () => {
-                        if (tempRequestedDocs.length === 0) {
-                          alert("Please select at least one document to request.");
-                          return;
-                        }
-                        const docsListText = tempRequestedDocs.join(", ");
-                        await handleUpdateClaim(selectedClaim.claimNumber, {
-                          documentsRequested: true,
-                          requestedDocuments: tempRequestedDocs,
-                          messageText: `Dear Policy Holder, please upload the following requested document(s): ${docsListText}.`,
+                {/* Categorized Document Lists */}
+                <div className="space-y-6">
+                  {/* Category 1: Policy Holder Documents */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <h3 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2 uppercase tracking-wider flex items-center gap-2 select-none">
+                      <svg className="w-4 h-4 text-[#0f2d4a]" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                      </svg>
+                      Policy Holder Documents
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {(() => {
+                        const phDocs: { name: string; url: string }[] = [];
+                        
+                        // License
+                        const dlFront = selectedClaim.drivingLicense?.front?.[0];
+                        const dlRear = selectedClaim.drivingLicense?.rear?.[0];
+                        if (dlFront) phDocs.push({ name: "Driving License (Front)", url: dlFront });
+                        if (dlRear) phDocs.push({ name: "Driving License (Rear)", url: dlRear });
+                        
+                        // Accident Photos
+                        let photoIndex = 1;
+                        const fPhotos = selectedClaim.accidentPhotos?.front || [];
+                        const rPhotos = selectedClaim.accidentPhotos?.rear || [];
+                        const sPhotos = selectedClaim.accidentPhotos?.side || [];
+                        
+                        fPhotos.forEach((url: string) => {
+                          phDocs.push({ name: `Accident Photo ${photoIndex++} (Front)`, url });
                         });
-                        setActiveDetailsPanel(null);
-                        setTempRequestedDocs([]);
-                        alert("Documents requested successfully!");
-                      }}
-                      disabled={updatingClaim}
-                      className="bg-[#f59e0b] hover:bg-[#d97706] text-white font-extrabold text-xs px-4 py-2 rounded-lg transition-all border-none cursor-pointer"
-                    >
-                      Send Request
-                    </button>
-                    <button
-                      onClick={() => {
-                        setActiveDetailsPanel(null);
-                        setTempRequestedDocs([]);
-                      }}
-                      className="border border-slate-200 text-slate-500 hover:bg-slate-100 font-extrabold text-xs px-4 py-2 rounded-lg transition-all cursor-pointer bg-white"
-                    >
-                      Close Panel
-                    </button>
+                        rPhotos.forEach((url: string) => {
+                          phDocs.push({ name: `Accident Photo ${photoIndex++} (Rear)`, url });
+                        });
+                        sPhotos.forEach((url: string) => {
+                          phDocs.push({ name: `Accident Photo ${photoIndex++} (Side)`, url });
+                        });
+                        
+                        // Additional Docs
+                        (selectedClaim.additionalDocuments || []).forEach((doc) => {
+                          const uploadedBy = doc.uploadedBy || "Policy Holder";
+                          if (uploadedBy === "Policy Holder") {
+                            phDocs.push({ name: doc.name, url: doc.url });
+                          }
+                        });
+
+                        if (phDocs.length === 0) {
+                          return <p className="text-xs text-slate-400 font-bold italic select-none col-span-2 py-2">No policy holder documents.</p>;
+                        }
+
+                        return phDocs.map((doc, idx) => {
+                          let docUrl = doc.url;
+                          if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                            docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                          }
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setPreviewImage(docUrl || null)}
+                              className="bg-white border border-slate-200 hover:bg-slate-50 transition-all p-3.5 rounded-[15px] flex items-center justify-start gap-3 cursor-pointer outline-none shadow-sm active:scale-98 text-left"
+                            >
+                              <svg className="w-5 h-5 text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                              </svg>
+                              <span className="text-xs font-extrabold text-slate-700 truncate">{doc.name}</span>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Category 2: Agent Documents */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <h3 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2 uppercase tracking-wider flex items-center gap-2 select-none">
+                      <svg className="w-4 h-4 text-cyan-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                      </svg>
+                      Agent Documents
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {(() => {
+                        const agentDocs: { name: string; url?: string; textContent?: string }[] = [];
+                        
+                        // Inspection Report
+                        if (selectedClaim.inspectionSubmitted && selectedClaim.inspectionReport) {
+                          agentDocs.push({
+                            name: "Inspection Report (Text)",
+                            textContent: selectedClaim.inspectionReport
+                          });
+                        }
+
+                        // Additional Docs
+                        (selectedClaim.additionalDocuments || []).forEach((doc) => {
+                          const uploadedBy = doc.uploadedBy || "Policy Holder";
+                          if (uploadedBy === "Agent") {
+                            agentDocs.push({ name: doc.name, url: doc.url });
+                          }
+                        });
+
+                        if (agentDocs.length === 0) {
+                          return <p className="text-xs text-slate-400 font-bold italic select-none col-span-2 py-2">No agent documents.</p>;
+                        }
+
+                        return agentDocs.map((doc, idx) => {
+                          if (doc.textContent) {
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  alert(`--- Inspection Report ---\n\n${doc.textContent}`);
+                                }}
+                                className="bg-white border border-slate-200 hover:bg-slate-50 transition-all p-3.5 rounded-[15px] flex items-center justify-start gap-3 cursor-pointer outline-none shadow-sm active:scale-98 text-left"
+                              >
+                                <svg className="w-5 h-5 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                </svg>
+                                <span className="text-xs font-extrabold text-slate-700 truncate">{doc.name}</span>
+                              </button>
+                            );
+                          }
+                          let docUrl = doc.url;
+                          if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                            docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                          }
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setPreviewImage(docUrl || null)}
+                              className="bg-white border border-slate-200 hover:bg-slate-50 transition-all p-3.5 rounded-[15px] flex items-center justify-start gap-3 cursor-pointer outline-none shadow-sm active:scale-98 text-left"
+                            >
+                              <svg className="w-5 h-5 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                              </svg>
+                              <span className="text-xs font-extrabold text-slate-700 truncate">{doc.name}</span>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
                   </div>
                 </div>
-              )}
-
-              {/* Accident Photos Grid */}
-              <div id="documents-section" className="space-y-3 select-none border-t border-slate-150 pt-5 scroll-mt-6">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">Accident Damage Photos</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {["front", "rear", "side"].map((category) => {
-                    const photos = (selectedClaim.accidentPhotos as any)?.[category] || [];
-                    const hasPhoto = photos.length > 0;
-                    let photoUrl = hasPhoto ? photos[0] : "";
-                    if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("data:")) {
-                      photoUrl = `${API_URL.replace("/api", "")}/uploads/${photoUrl}`;
-                    }
-
-                    return (
-                      <div key={category} className="border border-slate-200 rounded-xl p-4 flex flex-col items-center bg-white shadow-sm">
-                        <span className="text-xs font-bold text-slate-500 mb-2 capitalize">{category} damage</span>
-                        <div className="w-full aspect-[4/3] bg-slate-50 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center relative">
-                          {hasPhoto ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={photoUrl}
-                              alt={`${category} Damage`}
-                              onClick={() => setPreviewImage(photoUrl)}
-                              className="object-cover w-full h-full hover:scale-105 transition-transform duration-300 cursor-zoom-in"
-                            />
-                          ) : (
-                            <span className="text-xs text-slate-400 italic font-semibold">No Image Uploaded</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
               </div>
 
-              {/* Driving License Photos Grid */}
-              <div className="space-y-3 select-none border-t border-slate-150 pt-5">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide">Driving License Documents</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {["front", "rear"].map((category) => {
-                    const photos = (selectedClaim.drivingLicense as any)?.[category] || [];
-                    const hasPhoto = photos.length > 0;
-                    let photoUrl = hasPhoto ? photos[0] : "";
-                    if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("data:")) {
-                      photoUrl = `${API_URL.replace("/api", "")}/uploads/${photoUrl}`;
-                    }
-
-                    return (
-                      <div key={category} className="border border-slate-200 rounded-xl p-4 flex flex-col items-center bg-white shadow-sm">
-                        <span className="text-xs font-bold text-slate-500 mb-2 capitalize">License {category}</span>
-                        <div className="w-full aspect-[16/9] bg-slate-50 rounded-lg overflow-hidden border border-slate-200 flex items-center justify-center relative">
-                          {hasPhoto ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={photoUrl}
-                              alt={`License ${category}`}
-                              onClick={() => setPreviewImage(photoUrl)}
-                              className="object-cover w-full h-full hover:scale-105 transition-transform duration-300 cursor-zoom-in"
-                            />
-                          ) : (
-                            <span className="text-xs text-slate-400 italic font-semibold">No Image Uploaded</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+              {/* Footer */}
+              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-between flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveSubModal(null)}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  &lt; Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubModal("request_docs")}
+                  className="bg-[#f97316] hover:bg-orange-600 text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  Request Document &gt;
+                </button>
               </div>
+            </div>
+          )}
 
-              {/* Messaging & Discussion board */}
-              <div id="messages-section" className="border-t border-slate-150 pt-5 space-y-4 scroll-mt-6">
-                <h4 className="text-xs font-black text-slate-800 uppercase tracking-wide select-none">Claim Comments / Message History</h4>
-                
-                {/* Messages Container */}
-                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 max-h-[250px] overflow-y-auto space-y-3.5">
-                  {selectedClaim.messages.length === 0 ? (
-                    <div className="text-center text-xs text-slate-400 italic py-4 font-semibold select-none">
-                      No message history recorded for this claim.
+          {/* SUB-MODAL 2: REQUEST DOCUMENTS */}
+          {activeSubModal === "request_docs" && (
+            <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[800px] h-[650px] max-h-[90vh] shadow-2xl flex flex-col relative animate-fade-in overflow-hidden">
+              {/* Header */}
+              <div className="px-8 pt-6 pb-2 select-none bg-white">
+                <h2 className="text-[24px] font-black text-slate-900 tracking-tight leading-none">
+                  Request Documents - {selectedClaim.claimNumber}
+                </h2>
+              </div>
+              <div className="border-b border-black mx-8 mb-6" />
+
+              {/* Body */}
+              <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+                {/* Claim Summary */}
+                <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed">
+                  <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
+                </div>
+
+                {/* Fields */}
+                <div className="space-y-4 pr-1">
+                  {/* Request From Selector */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider ml-1 select-none">Request From :</label>
+                    <div className="flex gap-4 p-2.5 bg-slate-100 border border-slate-200 rounded-xl">
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="reqRecipient"
+                          checked={documentRequestTo === "User"}
+                          onChange={() => setDocumentRequestTo("User")}
+                          className="w-3.5 h-3.5 accent-[#0f2d4a]"
+                        />
+                        <span className="text-xs font-bold text-slate-700">Policy Holder (User)</span>
+                      </label>
+                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="radio"
+                          name="reqRecipient"
+                          checked={documentRequestTo === "Agent"}
+                          onChange={() => setDocumentRequestTo("Agent")}
+                          className="w-3.5 h-3.5 accent-[#0f2d4a]"
+                        />
+                        <span className="text-xs font-bold text-slate-700">Assigned Agent</span>
+                      </label>
                     </div>
-                  ) : (
-                    selectedClaim.messages.map((msg, index) => {
+                  </div>
+
+                  {/* Document Type Dropdown */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Document Type :</label>
+                    <select
+                      value={selectedRequestDocType}
+                      onChange={(e) => setSelectedRequestDocType(e.target.value)}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                    >
+                      <option value="NIC Front Page">NIC Front Page</option>
+                      <option value="NIC Back Page">NIC Back Page</option>
+                      <option value="License Front">License Front</option>
+                      <option value="License Rear">License Rear</option>
+                      <option value="Vehicle Registration">Vehicle Registration</option>
+                      <option value="Revenue License">Revenue License</option>
+                      <option value="Accident Photos">Accident Photos</option>
+                      <option value="Repair Estimate">Repair Estimate</option>
+                      <option value="Other">Other / Custom</option>
+                    </select>
+                  </div>
+
+                  {/* Add Note textarea */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Add Note :</label>
+                    <textarea
+                      rows={3}
+                      value={documentRequestMessage}
+                      onChange={(e) => setDocumentRequestMessage(e.target.value)}
+                      placeholder="Enter instructions message..."
+                      className="w-full p-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-between flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSubModal(null);
+                    setDocumentRequestMessage("");
+                  }}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  &lt; Close
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const customMsg = documentRequestMessage.trim() || `Please upload the requested document.`;
+                    const fullMsgText = `[Document Request to ${documentRequestTo}] Requested: ${selectedRequestDocType}. Message: ${customMsg}`;
+                    
+                    await handleUpdateClaim(selectedClaim.claimNumber, {
+                      documentsRequested: true,
+                      requestedDocuments: [selectedRequestDocType],
+                      documentRequestTo: documentRequestTo,
+                      messageText: fullMsgText
+                    });
+                    setActiveSubModal(null);
+                    setDocumentRequestMessage("");
+                    alert("Document request sent successfully!");
+                  }}
+                  disabled={updatingClaim}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  Submit &gt;
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-MODAL 3: ADD NOTE */}
+          {activeSubModal === "add_note" && (
+            <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[800px] h-[650px] max-h-[90vh] shadow-2xl flex flex-col relative animate-fade-in overflow-hidden">
+              {/* Header */}
+              <div className="px-8 pt-6 pb-2 select-none bg-white">
+                <h2 className="text-[24px] font-black text-slate-900 tracking-tight leading-none">
+                  Add Note - {selectedClaim.claimNumber}
+                </h2>
+              </div>
+              <div className="border-b border-black mx-8 mb-6" />
+
+              {/* Body */}
+              <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+                {/* Claim Summary */}
+                <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed">
+                  <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
+                </div>
+
+                {/* Fields */}
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Add Note :</label>
+                    <textarea
+                      rows={5}
+                      value={newMessageText}
+                      onChange={(e) => setNewMessageText(e.target.value)}
+                      placeholder="Enter internal text note..."
+                      className="w-full p-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-between flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSubModal(null);
+                    setNewMessageText("");
+                  }}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  &lt; Close
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!newMessageText.trim()) {
+                      alert("Please enter a note.");
+                      return;
+                    }
+                    await handleUpdateClaim(selectedClaim.claimNumber, {
+                      noteText: newMessageText.trim()
+                    });
+                    setActiveSubModal(null);
+                    setNewMessageText("");
+                    alert("Internal note added successfully!");
+                  }}
+                  disabled={updatingClaim || !newMessageText.trim()}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  Submit &gt;
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-MODAL 4: CONTACT & TIMELINE */}
+          {activeSubModal === "contact" && (
+            <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[800px] h-[650px] max-h-[90vh] shadow-2xl flex flex-col relative animate-fade-in overflow-hidden">
+              {/* Header */}
+              <div className="px-8 pt-6 pb-2 select-none bg-white">
+                <h2 className="text-[24px] font-black text-slate-900 tracking-tight leading-none">
+                  Contact - {selectedClaim.claimNumber}
+                </h2>
+              </div>
+              <div className="border-b border-black mx-8 mb-6" />
+
+              {/* Body */}
+              <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-4">
+                {/* Claim Summary */}
+                <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed">
+                  <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
+                </div>
+
+                {/* Stakeholders details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 select-none">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Policy Holder</span>
+                    <h5 className="text-xs font-extrabold text-slate-800">{getPolicyHolderName(selectedClaim.userNic)}</h5>
+                    <div className="text-[11px] text-slate-600 font-semibold">
+                      <p>NIC: {selectedClaim.userNic}</p>
+                      <p>Phone: {getPolicyHolderContact(selectedClaim.userNic)}</p>
+                    </div>
+                  </div>
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-1">
+                    <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block">Assigned Agent</span>
+                    {selectedClaim.assignedAgent ? (
+                      <>
+                        <h5 className="text-xs font-extrabold text-slate-800">{getAgentName(selectedClaim.assignedAgent)}</h5>
+                        <div className="text-[11px] text-slate-600 font-semibold">
+                          <p>Email: {selectedClaim.assignedAgent}</p>
+                          {(() => {
+                            const agentObj = agents.find(a => a.email.toLowerCase().trim() === selectedClaim.assignedAgent.toLowerCase().trim());
+                            return agentObj ? <p>Phone: {agentObj.phone || "—"}</p> : null;
+                          })()}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-xs text-amber-600 font-bold italic py-2">No agent assigned.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Chat Partner Selector Tabs */}
+                <div className="flex gap-2 select-none border-b border-slate-100 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => setContactRecipient("Policy Holder")}
+                    className={`flex-1 md:flex-none py-2 px-6 rounded-full text-xs font-black tracking-wide uppercase transition-all border cursor-pointer ${
+                      contactRecipient === "Policy Holder"
+                        ? "bg-[#0f2d4a] text-white border-transparent shadow-sm"
+                        : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    Policy Holder Chat
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setContactRecipient("Agent")}
+                    className={`flex-1 md:flex-none py-2 px-6 rounded-full text-xs font-black tracking-wide uppercase transition-all border cursor-pointer ${
+                      contactRecipient === "Agent"
+                        ? "bg-[#0f2d4a] text-white border-transparent shadow-sm"
+                        : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
+                    }`}
+                  >
+                    Agent Chat
+                  </button>
+                </div>
+
+                {/* Chat timeline */}
+                <div className="bg-slate-100 rounded-2xl p-5 border border-slate-200 flex-1 overflow-y-auto space-y-3.5 max-h-[160px]">
+                  {(() => {
+                    const filteredMessages = selectedClaim.messages.filter((msg) => {
+                      if (contactRecipient === "Policy Holder") {
+                        return msg.recipient === "Policy Holder" || !msg.recipient;
+                      } else {
+                        return msg.recipient === "Agent";
+                      }
+                    });
+
+                    if (contactRecipient === "Agent" && !selectedClaim.assignedAgent) {
+                      return (
+                        <div className="text-center text-xs text-amber-600 italic py-6 font-bold select-none">
+                          ⚠️ No agent has been assigned to this claim yet. Please assign an agent first.
+                        </div>
+                      );
+                    }
+
+                    if (filteredMessages.length === 0) {
+                      return (
+                        <div className="text-center text-xs text-slate-400 italic py-2 font-semibold select-none">
+                          No message history recorded with {contactRecipient === "Policy Holder" ? "Policy Holder" : "Agent"}.
+                        </div>
+                      );
+                    }
+
+                    return filteredMessages.map((msg, index) => {
                       const isSelf = msg.sender === "Office Staff";
                       return (
                         <div key={index} className={`flex flex-col ${isSelf ? "items-end" : "items-start"}`}>
-                          <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-xs ${
+                          <div className={`max-w-[75%] rounded-2xl px-4 py-2 text-xs shadow-sm ${
                             isSelf ? "bg-[#0f2d4a] text-white rounded-tr-none" : "bg-white border border-slate-200 text-slate-700 rounded-tl-none"
                           }`}>
-                            <p className="font-semibold leading-relaxed break-words">{msg.message}</p>
+                            <p className="font-semibold leading-relaxed break-words whitespace-pre-wrap">{msg.message}</p>
                           </div>
                           <span className="text-[9px] text-slate-400 font-bold mt-1 select-none px-1">
                             {msg.sender} · {formatMessageTime(msg.sentAt)}
                           </span>
                         </div>
                       );
-                    })
-                  )}
+                    });
+                  })()}
                 </div>
 
-                {/* Send New Message */}
-                <div className="flex gap-3 items-center">
-                  <textarea
-                    id="message-input"
-                    rows={2}
-                    value={newMessageText}
-                    onChange={(e) => setNewMessageText(e.target.value)}
-                    placeholder="Type a message or comment to send to the Policy Holder..."
-                    className="flex-1 p-3 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] resize-none"
-                  />
-                  <button
-                    onClick={() => {
-                      if (newMessageText.trim()) {
-                        handleUpdateClaim(selectedClaim.claimNumber, { messageText: newMessageText.trim() });
-                      }
-                    }}
-                    disabled={updatingClaim || !newMessageText.trim()}
-                    className="bg-[#0f2d4a] hover:bg-[#1a3d5e] active:scale-95 text-white font-extrabold text-xs px-5 py-3.5 rounded-xl transition-all border-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-[#0f2d4a]/10"
-                  >
-                    Send
-                  </button>
+                {/* Send message text box */}
+                <div className="select-none">
+                  <div className="flex gap-3">
+                    <textarea
+                      id="message-input"
+                      rows={2}
+                      value={newMessageText}
+                      onChange={(e) => setNewMessageText(e.target.value)}
+                      placeholder={contactRecipient === "Agent" && !selectedClaim.assignedAgent ? "Cannot message (No agent assigned)" : `Type a message to ${contactRecipient === "Policy Holder" ? "Policy Holder" : "Agent"}...`}
+                      disabled={contactRecipient === "Agent" && !selectedClaim.assignedAgent}
+                      className="flex-1 p-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 focus:outline-none bg-[#e2e8f0] focus:ring-2 focus:ring-[#0f2d4a] resize-none disabled:opacity-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (newMessageText.trim()) {
+                          await handleUpdateClaim(selectedClaim.claimNumber, {
+                            messageText: newMessageText.trim(),
+                            messageRecipient: contactRecipient
+                          });
+                          setNewMessageText("");
+                        }
+                      }}
+                      disabled={updatingClaim || !newMessageText.trim() || (contactRecipient === "Agent" && !selectedClaim.assignedAgent)}
+                      className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-extrabold text-xs px-5 py-3.5 rounded-xl border-none cursor-pointer disabled:opacity-50"
+                    >
+                      Send
+                    </button>
+                  </div>
                 </div>
               </div>
 
+              {/* Footer */}
+              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-between flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveSubModal(null);
+                    setNewMessageText("");
+                  }}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  &lt; Close
+                </button>
+              </div>
             </div>
+          )}
 
-            {/* Modal Footer */}
-            <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 flex justify-between flex-shrink-0">
-              <button
-                onClick={() => {
-                  setSelectedClaim(null);
-                  setActiveDetailsPanel(null);
-                }}
-                className="bg-slate-600 hover:bg-slate-700 text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all border-none cursor-pointer flex items-center gap-1.5"
-              >
-                &lt; Close
-              </button>
-              <button
-                onClick={() => {
-                  setSelectedClaim(null);
-                  setActiveDetailsPanel(null);
-                }}
-                className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all border-none cursor-pointer flex items-center gap-1.5"
-              >
-                Submit &gt;
-              </button>
+          {/* SUB-MODAL 5: UPDATE TRACKING */}
+          {activeSubModal === "update_tracking" && (
+            <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[800px] h-[650px] max-h-[90vh] shadow-2xl flex flex-col relative animate-fade-in overflow-hidden">
+              {/* Header */}
+              <div className="px-8 pt-6 pb-2 select-none bg-white">
+                <h2 className="text-[24px] font-black text-slate-900 tracking-tight leading-none">
+                  Update Tracking - {selectedClaim.claimNumber}
+                </h2>
+              </div>
+              <div className="border-b border-black mx-8 mb-6" />
+
+              {/* Body */}
+              <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+                {/* Claim Summary */}
+                <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed">
+                  <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Current Portal Step :</label>
+                    <select
+                      value={selectedClaim.currentStep}
+                      onChange={(e) => handleUpdateClaim(selectedClaim.claimNumber, { currentStep: Number(e.target.value) })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                    >
+                      <option value={1}>01 - Submitted</option>
+                      <option value={2}>02 - Assigned</option>
+                      <option value={3}>03 - Inspection</option>
+                      <option value={4}>04 - Review</option>
+                      <option value={5}>05 - Decision</option>
+                      <option value={6}>06 - Payment</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Assessment Amount (Rs.) :</label>
+                    <input
+                      type="number"
+                      value={assessmentAmount}
+                      onChange={(e) => setAssessmentAmount(e.target.value)}
+                      placeholder="Not Assessed"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Claim Status :</label>
+                    <select
+                      value={selectedClaim.status}
+                      onChange={(e) => handleUpdateClaim(selectedClaim.claimNumber, { status: e.target.value })}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                    >
+                      <option value="Pending">Pending</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Approved">Approved</option>
+                      <option value="Rejected">Rejected</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-between flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveSubModal(null)}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  &lt; Close
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await handleUpdateClaim(selectedClaim.claimNumber, { amount: assessmentAmount === "" ? null : Number(assessmentAmount) });
+                    setActiveSubModal(null);
+                    alert("Valuation updated successfully!");
+                  }}
+                  disabled={updatingClaim}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95 disabled:opacity-50"
+                >
+                  Submit &gt;
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* MAIN DETAILS MODAL */}
+          {activeSubModal === null && (
+            <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[800px] h-[650px] max-h-[90vh] shadow-2xl flex flex-col relative animate-fade-in overflow-hidden">
+              {/* Modal Header */}
+              <div className="px-8 pt-6 pb-2 select-none bg-white">
+                <h2 className="text-[24px] font-black text-slate-900 tracking-tight leading-none">
+                  {selectedClaim.claimNumber}
+                </h2>
+              </div>
+              <div className="border-b border-black mx-8 mb-6" />
+
+              {/* Modal Body */}
+              <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+                
+                {/* 2-Column Details Block */}
+                <div className="grid grid-cols-1 md:grid-cols-[1.8fr_1fr] gap-8 select-none">
+                  {/* Left Side Details Grid */}
+                  <div className="space-y-4 text-sm font-bold text-slate-800 leading-normal">
+                    <div>
+                      Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span>
+                    </div>
+                    <div>
+                      Policy Holder Name - <span className="font-medium text-slate-600">{getPolicyHolderName(selectedClaim.userNic)}</span>
+                    </div>
+                    <div>
+                      Contact - <span className="font-medium text-slate-600">{getPolicyHolderContact(selectedClaim.userNic)}</span>
+                    </div>
+                    <div className="pt-4 border-t border-slate-200 space-y-4 mt-2">
+                      <p>
+                        Location : <span className="font-medium text-slate-600">{selectedClaim.location}</span>
+                      </p>
+                      <p>
+                        Time : <span className="font-medium text-slate-600">{claimDateString(selectedClaim.incidentDate)} @ {selectedClaim.incidentTime}</span>
+                      </p>
+                      <p>
+                        Est. Amount : <span className="font-medium text-slate-600">{selectedClaim.amount ? `LKR ${selectedClaim.amount.toLocaleString()}` : "Not Assessed"}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right Side Column */}
+                  <div className="flex flex-col space-y-4">
+                    <div className="space-y-2 text-sm font-bold text-slate-800">
+                      <div>
+                        Agent : <span className="font-medium text-slate-600">{selectedClaim.assignedAgent ? getAgentName(selectedClaim.assignedAgent) : "Unassigned"}</span>
+                      </div>
+                      <div>
+                        Type : <span className="font-medium text-slate-600">{selectedClaim.damageType}</span>
+                      </div>
+                      <div>
+                        Status : <span className={selectedClaim.priority === "Urgent" || selectedClaim.status === "Rejected" ? "text-red-500 font-extrabold" : "font-medium text-slate-600"}>{selectedClaim.status}</span>
+                      </div>
+                    </div>
+
+                    {/* Cyan Buttons Stack */}
+                    <div className="pt-2 flex flex-col gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubModal("documents")}
+                        className="bg-[#00c5ff] hover:bg-[#00b0e6] text-white font-extrabold text-xs py-2.5 rounded-full transition-all border-none cursor-pointer text-center select-none shadow-sm active:scale-95"
+                      >
+                        Documents
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveSubModal("contact")}
+                        className="bg-[#00c5ff] hover:bg-[#00b0e6] text-white font-extrabold text-xs py-2.5 rounded-full transition-all border-none cursor-pointer text-center select-none shadow-sm active:scale-95"
+                      >
+                        Contact
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Progress Stepper Section */}
+                <div className="py-6 px-2 select-none border-t border-slate-100">
+                  <div className="flex items-center justify-between relative max-w-[650px] mx-auto">
+                    {/* Connecting Line background (navy) */}
+                    <div className="absolute top-[18px] left-[20px] right-[20px] h-1 bg-[#0f2d4a] -z-10 rounded-full" />
+                    {/* Connecting Line active fill (green) */}
+                    <div 
+                      className="absolute top-[18px] left-[20px] h-1 bg-[#22c55e] -z-10 rounded-full transition-all duration-500" 
+                      style={{ width: `${getStepperPercent(selectedClaim)}%` }} 
+                    />
+
+                    {getStepperSteps(selectedClaim).map((stepObj, idx) => {
+                      const isActive = stepObj.active;
+                      return (
+                        <div key={idx} className="flex flex-col items-center flex-1 relative">
+                          {/* Step Circle */}
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs border-2 bg-white transition-all duration-300 ${
+                            isActive 
+                              ? "text-[#22c55e] border-[#22c55e] shadow-sm shadow-[#22c55e]/10" 
+                              : "text-[#0f2d4a] border-[#0f2d4a]"
+                          }`}>
+                            {stepObj.num}
+                          </div>
+                          {/* Step Label */}
+                          <span className="text-[10px] font-semibold mt-2 tracking-wide text-slate-400 select-none text-center">
+                            {stepObj.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Action Section (Orange Buttons in Row) */}
+                <div className="flex flex-wrap items-center justify-center gap-4 select-none pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubModal("update_tracking")}
+                    className="bg-[#f97316] hover:bg-orange-600 text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all border-none cursor-pointer shadow-sm active:scale-95"
+                  >
+                    Update Tracking
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubModal("request_docs")}
+                    className="bg-[#f97316] hover:bg-orange-600 text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all border-none cursor-pointer shadow-sm active:scale-95"
+                  >
+                    Request Documents
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSubModal("add_note")}
+                    className="bg-[#f97316] hover:bg-orange-600 text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all border-none cursor-pointer shadow-sm active:scale-95"
+                  >
+                    Add Note
+                  </button>
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-between flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedClaim(null);
+                    setActiveDetailsPanel(null);
+                  }}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  &lt; Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedClaim(null);
+                    setActiveDetailsPanel(null);
+                  }}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  Submit &gt;
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

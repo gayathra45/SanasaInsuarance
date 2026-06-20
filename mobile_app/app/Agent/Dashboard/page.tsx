@@ -45,6 +45,9 @@ interface Claim {
   amount: number | null;
   currentStep: number;
   createdAt: string;
+  inspectionReport?: string;
+  inspectionSubmitted?: boolean;
+  paymentReceipt?: string;
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -86,6 +89,8 @@ export default function AgentDashboard() {
   const [assessmentAmount, setAssessmentAmount] = useState("");
   const [savingAssessment, setSavingAssessment] = useState(false);
   const [customAlert, setCustomAlert] = useState<{ title: string; message: string } | null>(null);
+  const [inspectionReportText, setInspectionReportText] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
 
   // Animations
   const contentFadeAnim = useRef(new Animated.Value(0)).current;
@@ -152,6 +157,7 @@ export default function AgentDashboard() {
   useEffect(() => {
     if (selectedClaim) {
       setAssessmentAmount(selectedClaim.amount ? String(selectedClaim.amount) : "");
+      setInspectionReportText(selectedClaim.inspectionReport || "");
     }
   }, [selectedClaim]);
 
@@ -212,6 +218,35 @@ export default function AgentDashboard() {
       showAlert("Error", "Failed to update claim. Please try again.");
     } finally {
       setSavingAssessment(false);
+    }
+  };
+
+  const handleSubmitInspectionReport = async () => {
+    if (!selectedClaim) return;
+    if (!inspectionReportText.trim()) {
+      showAlert("Validation Error", "Please enter inspection report details.");
+      return;
+    }
+    setIsSubmittingReport(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/agent/claims/${selectedClaim._id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inspectionReport: inspectionReportText.trim(),
+          inspectionSubmitted: true,
+          status: "In Progress"
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to submit");
+      showAlert("Success", "Inspection report submitted successfully!");
+      setSelectedClaim(null);
+      fetchClaims(agentEmail);
+      setInspectionReportText("");
+    } catch (e) {
+      showAlert("Error", "Failed to submit inspection report. Please try again.");
+    } finally {
+      setIsSubmittingReport(false);
     }
   };
 
@@ -618,6 +653,41 @@ export default function AgentDashboard() {
                         <Text style={styles.modalDescLabel}>Incident Description</Text>
                         <Text style={styles.modalDescText}>{selectedClaim.description}</Text>
                       </View>
+
+                      {/* Submit Inspection Report Section */}
+                      {isActive && !selectedClaim.inspectionSubmitted && (
+                        <View style={styles.modalDescBox}>
+                          <Text style={styles.modalDescLabel}>Submit Inspection Report</Text>
+                          <TextInput
+                            style={[styles.modalAssessField, { height: 80, textAlignVertical: 'top', padding: 10, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, color: '#1e293b' }]}
+                            placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)..."
+                            placeholderTextColor="#94a3b8"
+                            multiline
+                            numberOfLines={4}
+                            value={inspectionReportText}
+                            onChangeText={setInspectionReportText}
+                          />
+                          <TouchableOpacity
+                            style={[styles.approveBtn, { backgroundColor: "#06b6d4", marginTop: 8, alignSelf: 'flex-end', paddingHorizontal: 16, height: 36 }]}
+                            onPress={handleSubmitInspectionReport}
+                            disabled={isSubmittingReport || !inspectionReportText.trim()}
+                          >
+                            <Text style={styles.approveBtnText}>
+                              {isSubmittingReport ? "Submitting..." : "Submit Report"}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {selectedClaim.inspectionSubmitted ? (
+                        <View style={styles.modalDescBox}>
+                          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                            <Text style={styles.modalDescLabel}>Inspection Report</Text>
+                            <Text style={{ fontSize: 10, fontWeight: '900', color: '#16a34a', backgroundColor: '#dcfce7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>Submitted</Text>
+                          </View>
+                          <Text style={styles.modalDescText}>{selectedClaim.inspectionReport}</Text>
+                        </View>
+                      ) : null}
 
                       {/* Assessment Amount */}
                       {isActive && (

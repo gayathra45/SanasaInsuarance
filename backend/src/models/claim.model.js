@@ -26,11 +26,23 @@ const claimSchema = new mongoose.Schema({
   currentStep: { type: Number, default: 1 },
   documentsRequested: { type: Boolean, default: false },
   requestedDocuments: { type: [String], default: [] },
+  documentRequestTo: { type: String, default: "" },
+  inspectionReport: { type: String, default: "" },
+  inspectionSubmitted: { type: Boolean, default: false },
+  paymentReceipt: { type: String, default: "" },
   messages: [
     {
       sender: { type: String, default: "Office Staff" },
       message: { type: String, required: true },
-      sentAt: { type: Date, default: Date.now }
+      sentAt: { type: Date, default: Date.now },
+      recipient: { type: String, default: "Policy Holder" }
+    }
+  ],
+  notes: [
+    {
+      text: { type: String, required: true },
+      addedBy: { type: String, default: "Office Staff" },
+      addedAt: { type: Date, default: Date.now }
     }
   ],
   additionalDocuments: {
@@ -38,7 +50,8 @@ const claimSchema = new mongoose.Schema({
       {
         name: { type: String, required: true },
         url: { type: String, required: true },
-        uploadedAt: { type: Date, default: Date.now }
+        uploadedAt: { type: Date, default: Date.now },
+        uploadedBy: { type: String, default: "Policy Holder" }
       }
     ],
     default: []

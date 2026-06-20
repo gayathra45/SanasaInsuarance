@@ -472,25 +472,32 @@ export default function MyClaims() {
                 {/* Messages & Notifications Section */}
                 <div className="px-2 mt-4 mb-2">
                   <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 select-none">Messages & Notifications</p>
-                  {selectedClaim.messages && selectedClaim.messages.length > 0 ? (
-                    <div className="flex flex-col gap-2.5 max-h-[140px] overflow-y-auto pr-1">
-                      {selectedClaim.messages.map((msg: any, index: number) => (
-                        <div key={index} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 flex flex-col gap-1 shadow-sm">
-                          <div className="flex justify-between items-center text-[11px] select-none">
-                            <span className="font-extrabold text-[#0f2d3a]">{msg.sender}</span>
-                            <span className="text-slate-400 font-semibold">{formatDateString(msg.sentAt)}</span>
-                          </div>
-                          <p className="text-slate-700 text-xs font-semibold leading-relaxed m-0">
-                            {msg.message}
-                          </p>
+                  {(() => {
+                    const filteredMessages = (selectedClaim.messages || []).filter((msg: any) => msg.recipient !== "Agent");
+                    if (filteredMessages.length > 0) {
+                      return (
+                        <div className="flex flex-col gap-2.5 max-h-[140px] overflow-y-auto pr-1">
+                          {filteredMessages.map((msg: any, index: number) => (
+                            <div key={index} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 flex flex-col gap-1 shadow-sm">
+                              <div className="flex justify-between items-center text-[11px] select-none">
+                                <span className="font-extrabold text-[#0f2d3a]">{msg.sender}</span>
+                                <span className="text-slate-400 font-semibold">{formatDateString(msg.sentAt)}</span>
+                              </div>
+                              <p className="text-slate-700 text-xs font-semibold leading-relaxed m-0">
+                                {msg.message}
+                              </p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-slate-500 text-xs italic font-medium bg-slate-50 border border-slate-100 rounded-xl p-3 m-0 select-none">
-                      No notifications or messages have been sent for this claim.
-                    </p>
-                  )}
+                      );
+                    } else {
+                      return (
+                        <p className="text-slate-500 text-xs italic font-medium bg-slate-50 border border-slate-100 rounded-xl p-3 m-0 select-none">
+                          No notifications or messages have been sent for this claim.
+                        </p>
+                      );
+                    }
+                  })()}
                 </div>
               </div>
 

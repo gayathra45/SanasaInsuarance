@@ -13,6 +13,13 @@ interface ClaimMessage {
   sentAt: string;
 }
 
+interface AdditionalDoc {
+  name: string;
+  url: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+}
+
 interface Claim {
   _id: string;
   claimNumber: string;
@@ -33,6 +40,10 @@ interface Claim {
   severity: "Urgent" | "Medium" | "Low";
   messages: ClaimMessage[];
   priority?: string;
+  inspectionReport?: string;
+  inspectionSubmitted?: boolean;
+  paymentReceipt?: string;
+  additionalDocuments?: AdditionalDoc[];
 }
 
 export default function AgentDashboard() {
@@ -47,6 +58,11 @@ export default function AgentDashboard() {
   const [agentEmail, setAgentEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [assessmentAmount, setAssessmentAmount] = useState<string>("");
+  const [inspectionReportText, setInspectionReportText] = useState("");
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [agentUploadFile, setAgentUploadFile] = useState<File | null>(null);
+  const [agentUploadDocName, setAgentUploadDocName] = useState<string>("Repair Estimate");
+  const [isAgentUploading, setIsAgentUploading] = useState(false);
 
   const fetchClaims = async (email: string) => {
     try {
@@ -84,6 +100,7 @@ export default function AgentDashboard() {
   useEffect(() => {
     if (selectedClaim) {
       setAssessmentAmount(selectedClaim.amount ? String(selectedClaim.amount) : "");
+      setInspectionReportText(selectedClaim.inspectionReport || "");
     }
   }, [selectedClaim]);
 
@@ -144,6 +161,87 @@ export default function AgentDashboard() {
     } catch (e) {
       console.error(e);
       alert("Error sending update request.");
+    }
+  };
+
+  const handleSubmitInspectionReport = async (claimId: string) => {
+    try {
+      if (!inspectionReportText.trim()) {
+        alert("Please enter inspection report details.");
+        return;
+      }
+      setIsSubmittingReport(true);
+      const res = await fetch(`${API_URL}/agent/claims/${claimId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inspectionReport: inspectionReportText.trim(),
+          inspectionSubmitted: true,
+          status: "In Progress"
+        })
+      });
+      if (!res.ok) {
+        alert("Failed to submit inspection report.");
+        return;
+      }
+      alert("Inspection report submitted successfully!");
+      setSelectedClaim(null);
+      fetchClaims(agentEmail);
+      setInspectionReportText("");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
+
+  const handleAgentUpload = async () => {
+    if (!selectedClaim || !agentUploadFile) return;
+    setIsAgentUploading(true);
+    try {
+      const convertToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = error => reject(error);
+        });
+      };
+      const base64 = await convertToBase64(agentUploadFile);
+      const res = await fetch(`${API_URL}/policy-holder/update-claim/${selectedClaim.claimNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploadedDocuments: [
+            {
+              documentName: agentUploadDocName,
+              fileData: base64,
+              uploadedBy: "Agent"
+            }
+          ]
+        })
+      });
+      if (res.ok) {
+        alert("Document uploaded successfully!");
+        setAgentUploadFile(null);
+        // Refresh claims list
+        await fetchClaims(agentEmail);
+        // Also refresh the selectedClaim state with the new data
+        const updatedRes = await fetch(`${API_URL}/agent/claims?email=${agentEmail}`);
+        if (updatedRes.ok) {
+          const data = await updatedRes.json();
+          const freshClaim = data.find((c: Claim) => c.claimNumber === selectedClaim.claimNumber);
+          if (freshClaim) setSelectedClaim(freshClaim);
+        }
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to upload document.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("An error occurred during upload.");
+    } finally {
+      setIsAgentUploading(false);
     }
   };
 
@@ -477,6 +575,123 @@ export default function AgentDashboard() {
                 <p className="text-slate-700 bg-slate-50 border border-slate-100 p-4 rounded-2xl leading-relaxed font-medium">
                   {selectedClaim.description}
                 </p>
+              </div>
+
+              {/* Inspection Report Section */}
+              {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && !selectedClaim.inspectionSubmitted && (
+                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2.5">
+                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b pb-2 border-slate-200">
+                    Submit Inspection Report
+                  </h4>
+                  <textarea
+                    value={inspectionReportText}
+                    onChange={(e) => setInspectionReportText(e.target.value)}
+                    placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)..."
+                    rows={4}
+                    className="w-full p-3 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-cyan-500 bg-white"
+                  />
+                  <button
+                    onClick={() => handleSubmitInspectionReport(selectedClaim._id)}
+                    disabled={!inspectionReportText.trim() || isSubmittingReport}
+                    className="bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold text-xs py-2.5 rounded-xl border-none cursor-pointer self-end px-4 active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {isSubmittingReport ? "Submitting..." : "Submit Inspection Report"}
+                  </button>
+                </div>
+              )}
+
+              {selectedClaim.inspectionSubmitted && (
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
+                  <div className="flex items-center justify-between border-b pb-2 mb-2 border-slate-200">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Inspection Report</h4>
+                    <span className="text-[9px] font-black uppercase bg-emerald-50 text-emerald-600 border border-emerald-200 px-2 py-0.5 rounded">Submitted</span>
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium whitespace-pre-wrap">{selectedClaim.inspectionReport}</p>
+                </div>
+              )}
+
+              {/* Agent Documents Section */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-4">
+                <div className="flex items-center justify-between border-b pb-2 border-slate-200">
+                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Agent Documents</h4>
+                </div>
+                
+                {/* List already uploaded agent docs */}
+                {(() => {
+                  const agentDocs = (selectedClaim.additionalDocuments || []).filter(
+                    doc => doc.uploadedBy === "Agent"
+                  );
+                  if (agentDocs.length === 0) {
+                    return <p className="text-xs text-slate-400 font-bold italic">No agent documents uploaded yet.</p>;
+                  }
+                  return (
+                    <div className="flex flex-col gap-2">
+                      {agentDocs.map((doc, idx) => {
+                        let docUrl = doc.url;
+                        if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                          docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                        }
+                        return (
+                          <div key={idx} className="flex items-center justify-between bg-white border border-slate-100 p-2.5 rounded-xl">
+                            <span className="text-xs font-bold text-slate-700">{doc.name}</span>
+                            <a
+                              href={docUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-xs font-extrabold text-cyan-600 hover:text-cyan-700 select-none"
+                            >
+                              View File
+                            </a>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Upload new agent doc */}
+                {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && (
+                  <div className="border-t border-slate-200 pt-3 flex flex-col gap-3">
+                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Upload New Document</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] text-slate-500 font-bold uppercase">Document Type</label>
+                        <select
+                          value={agentUploadDocName}
+                          onChange={(e) => setAgentUploadDocName(e.target.value)}
+                          className="bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-800 focus:outline-none"
+                        >
+                          <option value="Repair Estimate">Repair Estimate</option>
+                          <option value="Inspection Photos">Inspection Photos</option>
+                          <option value="Damage Assessment">Damage Assessment</option>
+                          <option value="Other">Other / Custom</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] text-slate-500 font-bold uppercase">Select File</label>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files[0]) {
+                              setAgentUploadFile(e.target.files[0]);
+                            }
+                          }}
+                          className="text-xs font-semibold text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-extrabold file:bg-slate-200 file:text-slate-800 file:cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                    {agentUploadFile && (
+                      <button
+                        onClick={handleAgentUpload}
+                        disabled={isAgentUploading}
+                        className="bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold text-xs py-2 px-4 rounded-xl border-none cursor-pointer self-start active:scale-95 transition-all disabled:opacity-50 mt-1"
+                      >
+                        {isAgentUploading ? "Uploading..." : "Upload Document"}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Actions / Operations */}

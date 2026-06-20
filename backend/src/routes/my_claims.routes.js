@@ -125,15 +125,18 @@ router.patch("/update-claim/:claimNumber", async (req, res) => {
     // Process additional document uploads
     if (uploadedDocuments && Array.isArray(uploadedDocuments)) {
       for (const doc of uploadedDocuments) {
-        const { documentName, fileData } = doc;
+        const { documentName, fileData, uploadedBy } = doc;
         if (documentName && fileData) {
           const uploadedUrl = await uploadToCloudinary(fileData, "claims/additional_documents");
+          
+          const creator = uploadedBy || req.body.uploadedBy || "Policy Holder";
           
           // Add to additionalDocuments array
           claim.additionalDocuments.push({
             name: documentName,
             url: uploadedUrl,
-            uploadedAt: new Date()
+            uploadedAt: new Date(),
+            uploadedBy: creator
           });
 
           // Remove uploaded document from requested list
@@ -145,7 +148,7 @@ router.patch("/update-claim/:claimNumber", async (req, res) => {
 
           // Append audit message to claim history
           claim.messages.push({
-            sender: "Policy Holder",
+            sender: creator,
             message: `Uploaded requested document: ${documentName}`,
             sentAt: new Date()
           });

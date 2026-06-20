@@ -207,26 +207,90 @@ router.patch("/registrations/:id/status", async (req, res) => {
 router.patch("/claims/:claimNumber", async (req, res) => {
   try {
     const { claimNumber } = req.params;
-    const { status, amount, currentStep, assignedAgent, messageText, messageSender, priority, requestedDocuments, documentsRequested } = req.body;
+    const {
+      status,
+      amount,
+      currentStep,
+      assignedAgent,
+      messageText,
+      messageSender,
+      messageRecipient,
+      priority,
+      requestedDocuments,
+      documentsRequested,
+      documentRequestTo,
+      inspectionReport,
+      inspectionSubmitted,
+      paymentReceipt,
+      noteText
+    } = req.body;
 
     const claim = await Claim.findOne({ claimNumber: claimNumber.trim().toUpperCase() });
     if (!claim) {
       return res.status(404).json({ error: "Claim not found." });
     }
 
-    if (status !== undefined) claim.status = status;
-    if (amount !== undefined) claim.amount = amount === "" ? null : Number(amount);
-    if (currentStep !== undefined) claim.currentStep = Number(currentStep);
-    if (assignedAgent !== undefined) claim.assignedAgent = assignedAgent;
+    if (status !== undefined) {
+      claim.status = status;
+      if (status === "Approved" && claim.currentStep < 5) {
+        claim.currentStep = 5;
+      }
+    }
+    
+    if (amount !== undefined) {
+      claim.amount = amount === "" ? null : Number(amount);
+      // Auto-advance to Step 4 (Review) if amount is added and step is 3
+      if (claim.amount !== null && claim.currentStep === 3) {
+        claim.currentStep = 4;
+      }
+    }
+
+    if (currentStep !== undefined) {
+      claim.currentStep = Number(currentStep);
+    }
+
+    if (assignedAgent !== undefined) {
+      claim.assignedAgent = assignedAgent;
+      // Auto-advance to Step 2 (Assigned) if agent assigned and step is 1
+      if (assignedAgent && claim.currentStep < 2) {
+        claim.currentStep = 2;
+      }
+    }
+
     if (priority !== undefined) claim.priority = priority;
     if (requestedDocuments !== undefined) claim.requestedDocuments = requestedDocuments;
     if (documentsRequested !== undefined) claim.documentsRequested = documentsRequested;
+    if (documentRequestTo !== undefined) claim.documentRequestTo = documentRequestTo;
+    if (inspectionReport !== undefined) claim.inspectionReport = inspectionReport;
+    
+    if (inspectionSubmitted !== undefined) {
+      claim.inspectionSubmitted = inspectionSubmitted;
+      if (inspectionSubmitted && claim.currentStep < 3) {
+        claim.currentStep = 3;
+      }
+    }
+
+    if (paymentReceipt !== undefined) {
+      claim.paymentReceipt = paymentReceipt;
+      if (paymentReceipt && claim.currentStep < 6) {
+        claim.currentStep = 6;
+      }
+    }
 
     if (messageText) {
       claim.messages.push({
         sender: messageSender || "Office Staff",
         message: messageText,
-        sentAt: new Date()
+        sentAt: new Date(),
+        recipient: messageRecipient || "Policy Holder"
+      });
+    }
+
+    if (noteText) {
+      claim.notes.push({
+        text: noteText,
+        addedBy: messageSender || "Office Staff",
+        addedAt: new Date()
       });
     }
 

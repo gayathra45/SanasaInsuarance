@@ -67,11 +67,18 @@ router.get("/claims", async (req, res) => {
 router.post("/claims/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, amount } = req.body;
+    const { status, amount, inspectionReport, inspectionSubmitted } = req.body;
 
     const updateData = {};
-    if (status) updateData.status = status;
-    if (amount !== undefined) updateData.amount = amount;
+    if (status !== undefined) updateData.status = status;
+    if (amount !== undefined) updateData.amount = amount === "" ? null : Number(amount);
+    if (inspectionReport !== undefined) updateData.inspectionReport = inspectionReport;
+    if (inspectionSubmitted !== undefined) {
+      updateData.inspectionSubmitted = inspectionSubmitted;
+      if (inspectionSubmitted) {
+        updateData.currentStep = 3;
+      }
+    }
 
     const updatedClaim = await Claim.findByIdAndUpdate(
       id,
