@@ -1,29 +1,10 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, { useState } from "react";
 import AdminNavbar from "@/app/Components/Admin/Navbar";
 import AdminFooter from "@/app/Components/Admin/Footer";
 
-interface StaffMember {
-  _id: string;
-  name: string;
-  email: string;
-  mobile: string;
-  branch: string;
-  province: string;
-  location: string;
-  staffCount: number;
-  createdAt: string;
-}
-
 export default function AdminStaffPage() {
-  const router = useRouter();
-  const [staffList, setStaffList] = useState<StaffMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-
   // Modal / Form states
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -39,27 +20,6 @@ export default function AdminStaffPage() {
   const [formError, setFormError] = useState("");
   const [formSuccess, setFormSuccess] = useState("");
   const [submittingStaff, setSubmittingStaff] = useState(false);
-
-  const loadStaff = async () => {
-    try {
-      const res = await fetch("http://localhost:5000/api/admin/staff");
-      if (!res.ok) {
-        throw new Error("Failed to fetch office staff.");
-      }
-      const data = await res.json();
-      setStaffList(data.staff || []);
-    } catch (err: any) {
-      console.error("Load staff error:", err);
-      setError(err.message || "Failed to load office staff list.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    // Authenticated Admin check (Optional dashboard verification)
-    loadStaff();
-  }, []);
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,8 +64,6 @@ export default function AdminStaffPage() {
         password: ""
       });
 
-      await loadStaff();
-
       setTimeout(() => {
         setShowModal(false);
         setFormSuccess("");
@@ -118,16 +76,6 @@ export default function AdminStaffPage() {
       setSubmittingStaff(false);
     }
   };
-
-  const filteredStaff = staffList.filter(s => {
-    const q = searchQuery.toLowerCase();
-    return (
-      s.name.toLowerCase().includes(q) ||
-      s.email.toLowerCase().includes(q) ||
-      s.branch.toLowerCase().includes(q) ||
-      s.province.toLowerCase().includes(q)
-    );
-  });
 
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 font-sans">
@@ -142,127 +90,46 @@ export default function AdminStaffPage() {
             </div>
           </header>
 
-          <main className="flex-1 p-8 bg-slate-50 overflow-y-auto">
-            {loading ? (
-              <div className="w-full h-full flex flex-col items-center justify-center min-h-[300px]">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#f59e0b]"></div>
-                <span className="mt-4 text-slate-500 font-bold">Loading system office staff...</span>
+          <main className="flex-1 p-8 bg-slate-50 flex items-center justify-center">
+            {/* Centered Action Card */}
+            <div className="bg-white rounded-3xl p-10 border border-slate-100 shadow-xl max-w-md w-full text-center flex flex-col items-center gap-6">
+              <div className="w-20 h-20 rounded-full bg-amber-100 border border-amber-200 flex items-center justify-center text-amber-600 shadow-inner select-none">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-10 h-10">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                </svg>
               </div>
-            ) : error ? (
-              <div className="w-full h-full flex flex-col items-center justify-center min-h-[300px] text-red-500 font-bold bg-red-50 rounded-2xl p-8 border border-red-200">
-                <span>{error}</span>
+
+              <div>
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight">Branch Office Staff</h2>
+                <p className="text-slate-500 font-semibold text-sm mt-2 leading-relaxed">
+                  Add new branch office staff members to manage local branches, process claims, and verify policy holder registrations.
+                </p>
               </div>
-            ) : (
-              <div className="max-w-6xl mx-auto flex flex-col gap-6">
-                
-                {/* Search & Action Bar */}
-                <div className="bg-white rounded-2xl p-6 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-                  <div className="flex flex-col md:flex-row gap-4 items-center w-full md:w-auto">
-                    <div className="relative w-full md:w-96">
-                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="w-5 h-5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
-                        </svg>
-                      </span>
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search by Name, Email or Branch..."
-                        className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all"
-                      />
-                    </div>
-                    <button
-                      onClick={() => {
-                        setFormData({
-                          name: "",
-                          email: "",
-                          mobile: "",
-                          branch: "",
-                          province: "",
-                          location: "",
-                          staffCount: 1,
-                          password: ""
-                        });
-                        setFormError("");
-                        setFormSuccess("");
-                        setShowModal(true);
-                      }}
-                      className="w-full md:w-auto flex items-center justify-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-xl text-sm font-bold shadow-md shadow-amber-500/20 transition-all border-none outline-none cursor-pointer"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
-                      <span>Add New Staff</span>
-                    </button>
-                  </div>
-                  <div className="text-xs text-slate-400 font-bold">
-                    Active Branches: {filteredStaff.length}
-                  </div>
-                </div>
 
-                {/* Staff list cards */}
-                {filteredStaff.length === 0 ? (
-                  <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center text-slate-400 font-bold select-none shadow-sm">
-                    No office staff accounts found matching your search.
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredStaff.map((staff) => (
-                      <div
-                        key={staff._id}
-                        className="bg-white border border-slate-200 hover:border-amber-400 hover:shadow-md rounded-2xl p-6 flex flex-col justify-between transition-all duration-200 shadow-sm"
-                      >
-                        <div>
-                          {/* Card Header */}
-                          <div className="flex justify-between items-start mb-4 select-none">
-                            <div>
-                              <h3 className="font-black text-slate-800 text-base">{staff.name}</h3>
-                              <span className="text-[9px] text-amber-600 font-black tracking-wider uppercase bg-amber-50 border border-amber-200 px-2 py-0.5 rounded mt-1.5 inline-block">
-                                Branch: {staff.branch}
-                              </span>
-                            </div>
-                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 select-none">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-slate-500">
-                                <path fillRule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" clipRule="evenodd" />
-                              </svg>
-                            </div>
-                          </div>
-
-                          {/* Info Fields */}
-                          <div className="flex flex-col text-slate-500 text-xs font-semibold gap-2 select-none mt-2">
-                            <div className="flex">
-                              <span className="w-20 flex-shrink-0 text-slate-400">Email</span>
-                              <span className="truncate">: {staff.email}</span>
-                            </div>
-                            <div className="flex">
-                              <span className="w-20 flex-shrink-0 text-slate-400">Mobile</span>
-                              <span>: {staff.mobile}</span>
-                            </div>
-                            <div className="flex">
-                              <span className="w-20 flex-shrink-0 text-slate-400">Province</span>
-                              <span>: {staff.province}</span>
-                            </div>
-                            <div className="flex">
-                              <span className="w-20 flex-shrink-0 text-slate-400">Location</span>
-                              <span className="truncate">: {staff.location}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Card Footer */}
-                        <div className="mt-6 pt-3 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400 font-bold select-none">
-                          <span>Staff Count: {staff.staffCount}</span>
-                          <span className="text-emerald-500 font-extrabold flex items-center gap-0.5">
-                            ● Active
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+              <button
+                onClick={() => {
+                  setFormData({
+                    name: "",
+                    email: "",
+                    mobile: "",
+                    branch: "",
+                    province: "",
+                    location: "",
+                    staffCount: 1,
+                    password: ""
+                  });
+                  setFormError("");
+                  setFormSuccess("");
+                  setShowModal(true);
+                }}
+                className="w-full py-4 bg-amber-500 hover:bg-amber-600 active:scale-95 text-white rounded-2xl text-base font-bold shadow-lg shadow-amber-500/25 transition-all border-none outline-none cursor-pointer flex items-center justify-center gap-2 select-none"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                <span>Add New Staff Member</span>
+              </button>
+            </div>
           </main>
         </div>
       </div>
@@ -270,7 +137,7 @@ export default function AdminStaffPage() {
       {/* Modal Dialog */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden transform scale-100 transition-all">
+          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden transform scale-100 transition-all animate-scale-up">
             {/* Modal Header */}
             <div className="bg-amber-500 px-6 py-4 flex justify-between items-center text-white select-none">
               <h2 className="font-bold text-lg">Register New Office Staff / Branch</h2>
