@@ -1,19 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
 import OfficeStaffNavbar from "@/app/Components/Office Staff/Navbar";
 import OfficeStaffFooter from "@/app/Components/Office Staff/Footer";
-
-interface ClaimItem {
-  id: string;
-  urgency: string;
-  vehicleNo: string;
-  vehicleModel?: string;
-  type: string;
-  location: string;
-  time: string;
-}
 
 interface RegistrationItem {
   name: string;
@@ -23,13 +12,12 @@ interface RegistrationItem {
 
 export default function OfficeStaffDashboard() {
   const [branch, setBranch] = useState("Galle");
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     unassignedClaims: 0,
     newRegistrations: 0,
     activeClaims: 0,
     pendingClaims: 0,
   });
-  const [newClaims, setNewClaims] = useState<ClaimItem[]>([]);
   const [newRegistrations, setNewRegistrations] = useState<RegistrationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -58,30 +46,6 @@ export default function OfficeStaffDashboard() {
           throw new Error("Failed to load dashboard metrics.");
         }
         const data = await res.json();
-        setStats(data.stats);
-
-        // Format claims list from DB (limit to latest 3)
-        const formattedClaims = data.newClaims.slice(0, 3).map((claim: any) => {
-          // If claim description/damage implies severe, classify as Urgent
-          const isUrgent =
-            claim.damageType?.toLowerCase().includes("severe") ||
-            claim.description?.toLowerCase().includes("urgent");
-          return {
-            id: claim.claimNumber,
-            urgency: isUrgent ? "Urgent" : "Normal",
-            vehicleNo: claim.vehiclePlate,
-            vehicleModel: claim.vehiclePlate?.substring(0, 3), // simple substring placeholder
-            type: claim.damageType,
-            location: claim.location,
-            time: new Date(claim.createdAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          };
-        });
-        setNewClaims(formattedClaims);
 
         // Format registrations list from DB
         const formattedRegs = data.newRegistrations.map((user: any) => ({
@@ -183,91 +147,11 @@ export default function OfficeStaffDashboard() {
                   </div>
                 </div>
 
-                {/* Columns split: New Claims & New Registration */}
+                {/* Columns split: New Registration only */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
                   
-                  {/* Left Column: New Claims (8 cols for more space) */}
-                  <div className="lg:col-span-8 flex flex-col select-none">
-                    <div className="flex items-center gap-2 mb-6">
-                      <h2 className="text-lg font-black text-slate-800 tracking-wide">
-                        New Claims
-                      </h2>
-                      <span className="text-lg font-black text-slate-800">&gt;</span>
-                    </div>
-
-                    {newClaims.length === 0 ? (
-                      <div className="border border-slate-200 rounded-[24px] p-8 text-center text-slate-400 font-bold">
-                        No new claims for this branch
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-6">
-                        {newClaims.map((claim, index) => {
-                          const isUrgent = claim.urgency === "Urgent";
-                          const cardBorderClass = isUrgent ? "border-red-500" : "border-blue-500";
-                          const headerTextClass = isUrgent ? "text-red-500" : "text-blue-500";
-
-                          return (
-                            <div
-                              key={index}
-                              className={`bg-white border-2 ${cardBorderClass} rounded-[24px] p-6 flex flex-col relative`}
-                            >
-                              {/* Title Header */}
-                              <span className={`font-black text-base ${headerTextClass} mb-4`}>
-                                {claim.urgency} - {claim.id}
-                              </span>
-
-                              {/* Flex Container for details and buttons */}
-                              <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-4">
-                                
-                                {/* Claim Specifications */}
-                                <div className="flex flex-col text-slate-500 text-sm font-semibold gap-1 min-w-0 flex-1">
-                                  <div className="flex">
-                                    <span className="w-28 flex-shrink-0">Vehicle No</span>
-                                    <span>- {claim.vehicleNo}</span>
-                                  </div>
-                                  <div className="flex">
-                                    <span className="w-28 flex-shrink-0">Type</span>
-                                    <span>- {claim.type}</span>
-                                  </div>
-                                  <div className="flex">
-                                    <span className="w-28 flex-shrink-0">Location</span>
-                                    <span>- {claim.location}</span>
-                                  </div>
-                                </div>
-
-                                {/* Action Buttons */}
-                                <div className="flex flex-row md:flex-col gap-3 self-end md:self-auto flex-shrink-0 w-36">
-                                  <button className="w-full bg-red-600 hover:bg-red-700 active:scale-95 text-white font-extrabold text-[13px] py-2.5 rounded-full transition-all tracking-wide cursor-pointer focus:outline-none shadow-sm shadow-red-500/20 whitespace-nowrap text-center">
-                                    Assign Agent
-                                  </button>
-                                  <button className="w-full bg-slate-700 hover:bg-slate-800 active:scale-95 text-white font-extrabold text-[13px] py-2.5 rounded-full transition-all tracking-wide cursor-pointer focus:outline-none shadow-sm shadow-slate-500/20 whitespace-nowrap text-center">
-                                    Details
-                                  </button>
-                                </div>
-
-                              </div>
-
-                              {/* Timestamp bottom-right */}
-                              <span className="text-[11px] text-slate-400 font-bold self-end mt-4">
-                                {claim.time}
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {/* View All link */}
-                    <Link
-                      href="/Office_Staff/Claims"
-                      className="font-black text-slate-800 text-sm hover:underline self-end mt-6 no-underline flex items-center gap-1 cursor-pointer"
-                    >
-                      View All <span className="font-extrabold">&gt;</span>
-                    </Link>
-                  </div>
-
-                  {/* Right Column: New Registration (4 cols) */}
-                  <div className="lg:col-span-4 flex flex-col select-none">
+                  {/* Column: New Registration (spans full 12 columns) */}
+                  <div className="lg:col-span-12 flex flex-col select-none">
                     <div className="flex items-center gap-2 mb-6">
                       <h2 className="text-lg font-black text-slate-800 tracking-wide">
                         New Registration
@@ -280,7 +164,7 @@ export default function OfficeStaffDashboard() {
                         No new registrations for this branch
                       </div>
                     ) : (
-                      <div className="flex flex-col gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {newRegistrations.map((reg, index) => (
                           <div
                             key={index}
