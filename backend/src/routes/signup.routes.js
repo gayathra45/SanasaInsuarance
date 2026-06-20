@@ -102,9 +102,31 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "All four required verification documents must be uploaded." });
     }
 
-    const existingUser = await User.findOne({ $or: [{ email }, { nic: cleanNic }] });
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanNicCheck = cleanNic.trim().toUpperCase();
+
+    // Check if email or nic already exists in User collection
+    const existingUser = await User.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNicCheck }] });
     if (existingUser) {
       return res.status(400).json({ error: "A user with this Email or NIC is already registered." });
+    }
+
+    // Check if email or nic already exists in Agent collection
+    const existingAgent = await Agent.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNicCheck }] });
+    if (existingAgent) {
+      return res.status(400).json({ error: "An agent with this Email or NIC is already registered." });
+    }
+
+    // Check if email or nic already exists in Admin collection
+    const existingAdmin = await Admin.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNicCheck }] });
+    if (existingAdmin) {
+      return res.status(400).json({ error: "An admin with this Email or NIC is already registered." });
+    }
+
+    // Check if email already exists in OfficeStaff collection
+    const existingOfficeStaff = await OfficeStaff.findOne({ email: cleanEmail });
+    if (existingOfficeStaff) {
+      return res.status(400).json({ error: "An office staff account with this Email is already registered." });
     }
 
     const hashedPassword = hashPassword(password);

@@ -3,6 +3,7 @@ import OfficeStaff from "../models/office_staff.model.js";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
 import Agent from "../models/agent.model.js";
+import Admin from "../models/admin.model.js";
 import { hashPassword } from "../utils/crypto.js";
 
 const router = express.Router();
@@ -225,6 +226,79 @@ router.patch("/claims/:claimNumber", async (req, res) => {
     res.json({ message: "Claim updated successfully", claim });
   } catch (err) {
     console.error("Update claim error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// POST create a new agent: /api/office-staff/agents
+router.post("/agents", async (req, res) => {
+  try {
+    const { name, email, nic, address, dob, password, branch } = req.body;
+
+    if (!name || !email || !nic || !address || !dob || !password || !branch) {
+      return res.status(400).json({ error: "All fields are required." });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanNic = nic.trim().toUpperCase();
+
+    // Check if email or nic already exists in Agent collection
+    const existingAgent = await Agent.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNic }] });
+    if (existingAgent) {
+      return res.status(400).json({ error: "An agent with this Email or NIC is already registered." });
+    }
+
+    // Check if email or nic already exists in User collection
+    const existingUser = await User.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNic }] });
+    if (existingUser) {
+      return res.status(400).json({ error: "A user with this Email or NIC is already registered." });
+    }
+
+    // Check if email or nic already exists in Admin collection
+    const existingAdmin = await Admin.findOne({ $or: [{ email: cleanEmail }, { nic: cleanNic }] });
+    if (existingAdmin) {
+      return res.status(400).json({ error: "An admin with this Email or NIC is already registered." });
+    }
+
+    // Check if email already exists in OfficeStaff collection
+    const existingOfficeStaff = await OfficeStaff.findOne({ email: cleanEmail });
+    if (existingOfficeStaff) {
+      return res.status(400).json({ error: "An office staff account with this Email is already registered." });
+    }
+
+    // Auto-generate agentId (e.g. AGT-0001)
+    const lastAgent = await Agent.findOne({}, { agentId: 1 }).sort({ createdAt: -1 });
+    let nextAgentId = "AGT-0001";
+    if (lastAgent && lastAgent.agentId) {
+      const match = lastAgent.agentId.match(/AGT-(\d+)/i);
+      if (match) {
+        const currentNum = parseInt(match[1], 10);
+        nextAgentId = `AGT-${String(currentNum + 1).padStart(4, "0")}`;
+      }
+    }
+
+    const hashedPassword = hashPassword(password);
+
+    const newAgent = new Agent({
+      agentId: nextAgentId,
+      name: name.trim(),
+      email: cleanEmail,
+      password: hashedPassword,
+      nic: cleanNic,
+      address: address.trim(),
+      dob: dob.trim(),
+      branch: branch.trim()
+    });
+
+    await newAgent.save();
+
+    // Return agent details without password
+    const agentObj = newAgent.toObject();
+    delete agentObj.password;
+
+    res.status(201).json({ message: "Agent registered successfully", agent: agentObj });
+  } catch (err) {
+    console.error("Create agent API error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });
