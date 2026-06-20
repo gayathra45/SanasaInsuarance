@@ -14,16 +14,29 @@ Git branch move - git branch
 
 
 
-Login 
+Login Details
 
 Policy Holder - email - gayathrasamuditha45@gmail.com
                 password - gayathra123
 
+
+
 Agent         - email - oshitha@gmail.com
                 password - oshitha123
 
+                email - cartlanka097@gmail.com
+                password - gayathra123
+
+
+
+
 Office Staff  - email - galle@gmail.com
-                password - galle123
+                password - galle12
+
+                email - matara@gmail.com
+                password - matara123
+
+
 
 admin         - email - admin@gmail.com
                 password - admin123          

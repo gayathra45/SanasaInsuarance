@@ -26,6 +26,9 @@ const agentSchema = new mongoose.Schema({
   resetOtpRequestedAt: { type: Date },
   resetSessionToken: { type: String },
   resetSessionExpires: { type: Date },
+  status: { type: String, default: "inactive" },
+  activationToken: { type: String },
+  activationExpires: { type: Date },
   createdAt: { type: Date, default: Date.now }
 });
 

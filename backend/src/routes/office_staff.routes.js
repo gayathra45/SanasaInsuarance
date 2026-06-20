@@ -1,4 +1,5 @@
 import express from "express";
+import crypto from "crypto";
 import OfficeStaff from "../models/office_staff.model.js";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
@@ -6,6 +7,7 @@ import Agent from "../models/agent.model.js";
 import Admin from "../models/admin.model.js";
 import { hashPassword } from "../utils/crypto.js";
 import { uploadToCloudinary } from "../utils/upload.js";
+import { sendEmail } from "../utils/email.js";
 
 const router = express.Router();
 
@@ -240,7 +242,6 @@ router.post("/agents", async (req, res) => {
       nic,
       address,
       dob,
-      password,
       branch,
       phone,
       city,
@@ -251,7 +252,8 @@ router.post("/agents", async (req, res) => {
       policeReport
     } = req.body;
 
-    if (!name || !email || !nic || !address || !dob || !password || !branch) {
+    console.log("POST /agents fields received:", { name, email, nic, address, dob, branch });
+    if (!name || !email || !nic || !address || !dob || !branch) {
       return res.status(400).json({ error: "All standard fields are required." });
     }
 
@@ -293,7 +295,13 @@ router.post("/agents", async (req, res) => {
       }
     }
 
-    const hashedPassword = hashPassword(password);
+    // Generate a long random password for the inactive account
+    const tempPassword = crypto.randomBytes(32).toString("hex");
+    const hashedPassword = hashPassword(tempPassword);
+
+    // Generate activation token
+    const activationToken = crypto.randomBytes(32).toString("hex");
+    const activationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Upload documents to Cloudinary if they exist
     let nicFrontUrl = "";
@@ -329,10 +337,39 @@ router.post("/agents", async (req, res) => {
       nicFront: nicFrontUrl,
       nicBack: nicBackUrl,
       birthCertificate: birthCertificateUrl,
-      policeReport: policeReportUrl
+      policeReport: policeReportUrl,
+      status: "inactive",
+      activationToken,
+      activationExpires
     });
 
     await newAgent.save();
+
+    // Send activation email
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    const activationLink = `${frontendUrl}/ActivateAgent?token=${activationToken}`;
+
+    const subject = "Activate Your Sanasa Insurance Agent Account";
+    const textBody = `Hello ${name.trim()},\n\nYou have been registered as an Insurance Agent for Sanasa Insurance. Please activate your account and set your login password by clicking the link below:\n\n${activationLink}\n\nThis link will expire in 24 hours.\n\nThank you,\nSanasa Insurance Team`;
+    const htmlBody = `
+      <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+        <h2 style="color: #0f2d4a; margin-top: 0;">Welcome to Sanasa Insurance, ${name.trim()}!</h2>
+        <p>You have been registered as an Insurance Agent at our <strong>${branch.trim()} Branch</strong>.</p>
+        <p>To activate your account and set your password, please click the button below:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${activationLink}" style="background-color: #0f2d4a; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block;">Activate Account</a>
+        </div>
+        <p style="color: #64748b; font-size: 12px;">This activation link will expire in 24 hours.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+        <p style="color: #64748b; font-size: 12px;">If you did not request this, please ignore this email.</p>
+      </div>
+    `;
+
+    try {
+      await sendEmail(cleanEmail, subject, htmlBody, textBody);
+    } catch (emailErr) {
+      console.error("Failed to send activation email:", emailErr);
+    }
 
     // Return agent details without password
     const agentObj = newAgent.toObject();

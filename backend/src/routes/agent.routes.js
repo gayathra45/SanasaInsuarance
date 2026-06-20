@@ -23,6 +23,10 @@ router.post("/login", async (req, res) => {
       return res.status(400).json({ error: "Invalid Email or Password." });
     }
 
+    if (agent.status === "inactive") {
+      return res.status(400).json({ error: "Your account is not activated. Please check your email to set a password and activate your account." });
+    }
+
     const hashedInput = hashPassword(password);
     if (agent.password !== hashedInput) {
       return res.status(400).json({ error: "Invalid Email or Password." });
@@ -82,6 +86,68 @@ router.post("/claims/:id/status", async (req, res) => {
     res.json({ message: "Claim status updated successfully", claim: updatedClaim });
   } catch (err) {
     console.error("Update claim status error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET verify activation token: /api/agent/verify-activation?token=...
+router.get("/verify-activation", async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) {
+      return res.status(400).json({ error: "Activation token is required." });
+    }
+
+    const agent = await Agent.findOne({
+      activationToken: token,
+      activationExpires: { $gt: new Date() },
+      status: "inactive"
+    });
+
+    if (!agent) {
+      return res.status(400).json({ error: "Invalid or expired activation link." });
+    }
+
+    res.json({ message: "Token verified successfully.", email: agent.email, name: agent.name });
+  } catch (err) {
+    console.error("Verify activation error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// POST activate account: /api/agent/activate
+router.post("/activate", async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token || !password) {
+      return res.status(400).json({ error: "Token and Password are required." });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters." });
+    }
+
+    const agent = await Agent.findOne({
+      activationToken: token,
+      activationExpires: { $gt: new Date() },
+      status: "inactive"
+    });
+
+    if (!agent) {
+      return res.status(400).json({ error: "Invalid or expired activation link." });
+    }
+
+    // Hash password and set to active
+    agent.password = hashPassword(password);
+    agent.status = "active";
+    agent.activationToken = undefined;
+    agent.activationExpires = undefined;
+
+    await agent.save();
+
+    res.json({ message: "Your agent account has been activated successfully! You can now log in." });
+  } catch (err) {
+    console.error("Activate agent error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });

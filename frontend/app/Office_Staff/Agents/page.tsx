@@ -188,9 +188,6 @@ export default function AgentsPage() {
     if (!formData.address.trim()) { setFormError("Residential Address is required."); return false; }
     if (!formData.province) { setFormError("Province is required."); return false; }
     if (!formData.city) { setFormError("City is required."); return false; }
-    if (!formData.password) { setFormError("Password is required."); return false; }
-    if (formData.password.length < 6) { setFormError("Password must be at least 6 characters."); return false; }
-    if (formData.password !== formData.confirmPassword) { setFormError("Passwords do not match."); return false; }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email.trim())) {
@@ -238,7 +235,6 @@ export default function AgentsPage() {
           nic: formData.nic,
           dob: formData.dob,
           address: formData.address,
-          password: formData.password,
           branch,
           phone: formData.phone,
           city: formData.city,
@@ -949,32 +945,6 @@ export default function AgentsPage() {
                             </svg>
                           </span>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Password & Confirm Password */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-500 ml-1">Password</label>
-                        <input
-                          type="password"
-                          required
-                          value={formData.password}
-                          onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                          placeholder="Min. 6 characters"
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] focus:border-transparent transition-all"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-bold text-slate-500 ml-1">Confirm Password</label>
-                        <input
-                          type="password"
-                          required
-                          value={formData.confirmPassword}
-                          onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                          placeholder="Re-enter password"
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] focus:border-transparent transition-all"
-                        />
                       </div>
                     </div>
                   </div>
