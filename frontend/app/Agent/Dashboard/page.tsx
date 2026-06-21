@@ -212,103 +212,11 @@ export default function AgentDashboard() {
         </div>
       </div>
 
-      {/* Grid Dashboard Content */}
+      {/* Dashboard Content */}
       <main className="max-w-7xl mx-auto w-full px-6 py-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left Column: New Claims (Takes 2 grid columns on large screens) */}
-        <div className="lg:col-span-2 flex flex-col gap-6">
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-              New Claims
-              <span className="text-slate-400 font-normal text-xl">&gt;</span>
-            </h2>
-          </div>
 
-          <div className="flex flex-col gap-6">
-            {loading ? (
-              <div className="text-slate-400 font-bold py-10 text-center text-sm animate-pulse">
-                Fetching claims from database...
-              </div>
-            ) : activeClaims.length === 0 ? (
-              <div className="bg-white border border-slate-100 rounded-3xl p-10 text-center shadow-sm text-slate-500 font-semibold text-sm">
-                No new claims assigned to you.
-              </div>
-            ) : (
-              activeClaims.map((claim) => {
-                const severity = getSeverity(claim.damageType);
-                const isUrgent = severity === "Urgent";
-                const borderStyles = isUrgent 
-                  ? "border-red-200 hover:border-red-300 bg-gradient-to-br from-white to-red-50/10 shadow-[0_10px_25px_rgba(239,68,68,0.01)]" 
-                  : "border-cyan-200 hover:border-cyan-300 bg-gradient-to-br from-white to-cyan-50/10 shadow-[0_10px_25px_rgba(6,182,212,0.01)]";
-                const textStyles = isUrgent ? "text-red-600" : "text-cyan-600";
-                const sideStrip = isUrgent ? "bg-red-500" : "bg-cyan-500";
-                const headerIconColor = isUrgent ? "text-red-500 animate-pulse" : "text-cyan-500";
-
-                return (
-                  <div
-                    key={claim._id}
-                    className={`w-full border rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden ${borderStyles}`}
-                  >
-                    {/* Visual Left Indicator Strip */}
-                    <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${sideStrip}`} />
-
-                    <div className="flex justify-between items-center relative z-10 pl-2">
-                      <div className="flex items-center gap-2.5">
-                        {isUrgent ? (
-                          /* Urgent Light Siren Icon */
-                          <svg className={`w-5 h-5 ${headerIconColor}`} fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2a1 1 0 0 1 1 1v1.085A8.005 8.005 0 0 1 19.5 12v1H20a1 1 0 1 1 0 2h-1.05a5 5 0 0 1-13.9 0H4a1 1 0 1 1 0-2h.5v-1A8.005 8.005 0 0 1 11 4.085V3a1 1 0 0 1 1-1zm6 11V12a6 6 0 0 0-12 0v1h12z" />
-                            <circle cx="12" cy="18" r="1.5" />
-                          </svg>
-                        ) : (
-                          /* Medium Shield Alert Icon */
-                          <svg className={`w-5 h-5 ${headerIconColor}`} fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2s-8 3-8 8v4.5c0 5 8 7.5 8 7.5s8-2.5 8-7.5V10c0-5-8-8-8-8zm0 13a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1-5H11V6h2v4z" />
-                          </svg>
-                        )}
-                        <h3 className={`font-bold text-lg tracking-wide uppercase ${textStyles}`}>
-                          {severity} - {claim.claimNumber}
-                        </h3>
-                      </div>
-
-                    <button
-                      onClick={() => setSelectedClaim(claim)}
-                      className="bg-slate-900 hover:bg-[#ff9800] active:bg-[#f57c00] text-white text-sm font-bold py-2 px-6 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
-                    >
-                      Details
-                    </button>
-                  </div>
-
-                  {/* Vehicle & Location Information */}
-                  <div className="mt-5 pl-2 grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-2 text-sm text-slate-600 leading-relaxed relative z-10 font-semibold">
-                    <div>
-                      <span className="text-slate-400 block text-xs uppercase tracking-wider mb-0.5">Vehicle Plate</span>
-                      <span className="text-slate-800 font-bold text-[15px]">
-                        {claim.vehiclePlate} {claim.vehicleModel && <span className="font-semibold text-slate-500">({claim.vehicleModel})</span>}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-xs uppercase tracking-wider mb-0.5">Damage Type</span>
-                      <span className="text-slate-800 font-bold text-[15px]">{claim.damageType}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-xs uppercase tracking-wider mb-0.5">Location</span>
-                      <span className="text-slate-800 font-bold text-[15px]">{claim.location}</span>
-                    </div>
-                  </div>
-
-                  {/* Formatted Date / Time */}
-                  <div className="absolute bottom-4 right-6 text-xs text-slate-400 font-bold">
-                    Today, {claim.incidentTime}
-                  </div>
-                </div>
-              );
-            }))}
-          </div>
-        </div>
-
-        {/* Right Column: My Activity & Support Details */}
-        <div className="flex flex-col gap-8">
+        {/* My Activity & Support Details — full width */}
+        <div className="lg:col-span-3 flex flex-col gap-8">
           
           {/* My Activity Card Section */}
           <div className="flex flex-col gap-4">
