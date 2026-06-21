@@ -35,6 +35,7 @@ interface Claim {
   officer?: string;
   documentsRequested?: boolean;
   requestedDocuments?: string[];
+  documentRequestTo?: string;
   currentStep?: number;
   messages?: { sender: string; message: string; sentAt: string; recipient?: string }[];
 }
@@ -42,6 +43,20 @@ interface Claim {
 export default function TrackClaims() {
   const [claimId, setClaimId] = useState("");
   const [trackedClaim, setTrackedClaim] = useState<Claim | null>(null);
+
+  const getUserRequestedDocs = (claim: Claim): string[] => {
+    const getRecipientForDoc = (name: string) => {
+      const msg = [...(claim.messages || [])]
+        .reverse()
+        .find(m => m.message.includes(`Requested: ${name}`));
+      if (msg) {
+        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+        if (msg.message.includes("[Document Request to User]")) return "User";
+      }
+      return claim.documentRequestTo || "User";
+    };
+    return (claim.requestedDocuments || []).filter(name => getRecipientForDoc(name) === "User");
+  };
   const [searchAttempted, setSearchAttempted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [claimsList, setClaimsList] = useState<Claim[]>([]);
@@ -351,38 +366,6 @@ export default function TrackClaims() {
               </View>
             )}
 
-            {/* Documents requested Warning alert */}
-            {trackedClaim.documentsRequested && (
-              <View style={styles.docRequestAlert}>
-                <View style={styles.docAlertTitleRow}>
-                  <Ionicons name="alert-circle" size={18} color="#dc2626" />
-                  <Text style={styles.docAlertTitle}>Additional Documents Required</Text>
-                </View>
-                <Text style={styles.docAlertDesc}>
-                  The following documents are needed before we can process payout. Please submit them to your claims officer:
-                </Text>
-                <View style={styles.docItems}>
-                  {(trackedClaim.requestedDocuments && trackedClaim.requestedDocuments.length > 0
-                    ? trackedClaim.requestedDocuments
-                    : ["Police Report", "Repair Estimate"]
-                  ).map((doc, i) => (
-                    <View key={i} style={styles.docDotItem}>
-                      <View style={styles.bulletDot} />
-                      <Text style={styles.docDotText}>{doc}</Text>
-                    </View>
-                  ))}
-                </View>
-                <TouchableOpacity
-                  style={styles.uploadDocBtn}
-                  onPress={() => {
-                    Alert.alert("Submit Documents", "Please contact your assigned agent Saman at +94 112 003 000 or email files to claims-support@sanasa.lk.");
-                  }}
-                >
-                  <Text style={styles.uploadDocBtnText}>Contact Agent to Submit</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
             {/* Messages updates list */}
             <View style={styles.messagesSection}>
               <Text style={styles.messagesHeader}>Messages & Updates</Text>
@@ -409,6 +392,35 @@ export default function TrackClaims() {
                 }
               })()}
             </View>
+
+            {/* Documents requested Warning alert */}
+            {trackedClaim.documentsRequested && getUserRequestedDocs(trackedClaim).length > 0 && (
+              <View style={[styles.docRequestAlert, { marginTop: 12 }]}>
+                <View style={styles.docAlertTitleRow}>
+                  <Ionicons name="alert-circle" size={18} color="#dc2626" />
+                  <Text style={styles.docAlertTitle}>Additional Documents Required</Text>
+                </View>
+                <Text style={styles.docAlertDesc}>
+                  The following documents are needed before we can process payout. Please submit them to your claims officer:
+                </Text>
+                <View style={styles.docItems}>
+                  {getUserRequestedDocs(trackedClaim).map((doc, i) => (
+                    <View key={i} style={styles.docDotItem}>
+                      <View style={styles.bulletDot} />
+                      <Text style={styles.docDotText}>{doc}</Text>
+                    </View>
+                  ))}
+                </View>
+                <TouchableOpacity
+                  style={styles.uploadDocBtn}
+                  onPress={() => {
+                    Alert.alert("Submit Documents", "Please contact your assigned agent Saman at +94 112 003 000 or email files to claims-support@sanasa.lk.");
+                  }}
+                >
+                  <Text style={styles.uploadDocBtnText}>Contact Agent to Submit</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         ) : searchAttempted ? (
           <View style={styles.errorContainer}>

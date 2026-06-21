@@ -20,14 +20,29 @@ interface Claim {
   officer?: string;
   documentsRequested?: boolean;
   requestedDocuments?: string[];
+  documentRequestTo?: string;
   currentStep?: number;
-  messages?: { sender: string; message: string; sentAt: string }[];
+  messages?: { sender: string; message: string; sentAt: string; recipient?: string }[];
 }
 
 function TrackClaimsContent() {
   const searchParams = useSearchParams();
   const [claimId, setClaimId] = useState("");
   const [trackedClaim, setTrackedClaim] = useState<Claim | null>(null);
+
+  const getUserRequestedDocs = (claim: Claim): string[] => {
+    const getRecipientForDoc = (name: string) => {
+      const msg = [...(claim.messages || [])]
+        .reverse()
+        .find(m => m.message.includes(`Requested: ${name}`));
+      if (msg) {
+        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+        if (msg.message.includes("[Document Request to User]")) return "User";
+      }
+      return claim.documentRequestTo || "User";
+    };
+    return (claim.requestedDocuments || []).filter(name => getRecipientForDoc(name) === "User");
+  };
   const [searchAttempted, setSearchAttempted] = useState(false);
   const [claimsList, setClaimsList] = useState<Claim[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -367,34 +382,6 @@ function TrackClaimsContent() {
                   </p>
                 </div>
               )}
-
-              {/* Warning Alert Box */}
-              {trackedClaim.documentsRequested && (
-                <div className="bg-[#ffeaea]/80 border border-[#ffd1d1] rounded-[20px] p-6">
-                  <h4 className="text-[#9c3535] font-extrabold text-sm mb-1.5">Documents Requested</h4>
-                  <p className="text-[#aa4f4f] text-[13px] font-semibold leading-relaxed mb-3">
-                    The following documents have been requested by staff to process your claim. Please upload them via the Documents section:
-                  </p>
-                  <ul className="list-none flex flex-col gap-2 mb-4 pl-1">
-                    {(trackedClaim.requestedDocuments && trackedClaim.requestedDocuments.length > 0
-                      ? trackedClaim.requestedDocuments
-                      : ["Police Report", "Repair Estimate"]
-                    ).map((doc) => (
-                      <li key={doc} className="flex items-center gap-2 text-[#aa4f4f] font-bold text-xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#df3d3d] flex-shrink-0" />
-                        <span>{doc}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link
-                    href="/Policy_Holder/Documents"
-                    className="inline-block bg-[#df3d3d] hover:bg-[#c53030] text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all duration-150 no-underline shadow-sm cursor-pointer border-none text-center"
-                  >
-                    Go to Documents
-                  </Link>
-                </div>
-              )}
-
               {/* Messages & Notifications Section */}
               <div className="px-2 mt-6">
                 <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 select-none">Messages & Notifications</p>
@@ -419,6 +406,29 @@ function TrackClaimsContent() {
                 )}
               </div>
 
+              {/* Warning Alert Box */}
+              {trackedClaim.documentsRequested && getUserRequestedDocs(trackedClaim).length > 0 && (
+                <div className="bg-[#ffeaea]/80 border border-[#ffd1d1] rounded-[20px] p-6 mt-6">
+                  <h4 className="text-[#9c3535] font-extrabold text-sm mb-1.5">Documents Requested</h4>
+                  <p className="text-[#aa4f4f] text-[13px] font-semibold leading-relaxed mb-3">
+                    The following documents have been requested by staff to process your claim. Please upload them via the Documents section:
+                  </p>
+                  <ul className="list-none flex flex-col gap-2 mb-4 pl-1">
+                    {getUserRequestedDocs(trackedClaim).map((doc) => (
+                      <li key={doc} className="flex items-center gap-2 text-[#aa4f4f] font-bold text-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#df3d3d] flex-shrink-0" />
+                        <span>{doc}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href="/Policy_Holder/Documents"
+                    className="inline-block bg-[#df3d3d] hover:bg-[#c53030] text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all duration-150 no-underline shadow-sm cursor-pointer border-none text-center"
+                  >
+                    Go to Documents
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         ) : searchAttempted ? (

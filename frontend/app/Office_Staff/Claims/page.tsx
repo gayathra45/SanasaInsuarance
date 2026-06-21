@@ -39,6 +39,7 @@ interface Claim {
   currentStep: number;
   documentsRequested: boolean;
   requestedDocuments: string[];
+  documentRequestTo?: string;
   messages: ClaimMessage[];
   additionalDocuments: AdditionalDoc[];
   accidentPhotos?: {
@@ -761,6 +762,213 @@ export default function OfficeStaffClaimsPage() {
                       })()}
                     </div>
                   </div>
+
+                  {(() => {
+                    const getRecipientForDoc = (name: string) => {
+                      const msg = [...(selectedClaim.messages || [])]
+                        .reverse()
+                        .find(m => m.message.includes(`Requested: ${name}`));
+                      if (msg) {
+                        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+                        if (msg.message.includes("[Document Request to User]")) return "User";
+                      }
+                      return selectedClaim.documentRequestTo || "User";
+                    };
+
+                    const getDocDetails = (name: string, status: "Pending" | "Submitted") => {
+                      let requestedAt = "";
+                      let submittedAt = "";
+
+                      const msg = [...(selectedClaim.messages || [])]
+                        .reverse()
+                        .find(m => m.message.includes(`Requested: ${name}`));
+                      if (msg) {
+                        requestedAt = formatDate(msg.sentAt);
+                      } else {
+                        requestedAt = formatDate(selectedClaim.createdAt);
+                      }
+
+                      if (status === "Submitted") {
+                        const doc = (selectedClaim.additionalDocuments || []).find(
+                          d => d.name.trim().toLowerCase() === name.trim().toLowerCase()
+                        );
+                        if (doc && doc.uploadedAt) {
+                          submittedAt = formatDate(doc.uploadedAt);
+                        }
+                      }
+
+                      return { requestedAt, submittedAt };
+                    };
+
+                    const requestedDocsList = [
+                      ...(selectedClaim.requestedDocuments || []).map((name) => ({
+                        name,
+                        status: "Pending" as const,
+                        url: null,
+                        recipient: getRecipientForDoc(name),
+                      })),
+                      ...(selectedClaim.additionalDocuments || []).map((doc) => ({
+                        name: doc.name,
+                        status: "Submitted" as const,
+                        url: doc.url,
+                        recipient: doc.uploadedBy === "Agent" ? "Agent" : "User",
+                      })),
+                    ];
+
+                    const policyHolderDocs = requestedDocsList.filter((d) => d.recipient === "User");
+                    const agentDocs = requestedDocsList.filter((d) => d.recipient === "Agent");
+
+                    if (requestedDocsList.length === 0) return null;
+
+                    const hasPending = requestedDocsList.some((d) => d.status === "Pending");
+
+                    return (
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                        <h3 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2 uppercase tracking-wider flex items-center gap-2 select-none">
+                          {hasPending ? (
+                            <svg className="w-4.5 h-4.5 text-amber-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4.5 h-4.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                          Requested Documents Status
+                        </h3>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 select-none">
+                            <span className="text-[10px] bg-blue-100 text-blue-800 font-black tracking-wider uppercase px-2 py-0.5 rounded border border-blue-200">
+                              Policy Holder Requests
+                            </span>
+                          </div>
+                          {policyHolderDocs.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {policyHolderDocs.map((item, idx) => {
+                                const { requestedAt, submittedAt } = getDocDetails(item.name, item.status);
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between py-2.5 px-4 bg-white border border-slate-200/70 rounded-xl hover:border-slate-300 transition-all shadow-sm"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                        item.status === "Pending" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
+                                      }`} />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-xs font-extrabold text-slate-800 truncate">{item.name}</span>
+                                        <span className="text-[9px] text-slate-400 font-bold leading-none mt-0.5">
+                                          {item.status === "Pending" ? (
+                                            `Requested: ${requestedAt}`
+                                          ) : (
+                                            `Requested: ${requestedAt} · Uploaded: ${submittedAt || "Recent"}`
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded select-none border ${
+                                        item.status === "Pending"
+                                          ? "bg-amber-100/80 text-amber-800 border-amber-200"
+                                          : "bg-emerald-100/80 text-emerald-800 border-emerald-200"
+                                      }`}>
+                                        {item.status}
+                                      </span>
+                                      {item.status === "Submitted" && item.url && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            let docUrl = item.url;
+                                            if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                                              docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                                            }
+                                            setPreviewImage(docUrl || null);
+                                          }}
+                                          className="text-[10px] font-black text-cyan-600 hover:text-cyan-700 bg-transparent border-none cursor-pointer hover:underline"
+                                        >
+                                          View
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 font-bold italic select-none py-1 pl-1">
+                              No active requests or submissions.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-3 pt-4 border-t border-slate-200/60">
+                          <div className="flex items-center gap-2 select-none">
+                            <span className="text-[10px] bg-cyan-100 text-cyan-800 font-black tracking-wider uppercase px-2 py-0.5 rounded border border-cyan-200">
+                              Agent Requests
+                            </span>
+                          </div>
+                          {agentDocs.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {agentDocs.map((item, idx) => {
+                                const { requestedAt, submittedAt } = getDocDetails(item.name, item.status);
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between py-2.5 px-4 bg-white border border-slate-200/70 rounded-xl hover:border-slate-300 transition-all shadow-sm"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                        item.status === "Pending" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
+                                      }`} />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-xs font-extrabold text-slate-800 truncate">{item.name}</span>
+                                        <span className="text-[9px] text-slate-400 font-bold leading-none mt-0.5">
+                                          {item.status === "Pending" ? (
+                                            `Requested: ${requestedAt}`
+                                          ) : (
+                                            `Requested: ${requestedAt} · Uploaded: ${submittedAt || "Recent"}`
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded select-none border ${
+                                        item.status === "Pending"
+                                          ? "bg-amber-100/80 text-amber-800 border-amber-200"
+                                          : "bg-emerald-100/80 text-emerald-800 border-emerald-200"
+                                      }`}>
+                                        {item.status}
+                                      </span>
+                                      {item.status === "Submitted" && item.url && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            let docUrl = item.url;
+                                            if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                                              docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                                            }
+                                            setPreviewImage(docUrl || null);
+                                          }}
+                                          className="text-[10px] font-black text-cyan-600 hover:text-cyan-700 bg-transparent border-none cursor-pointer hover:underline"
+                                        >
+                                          View
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 font-bold italic select-none py-1 pl-1">
+                              No active requests or submissions.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -883,9 +1091,14 @@ export default function OfficeStaffClaimsPage() {
                     const customMsg = documentRequestMessage.trim() || `Please upload the requested document.`;
                     const fullMsgText = `[Document Request to ${documentRequestTo}] Requested: ${selectedRequestDocType}. Message: ${customMsg}`;
                     
+                    const currentDocs = selectedClaim.requestedDocuments || [];
+                    const updatedDocs = currentDocs.includes(selectedRequestDocType)
+                      ? currentDocs
+                      : [...currentDocs, selectedRequestDocType];
+
                     await handleUpdateClaim(selectedClaim.claimNumber, {
                       documentsRequested: true,
-                      requestedDocuments: [selectedRequestDocType],
+                      requestedDocuments: updatedDocs,
                       documentRequestTo: documentRequestTo,
                       messageText: fullMsgText
                     });
@@ -1645,6 +1858,216 @@ export default function OfficeStaffClaimsPage() {
                     </div>
                   )}
                 </div>
+
+                {/* Category 3: Requested Documents */}
+                {(() => {
+                  const getRecipientForDoc = (name: string) => {
+                    const msg = [...(selectedClaim.messages || [])]
+                      .reverse()
+                      .find(m => m.message.includes(`Requested: ${name}`));
+                    if (msg) {
+                      if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+                      if (msg.message.includes("[Document Request to User]")) return "User";
+                    }
+                    return selectedClaim.documentRequestTo || "User";
+                  };
+
+                  const getDocDetails = (name: string, status: "Pending" | "Submitted") => {
+                    let requestedAt = "";
+                    let submittedAt = "";
+
+                    const msg = [...(selectedClaim.messages || [])]
+                      .reverse()
+                      .find(m => m.message.includes(`Requested: ${name}`));
+                    if (msg) {
+                      requestedAt = formatDate(msg.sentAt);
+                    } else {
+                      requestedAt = formatDate(selectedClaim.createdAt);
+                    }
+
+                    if (status === "Submitted") {
+                      const doc = (selectedClaim.additionalDocuments || []).find(
+                        d => d.name.trim().toLowerCase() === name.trim().toLowerCase()
+                      );
+                      if (doc && doc.uploadedAt) {
+                        submittedAt = formatDate(doc.uploadedAt);
+                      }
+                    }
+
+                    return { requestedAt, submittedAt };
+                  };
+
+                  const requestedDocsList = [
+                    ...(selectedClaim.requestedDocuments || []).map((name) => ({
+                      name,
+                      status: "Pending" as const,
+                      url: null,
+                      recipient: getRecipientForDoc(name),
+                    })),
+                    ...(selectedClaim.additionalDocuments || []).map((doc) => ({
+                      name: doc.name,
+                      status: "Submitted" as const,
+                      url: doc.url,
+                      recipient: doc.uploadedBy === "Agent" ? "Agent" : "User",
+                    })),
+                  ];
+
+                  const policyHolderDocs = requestedDocsList.filter((d) => d.recipient === "User");
+                  const agentDocs = requestedDocsList.filter((d) => d.recipient === "Agent");
+
+                  if (requestedDocsList.length === 0) return null;
+
+                  const hasPending = requestedDocsList.some((d) => d.status === "Pending");
+
+                  return (
+                    <div className="border-t border-slate-100 pt-5">
+                      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                        <h3 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2 uppercase tracking-wider flex items-center gap-2 select-none">
+                          {hasPending ? (
+                            <svg className="w-4.5 h-4.5 text-amber-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                            </svg>
+                          ) : (
+                            <svg className="w-4.5 h-4.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                            </svg>
+                          )}
+                          Requested Documents Status
+                        </h3>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 select-none">
+                            <span className="text-[10px] bg-blue-100 text-blue-800 font-black tracking-wider uppercase px-2 py-0.5 rounded border border-blue-200">
+                              Policy Holder Requests
+                            </span>
+                          </div>
+                          {policyHolderDocs.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {policyHolderDocs.map((item, idx) => {
+                                const { requestedAt, submittedAt } = getDocDetails(item.name, item.status);
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between py-2.5 px-4 bg-white border border-slate-200/70 rounded-xl hover:border-slate-300 transition-all shadow-sm"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                        item.status === "Pending" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
+                                      }`} />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-xs font-extrabold text-slate-800 truncate">{item.name}</span>
+                                        <span className="text-[9px] text-slate-400 font-bold leading-none mt-0.5">
+                                          {item.status === "Pending" ? (
+                                            `Requested: ${requestedAt}`
+                                          ) : (
+                                            `Requested: ${requestedAt} · Uploaded: ${submittedAt || "Recent"}`
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded select-none border ${
+                                        item.status === "Pending"
+                                          ? "bg-amber-100/80 text-amber-800 border-amber-200"
+                                          : "bg-emerald-100/80 text-emerald-800 border-emerald-200"
+                                      }`}>
+                                        {item.status}
+                                      </span>
+                                      {item.status === "Submitted" && item.url && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            let docUrl = item.url;
+                                            if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                                              docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                                            }
+                                            setPreviewImage(docUrl || null);
+                                          }}
+                                          className="text-[10px] font-black text-cyan-600 hover:text-cyan-700 bg-transparent border-none cursor-pointer hover:underline"
+                                        >
+                                          View
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 font-bold italic select-none py-1 pl-1">
+                              No active requests or submissions.
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="space-y-3 pt-4 border-t border-slate-200/60">
+                          <div className="flex items-center gap-2 select-none">
+                            <span className="text-[10px] bg-cyan-100 text-cyan-800 font-black tracking-wider uppercase px-2 py-0.5 rounded border border-cyan-200">
+                              Agent Requests
+                            </span>
+                          </div>
+                          {agentDocs.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                              {agentDocs.map((item, idx) => {
+                                const { requestedAt, submittedAt } = getDocDetails(item.name, item.status);
+                                return (
+                                  <div
+                                    key={idx}
+                                    className="flex items-center justify-between py-2.5 px-4 bg-white border border-slate-200/70 rounded-xl hover:border-slate-300 transition-all shadow-sm"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0">
+                                      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                                        item.status === "Pending" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"
+                                      }`} />
+                                      <div className="flex flex-col min-w-0">
+                                        <span className="text-xs font-extrabold text-slate-800 truncate">{item.name}</span>
+                                        <span className="text-[9px] text-slate-400 font-bold leading-none mt-0.5">
+                                          {item.status === "Pending" ? (
+                                            `Requested: ${requestedAt}`
+                                          ) : (
+                                            `Requested: ${requestedAt} · Uploaded: ${submittedAt || "Recent"}`
+                                          )}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded select-none border ${
+                                        item.status === "Pending"
+                                          ? "bg-amber-100/80 text-amber-800 border-amber-200"
+                                          : "bg-emerald-100/80 text-emerald-800 border-emerald-200"
+                                      }`}>
+                                        {item.status}
+                                      </span>
+                                      {item.status === "Submitted" && item.url && (
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            let docUrl = item.url;
+                                            if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                                              docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                                            }
+                                            setPreviewImage(docUrl || null);
+                                          }}
+                                          className="text-[10px] font-black text-cyan-600 hover:text-cyan-700 bg-transparent border-none cursor-pointer hover:underline"
+                                        >
+                                          View
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-slate-400 font-bold italic select-none py-1 pl-1">
+                              No active requests or submissions.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
               </div>
 

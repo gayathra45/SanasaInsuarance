@@ -30,6 +30,13 @@ interface AdditionalDoc {
   _id?: string;
 }
 
+interface ClaimMessage {
+  sender: string;
+  message: string;
+  sentAt: string;
+  recipient?: string;
+}
+
 interface Claim {
   claimNumber: string;
   vehiclePlate: string;
@@ -39,6 +46,8 @@ interface Claim {
   createdAt: string;
   documentsRequested: boolean;
   requestedDocuments: string[];
+  documentRequestTo?: string;
+  messages?: ClaimMessage[];
   accidentPhotos?: {
     front?: string[];
     rear?: string[];
@@ -55,6 +64,20 @@ export default function MyDocs() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [loading, setLoading] = useState(true);
   const [userNic, setUserNic] = useState("");
+
+  const getUserRequestedDocs = (claim: Claim): string[] => {
+    const getRecipientForDoc = (name: string) => {
+      const msg = [...(claim.messages || [])]
+        .reverse()
+        .find(m => m.message.includes(`Requested: ${name}`));
+      if (msg) {
+        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+        if (msg.message.includes("[Document Request to User]")) return "User";
+      }
+      return claim.documentRequestTo || "User";
+    };
+    return (claim.requestedDocuments || []).filter(name => getRecipientForDoc(name) === "User");
+  };
 
   // Upload Modal State
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
@@ -126,9 +149,8 @@ export default function MyDocs() {
   const handleOpenUpload = (claim: Claim) => {
     setUploadTargetClaim(claim);
     const initialFiles: { [docName: string]: { base64: string | null; name: string } } = {};
-    const docs = claim.requestedDocuments && claim.requestedDocuments.length > 0 
-      ? claim.requestedDocuments 
-      : ["Police Report", "Repair Estimate"];
+    const userDocs = getUserRequestedDocs(claim);
+    const docs = userDocs.length > 0 ? userDocs : ["Police Report", "Repair Estimate"];
     
     docs.forEach(docName => {
       initialFiles[docName] = { base64: null, name: "" };
@@ -230,7 +252,7 @@ export default function MyDocs() {
   };
 
   // Compile Requested Documents List
-  const requestedDocsList = claims.filter(c => c.documentsRequested);
+  const requestedDocsList = claims.filter(c => c.documentsRequested && getUserRequestedDocs(c).length > 0);
 
   // Compile Grouped Uploaded Documents by Claim ID
   const groupedClaimsList = claims.map(claim => {
@@ -333,7 +355,7 @@ export default function MyDocs() {
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={styles.alertTitle}>Documents Requested – Action Required</Text>
                       <Text style={styles.alertText}>
-                        Staff has requested a <Text style={{ fontWeight: "800" }}>{claim.requestedDocuments && claim.requestedDocuments.length > 0 ? claim.requestedDocuments.join(" & ") : "Police Report & Repair Estimate"}</Text> for <Text style={{ fontWeight: "800" }}>{claim.claimNumber}</Text>.
+                        Staff has requested a <Text style={{ fontWeight: "800" }}>{getUserRequestedDocs(claim).join(" & ")}</Text> for <Text style={{ fontWeight: "800" }}>{claim.claimNumber}</Text>.
                       </Text>
                       <Text style={styles.alertWarningText}>Please upload within 3 days...</Text>
                     </View>
@@ -416,9 +438,7 @@ export default function MyDocs() {
               <View style={{ width: "100%" }}>
                 <Text style={styles.modalTitle}>Claim {uploadTargetClaim?.claimNumber}</Text>
                 <Text style={styles.modalSubtitle}>
-                  Staff has requested a {uploadTargetClaim?.requestedDocuments && uploadTargetClaim.requestedDocuments.length > 0 
-                    ? uploadTargetClaim.requestedDocuments.join(" & ") 
-                    : "Police Report & Repair Estimate"}
+                  Staff has requested a {uploadTargetClaim ? getUserRequestedDocs(uploadTargetClaim).join(" & ") : ""}
                 </Text>
 
                 <View style={styles.modalDivider} />

@@ -37,6 +37,7 @@ interface Claim {
   officer?: string;
   documentsRequested?: boolean;
   requestedDocuments?: string[];
+  documentRequestTo?: string;
   currentStep?: number;
   messages?: { sender: string; message: string; sentAt: string; recipient?: string }[];
 }
@@ -46,6 +47,20 @@ export default function MyClaims() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const getUserRequestedDocs = (claim: Claim): string[] => {
+    const getRecipientForDoc = (name: string) => {
+      const msg = [...(claim.messages || [])]
+        .reverse()
+        .find(m => m.message.includes(`Requested: ${name}`));
+      if (msg) {
+        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+        if (msg.message.includes("[Document Request to User]")) return "User";
+      }
+      return claim.documentRequestTo || "User";
+    };
+    return (claim.requestedDocuments || []).filter(name => getRecipientForDoc(name) === "User");
+  };
   const [refreshing, setRefreshing] = useState(false);
   const [userNic, setUserNic] = useState("");
 
@@ -425,39 +440,6 @@ export default function MyClaims() {
                   </View>
                 )}
 
-                {/* Documents Requested Warning Alert Box */}
-                {selectedClaim.documentsRequested && (
-                  <View style={styles.docRequestAlert}>
-                    <View style={styles.docAlertTitleRow}>
-                      <Ionicons name="alert-circle" size={18} color="#dc2626" />
-                      <Text style={styles.docAlertTitle}>Additional Documents Required</Text>
-                    </View>
-                    <Text style={styles.docAlertDesc}>
-                      Staff has requested the following files to process your payout. Please submit them to your agent:
-                    </Text>
-                    <View style={styles.docItems}>
-                      {(selectedClaim.requestedDocuments && selectedClaim.requestedDocuments.length > 0
-                        ? selectedClaim.requestedDocuments
-                        : ["Police Report", "Repair Estimate"]
-                      ).map((doc, i) => (
-                        <View key={i} style={styles.docDotItem}>
-                          <View style={styles.bulletDot} />
-                          <Text style={styles.docDotText}>{doc}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    <TouchableOpacity
-                      style={styles.uploadDocBtn}
-                      onPress={() => {
-                        setSelectedClaim(null);
-                        router.push("/Policy Holder/MyDocs" as any);
-                      }}
-                    >
-                      <Text style={styles.uploadDocBtnText}>Go to My Documents to Upload</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
                 {/* Messages & Logs */}
                 <View style={styles.messagesSection}>
                   <Text style={styles.messagesHeader}>Messages & Updates</Text>
@@ -484,6 +466,36 @@ export default function MyClaims() {
                     }
                   })()}
                 </View>
+
+                {/* Documents Requested Warning Alert Box */}
+                {selectedClaim.documentsRequested && getUserRequestedDocs(selectedClaim).length > 0 && (
+                  <View style={[styles.docRequestAlert, { marginTop: 12 }]}>
+                    <View style={styles.docAlertTitleRow}>
+                      <Ionicons name="alert-circle" size={18} color="#dc2626" />
+                      <Text style={styles.docAlertTitle}>Additional Documents Required</Text>
+                    </View>
+                    <Text style={styles.docAlertDesc}>
+                      Staff has requested the following files to process your payout. Please submit them to your agent:
+                    </Text>
+                    <View style={styles.docItems}>
+                      {getUserRequestedDocs(selectedClaim).map((doc, i) => (
+                        <View key={i} style={styles.docDotItem}>
+                          <View style={styles.bulletDot} />
+                          <Text style={styles.docDotText}>{doc}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.uploadDocBtn}
+                      onPress={() => {
+                        setSelectedClaim(null);
+                        router.push("/Policy Holder/MyDocs" as any);
+                      }}
+                    >
+                      <Text style={styles.uploadDocBtnText}>Go to My Documents to Upload</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </ScrollView>
 
               {/* Close Button */}

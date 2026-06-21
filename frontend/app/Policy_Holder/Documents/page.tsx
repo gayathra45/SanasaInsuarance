@@ -13,6 +13,13 @@ interface AdditionalDoc {
   _id?: string;
 }
 
+interface ClaimMessage {
+  sender: string;
+  message: string;
+  sentAt: string;
+  recipient?: string;
+}
+
 interface Claim {
   claimNumber: string;
   vehiclePlate: string;
@@ -22,6 +29,8 @@ interface Claim {
   createdAt: string;
   documentsRequested: boolean;
   requestedDocuments: string[];
+  documentRequestTo?: string;
+  messages?: ClaimMessage[];
   accidentPhotos?: {
     front?: string[];
     rear?: string[];
@@ -37,6 +46,20 @@ interface Claim {
 export default function PolicyHolderDocuments() {
   const [user, setUser] = useState<any>(null);
   const [claims, setClaims] = useState<Claim[]>([]);
+
+  const getUserRequestedDocs = (claim: Claim): string[] => {
+    const getRecipientForDoc = (name: string) => {
+      const msg = [...(claim.messages || [])]
+        .reverse()
+        .find(m => m.message.includes(`Requested: ${name}`));
+      if (msg) {
+        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+        if (msg.message.includes("[Document Request to User]")) return "User";
+      }
+      return claim.documentRequestTo || "User";
+    };
+    return (claim.requestedDocuments || []).filter(name => getRecipientForDoc(name) === "User");
+  };
   const [isLoading, setIsLoading] = useState(true);
 
   // Upload Modal State
@@ -141,9 +164,8 @@ export default function PolicyHolderDocuments() {
     setUploadTargetClaim(claim);
     // Initialize file selection state
     const initialFiles: { [docName: string]: { file: File | null; preview: string } } = {};
-    const docs = claim.requestedDocuments && claim.requestedDocuments.length > 0 
-      ? claim.requestedDocuments 
-      : ["Police Report", "Repair Estimate"];
+    const userDocs = getUserRequestedDocs(claim);
+    const docs = userDocs.length > 0 ? userDocs : ["Police Report", "Repair Estimate"];
     
     docs.forEach(docName => {
       initialFiles[docName] = { file: null, preview: "" };
@@ -256,7 +278,7 @@ export default function PolicyHolderDocuments() {
   };
 
   // Compile Requested Documents List
-  const requestedDocsList = claims.filter(c => c.documentsRequested);
+  const requestedDocsList = claims.filter(c => c.documentsRequested && getUserRequestedDocs(c).length > 0);
 
   // Compile Grouped Uploaded Documents by Claim ID
   const groupedClaimsList = claims.map(claim => {
@@ -377,7 +399,7 @@ export default function PolicyHolderDocuments() {
                         Documents Requested – Action Required
                       </h3>
                       <p className="text-slate-600 text-sm font-semibold mt-2.5 leading-relaxed">
-                        Staff has requested a <span className="text-slate-800 font-extrabold">{claim.requestedDocuments && claim.requestedDocuments.length > 0 ? claim.requestedDocuments.join(" & ") : "Police Report & Repair Estimate"}</span> for <span className="text-slate-800 font-extrabold">{claim.claimNumber}</span>.
+                        Staff has requested a <span className="text-slate-800 font-extrabold">{getUserRequestedDocs(claim).join(" & ")}</span> for <span className="text-slate-800 font-extrabold">{claim.claimNumber}</span>.
                       </p>
                       <p className="text-slate-400 text-xs font-bold mt-2">
                         Please upload within 3 days...
@@ -492,9 +514,7 @@ export default function PolicyHolderDocuments() {
                     Claim {uploadTargetClaim.claimNumber}
                   </h2>
                   <p className="text-slate-400 text-[14px] font-semibold mt-1">
-                    Staff has requested a {uploadTargetClaim.requestedDocuments && uploadTargetClaim.requestedDocuments.length > 0 
-                      ? uploadTargetClaim.requestedDocuments.join(" & ") 
-                      : "Police Report & Repair Estimate"}
+                    Staff has requested a {getUserRequestedDocs(uploadTargetClaim).join(" & ")}
                   </p>
                 </div>
 
