@@ -19,9 +19,6 @@ interface PolicyHolderNavbarProps {
 export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarProps) {
   const pathname = usePathname();
   const currentRoute = activeRoute ?? pathname;
-  const [navWidth, setNavWidth] = useState(0);
-  const indicatorX = useRef(new Animated.Value(0)).current;
-  const indicatorOpacity = useRef(new Animated.Value(1)).current;
   const centerPulse = useRef(new Animated.Value(1)).current;
 
   // Custom Alert State
@@ -46,26 +43,7 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
     });
   }, [currentRoute]);
 
-  useEffect(() => {
-    if (!navWidth) return;
-    const slot = navWidth / NAV_ITEMS.length;
-    const isCenter = activeIndex === 2;
-    const isNotFound = activeIndex === -1;
-    const targetX = (isNotFound ? 0 : activeIndex) * slot + (slot - 34) / 2;
-    Animated.parallel([
-      Animated.timing(indicatorX, {
-        toValue: targetX,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(indicatorOpacity, {
-        toValue: (isCenter || isNotFound) ? 0 : 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [activeIndex, indicatorOpacity, indicatorX, navWidth]);
+
 
   useEffect(() => {
     Animated.loop(
@@ -76,9 +54,7 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
     ).start();
   }, [centerPulse]);
 
-  const onShellLayout = (e: LayoutChangeEvent) => {
-    setNavWidth(e.nativeEvent.layout.width);
-  };
+
 
   const showSupportAlert = () => {
     setCustomAlert({
@@ -119,8 +95,7 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
   return (
     <View style={styles.container}>
       <View style={styles.shadowPad} />
-      <View style={styles.shell} onLayout={onShellLayout}>
-        <Animated.View style={[styles.indicator, { opacity: indicatorOpacity, transform: [{ translateX: indicatorX }] }]} />
+      <View style={styles.shell}>
       {NAV_ITEMS.map((item) => {
         const isActive = item.route === "/Policy Holder/page"
           ? (currentRoute === "/Policy Holder/page" || currentRoute === "/Policy Holder")
@@ -292,14 +267,7 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 6,
   },
-  indicator: {
-    position: "absolute",
-    bottom: Platform.OS === "ios" ? 10 : 4,
-    width: 34,
-    height: 3,
-    borderRadius: 999,
-    backgroundColor: "#0ea5e9",
-  },
+
 
   navItem: {
     flex: 1,

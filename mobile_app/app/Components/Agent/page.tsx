@@ -20,9 +20,6 @@ interface AgentNavbarProps {
 export default function AgentNavbar({ activeRoute, activeTab }: AgentNavbarProps) {
   const pathname = usePathname();
   const currentRoute = activeRoute ?? pathname;
-  const [navWidth, setNavWidth] = useState(0);
-  const indicatorX = useRef(new Animated.Value(0)).current;
-  const indicatorOpacity = useRef(new Animated.Value(1)).current;
   const centerPulse = useRef(new Animated.Value(1)).current;
 
   // Custom Alert State
@@ -51,26 +48,7 @@ export default function AgentNavbar({ activeRoute, activeTab }: AgentNavbarProps
     });
   }, [currentRoute, activeTab]);
 
-  useEffect(() => {
-    if (!navWidth) return;
-    const slot = navWidth / NAV_ITEMS.length;
-    const isCenter = activeIndex === 2;
-    const isNotFound = activeIndex === -1;
-    const targetX = (isNotFound ? 0 : activeIndex) * slot + (slot - 34) / 2;
-    Animated.parallel([
-      Animated.timing(indicatorX, {
-        toValue: targetX,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(indicatorOpacity, {
-        toValue: (isCenter || isNotFound) ? 0 : 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [activeIndex, indicatorOpacity, indicatorX, navWidth]);
+
 
   useEffect(() => {
     Animated.loop(
@@ -80,10 +58,6 @@ export default function AgentNavbar({ activeRoute, activeTab }: AgentNavbarProps
       ])
     ).start();
   }, [centerPulse]);
-
-  const onShellLayout = (e: LayoutChangeEvent) => {
-    setNavWidth(e.nativeEvent.layout.width);
-  };
 
   const showProfileAlert = async () => {
     try {
@@ -116,8 +90,7 @@ export default function AgentNavbar({ activeRoute, activeTab }: AgentNavbarProps
   return (
     <View style={styles.container}>
       <View style={styles.shadowPad} />
-      <View style={styles.shell} onLayout={onShellLayout}>
-        <Animated.View style={[styles.indicator, { opacity: indicatorOpacity, transform: [{ translateX: indicatorX }] }]} />
+      <View style={styles.shell}>
       {NAV_ITEMS.map((item) => {
         const isActive = activeTab 
           ? (item.route !== "profile" && (
@@ -262,14 +235,7 @@ const styles = StyleSheet.create({
     shadowRadius: 18,
     elevation: 6,
   },
-  indicator: {
-    position: "absolute",
-    bottom: Platform.OS === "ios" ? 10 : 4,
-    width: 34,
-    height: 3,
-    borderRadius: 999,
-    backgroundColor: "#f97316",
-  },
+
   navItem: {
     flex: 1,
     alignItems: "center",

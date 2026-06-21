@@ -102,6 +102,10 @@ export default function AgentDashboard() {
   // Pending Requests Modal State
   const [showPendingRequestsModal, setShowPendingRequestsModal] = useState(false);
 
+  // Category popup states
+  const [activePopupCategory, setActivePopupCategory] = useState<"urgent" | "assigned" | "completed" | null>(null);
+  const [popupSearchQuery, setPopupSearchQuery] = useState("");
+
   // Agent Document Upload Redesign States & Handlers
   const [isAgentUploading, setIsAgentUploading] = useState(false);
   const [agentUploadFileBase64, setAgentUploadFileBase64] = useState<string | null>(null);
@@ -596,63 +600,71 @@ export default function AgentDashboard() {
               </Text>
             </View>
 
-            {/* Callout */}
-            <Animated.View style={[styles.compensationCallout, { transform: [{ scale: heroPulse }] }]}>
-              <Text style={styles.calloutTitle}>
-                Review, assess and approve assigned insurance claims on behalf of Sanasa General Insurance Company Limited.
-              </Text>
-            </Animated.View>
+            {/* Header Stats Row */}
+            <View style={styles.headerStatsRow}>
+              {/* Card 1: Urgent */}
+              <TouchableOpacity
+                style={[styles.headerStatCard, { borderColor: "rgba(239, 68, 68, 0.32)" }]}
+                activeOpacity={0.8}
+                onPress={() => setActivePopupCategory("urgent")}
+              >
+                <LinearGradient
+                  colors={["rgba(239, 68, 68, 0.15)", "rgba(239, 68, 68, 0.02)"]}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View style={styles.cardHeaderRow}>
+                  <View style={[styles.glowDot, { backgroundColor: "#ef4444", shadowColor: "#ef4444" }]} />
+                  <Ionicons name="alert-circle-outline" size={14} color="#fca5a5" />
+                </View>
+                <Text style={[styles.headerStatVal, { textShadowColor: "rgba(239, 68, 68, 0.4)", textShadowRadius: 6, textShadowOffset: { width: 0, height: 0 } }]}>
+                  {urgentCount}
+                </Text>
+                <Text style={styles.headerStatLbl}>Urgent</Text>
+              </TouchableOpacity>
 
-            {/* Hero stat badges */}
-            <View style={styles.heroBadgeRow}>
-              <View style={[styles.heroBadge, { borderColor: "rgba(239,68,68,0.4)", backgroundColor: "rgba(127,29,29,0.7)" }]}>
-                <Ionicons name="alert-circle" size={22} color="#fca5a5" />
-                <View>
-                  <Text style={styles.heroBadgeLabel}>URGENT</Text>
-                  <Text style={styles.heroBadgeValue}>{urgentCount}</Text>
+              {/* Card 2: Assigned */}
+              <TouchableOpacity
+                style={[styles.headerStatCard, { borderColor: "rgba(6, 182, 212, 0.32)" }]}
+                activeOpacity={0.8}
+                onPress={() => setActivePopupCategory("assigned")}
+              >
+                <LinearGradient
+                  colors={["rgba(6, 182, 212, 0.15)", "rgba(6, 182, 212, 0.02)"]}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View style={styles.cardHeaderRow}>
+                  <View style={[styles.glowDot, { backgroundColor: "#06b6d4", shadowColor: "#06b6d4" }]} />
+                  <Ionicons name="briefcase-outline" size={14} color="#67e8f9" />
                 </View>
-              </View>
-              <View style={[styles.heroBadge, { borderColor: "rgba(6,182,212,0.4)", backgroundColor: "rgba(14,116,144,0.7)" }]}>
-                <Ionicons name="briefcase-outline" size={22} color="#67e8f9" />
-                <View>
-                  <Text style={[styles.heroBadgeLabel, { color: "#a5f3fc" }]}>ASSIGNED</Text>
-                  <Text style={styles.heroBadgeValue}>{totalAssigned}</Text>
+                <Text style={[styles.headerStatVal, { textShadowColor: "rgba(6, 182, 212, 0.4)", textShadowRadius: 6, textShadowOffset: { width: 0, height: 0 } }]}>
+                  {totalAssigned}
+                </Text>
+                <Text style={styles.headerStatLbl}>Assigned</Text>
+              </TouchableOpacity>
+
+              {/* Card 3: Completed */}
+              <TouchableOpacity
+                style={[styles.headerStatCard, { borderColor: "rgba(34, 197, 94, 0.32)" }]}
+                activeOpacity={0.8}
+                onPress={() => setActivePopupCategory("completed")}
+              >
+                <LinearGradient
+                  colors={["rgba(34, 197, 94, 0.15)", "rgba(34, 197, 94, 0.02)"]}
+                  style={StyleSheet.absoluteFillObject}
+                />
+                <View style={styles.cardHeaderRow}>
+                  <View style={[styles.glowDot, { backgroundColor: "#22c55e", shadowColor: "#22c55e" }]} />
+                  <Ionicons name="checkmark-circle-outline" size={14} color="#86efac" />
                 </View>
-              </View>
+                <Text style={[styles.headerStatVal, { textShadowColor: "rgba(34, 197, 94, 0.4)", textShadowRadius: 6, textShadowOffset: { width: 0, height: 0 } }]}>
+                  {completedClaims.length}
+                </Text>
+                <Text style={styles.headerStatLbl}>Completed</Text>
+              </TouchableOpacity>
             </View>
+
           </LinearGradient>
         </Animated.View>
-
-        {/* ── STAT CARDS ── */}
-        <View style={styles.statsCardRow}>
-          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => setActiveTab("claims")}>
-            <View style={[styles.statIconWrap, { backgroundColor: "#fff7ed" }]}>
-              <Ionicons name="alert-circle" size={20} color="#f97316" />
-            </View>
-            <Text style={styles.statNumber}>{urgentCount}</Text>
-            <Text style={styles.statLabel}>Urgent</Text>
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => setActiveTab("claims")}>
-            <View style={[styles.statIconWrap, { backgroundColor: "#ecfeff" }]}>
-              <Ionicons name="time" size={20} color="#06b6d4" />
-            </View>
-            <Text style={styles.statNumber}>{totalAssigned}</Text>
-            <Text style={styles.statLabel}>Assigned</Text>
-          </TouchableOpacity>
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => setActiveTab("activity")}>
-            <View style={[styles.statIconWrap, { backgroundColor: "#f0fdf4" }]}>
-              <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
-            </View>
-            <Text style={styles.statNumber}>{completedClaims.length}</Text>
-            <Text style={styles.statLabel}>Completed</Text>
-          </TouchableOpacity>
-        </View>
 
         <Animated.View style={{ opacity: contentFadeAnim }}>
 
@@ -755,7 +767,7 @@ export default function AgentDashboard() {
                       {/* Right Side: Claim Details */}
                       <View style={{ flex: 1, marginLeft: 12, paddingRight: 8 }}>
                         {/* Header Row: Plate Number and Status/Severity Badge */}
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                           <Text style={styles.claimPlateText}>{claim.vehiclePlate}</Text>
                           <View style={[styles.claimBadge, { backgroundColor: "#f0f7ff", borderColor: isCompleted ? statusColor + "30" : "#dbeafe" }]}>
                             <Text style={[styles.claimBadgeText, { color: isCompleted ? statusColor : "#1e3a8a" }]}>
@@ -764,16 +776,22 @@ export default function AgentDashboard() {
                           </View>
                         </View>
 
-                        {/* Claim ID & Damage */}
-                        <Text style={styles.claimNumberText}>{claim.claimNumber} · {claim.damageType}</Text>
+                        {/* Highlighted Location & Damage Type */}
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                          <Ionicons name="location" size={14} color="#f97316" />
+                          <Text style={styles.claimLocationHighlightText} numberOfLines={1}>
+                            {claim.location}
+                          </Text>
+                          <Text style={{ color: "#cbd5e1", fontWeight: "bold" }}>·</Text>
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b" }}>
+                            {claim.damageType}
+                          </Text>
+                        </View>
 
-                        {/* Location and NIC info */}
-                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTopWidth: 1, borderTopColor: "#f1f5f9" }}>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                            <Ionicons name="location-outline" size={12} color="#64748b" />
-                            <Text style={styles.claimLocationText} numberOfLines={1}>{claim.location}</Text>
-                          </View>
-                          <Text style={styles.claimNicText}>NIC: {claim.userNic}</Text>
+                        {/* Bottom Row: Claim ID */}
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: "#f1f5f9" }}>
+                          <Ionicons name="document-text-outline" size={12} color="#94a3b8" />
+                          <Text style={styles.claimNumberBottomText}>{claim.claimNumber}</Text>
                         </View>
                       </View>
 
@@ -871,18 +889,29 @@ export default function AgentDashboard() {
             behavior={Platform.OS === "ios" ? "padding" : "height"}
             style={{ width: "100%", maxWidth: 460, alignSelf: "center", flex: 1, justifyContent: "flex-end" }}
           >
-            <View style={[styles.modalCard, { height: SCREEN_H * 0.5 }]}>
-              {/* Header */}
-              <View style={[styles.modalHeader, { borderBottomWidth: 1, borderBottomColor: "#f1f5f9" }]}>
-                <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-                  <Ionicons name="warning-outline" size={22} color="#f97316" style={{ marginRight: 8 }} />
-                  <Text style={[styles.modalHeaderTitle, { color: "#0f172a", flex: 1 }]}>Pending Agent Uploads</Text>
+            <View style={[styles.modalCard, { height: SCREEN_H * 0.75 }]}>
+              {/* Drag Handle */}
+              <View style={styles.modalDragHandle} />
+
+              {/* Premium Header */}
+              <View style={styles.premiumPopupHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+                  <View style={[styles.popupHeaderIconWrap, { backgroundColor: "rgba(249, 115, 22, 0.08)", borderColor: "rgba(249, 115, 22, 0.15)" }]}>
+                    <Ionicons name="warning" size={20} color="#f97316" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.popupHeaderTitle}>Pending Agent Uploads</Text>
+                    <Text style={[styles.popupHeaderSubtext, { color: "#ea580c" }]}>
+                      {claimsWithPendingAgentRequests.length} claim{claimsWithPendingAgentRequests.length > 1 ? "s" : ""} require{claimsWithPendingAgentRequests.length === 1 ? "s" : ""} uploads
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity
-                  style={styles.modalHeaderClose}
+                  style={styles.popupCloseBtn}
                   onPress={() => setShowPendingRequestsModal(false)}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={20} color="#64748b" />
+                  <Ionicons name="close" size={18} color="#475569" />
                 </TouchableOpacity>
               </View>
 
@@ -951,22 +980,30 @@ export default function AgentDashboard() {
             style={{ width: "100%", maxWidth: 460, alignSelf: "center", flex: 1, justifyContent: "flex-end" }}
           >
             <View style={styles.modalCard}>
-              {/* Modal header */}
-              <LinearGradient
-                colors={["#0f172a", "#1e293b"]}
-                style={styles.modalHeader}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalHeaderTitle}>Claim Details</Text>
-                  <Text style={styles.modalHeaderSub}>{selectedClaim?.claimNumber}</Text>
+              {/* Drag Handle */}
+              <View style={styles.modalDragHandle} />
+
+              {/* Premium Header */}
+              <View style={styles.premiumPopupHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+                  <View style={[styles.popupHeaderIconWrap, { backgroundColor: "rgba(30, 58, 138, 0.08)", borderColor: "rgba(30, 58, 138, 0.15)" }]}>
+                    <Ionicons name="document-text" size={20} color="#1e3a8a" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.popupHeaderTitle}>Claim Details</Text>
+                    <Text style={[styles.popupHeaderSubtext, { color: "#64748b" }]}>
+                      {selectedClaim?.claimNumber}
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity
-                  style={styles.modalCloseBtn}
+                  style={styles.popupCloseBtn}
                   onPress={() => setSelectedClaim(null)}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={20} color="#ffffff" />
+                  <Ionicons name="close" size={18} color="#475569" />
                 </TouchableOpacity>
-              </LinearGradient>
+              </View>
 
               <ScrollView
                 style={{ flexShrink: 1 }}
@@ -1360,6 +1397,255 @@ export default function AgentDashboard() {
         </View>
       </Modal>
 
+      {/* ── CATEGORY CLAIMS POPUP MODAL ── */}
+      <Modal
+        visible={activePopupCategory !== null}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => {
+          setActivePopupCategory(null);
+          setPopupSearchQuery("");
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={{ width: "100%", maxWidth: 460, alignSelf: "center", flex: 1, justifyContent: "flex-end" }}
+          >
+            <View style={[styles.modalCard, { height: SCREEN_H * 0.75 }]}>
+              {/* Drag Handle */}
+              <View style={styles.modalDragHandle} />
+
+              {/* Premium Header */}
+              <View style={styles.premiumPopupHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+                  {/* Glowing Status Icon Wrapper */}
+                  <View style={[
+                    styles.popupHeaderIconWrap,
+                    activePopupCategory === "urgent" && { backgroundColor: "rgba(239, 68, 68, 0.08)", borderColor: "rgba(239, 68, 68, 0.15)" },
+                    activePopupCategory === "assigned" && { backgroundColor: "rgba(14, 165, 233, 0.08)", borderColor: "rgba(14, 165, 233, 0.15)" },
+                    activePopupCategory === "completed" && { backgroundColor: "rgba(34, 197, 94, 0.08)", borderColor: "rgba(34, 197, 94, 0.15)" },
+                  ]}>
+                    <Ionicons
+                      name={
+                        activePopupCategory === "urgent"
+                          ? "alert-circle"
+                          : activePopupCategory === "assigned"
+                            ? "briefcase"
+                            : "checkmark-done-circle"
+                      }
+                      size={20}
+                      color={
+                        activePopupCategory === "urgent"
+                          ? "#ef4444"
+                          : activePopupCategory === "assigned"
+                            ? "#0ea5e9"
+                            : "#22c55e"
+                      }
+                    />
+                  </View>
+
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.popupHeaderTitle}>
+                      {activePopupCategory === "urgent" 
+                        ? "Urgent Claims" 
+                        : activePopupCategory === "assigned"
+                          ? "Assigned Active"
+                          : "Claim History"}
+                    </Text>
+                    <Text style={[
+                      styles.popupHeaderSubtext,
+                      activePopupCategory === "urgent" && { color: "#ef4444" },
+                      activePopupCategory === "assigned" && { color: "#0ea5e9" },
+                      activePopupCategory === "completed" && { color: "#22c55e" },
+                    ]}>
+                      {(() => {
+                        if (!activePopupCategory) return "0 cases assigned";
+                        let list: Claim[] = [];
+                        if (activePopupCategory === "urgent") {
+                          list = activeClaims.filter(c => getSeverity(c.damageType) === "Urgent");
+                          return `${list.length} high priority case${list.length !== 1 ? "s" : ""} today`;
+                        } else if (activePopupCategory === "assigned") {
+                          list = activeClaims;
+                          return `${list.length} total active assignment${list.length !== 1 ? "s" : ""}`;
+                        } else if (activePopupCategory === "completed") {
+                          list = completedClaims;
+                          return `${list.length} resolved case${list.length !== 1 ? "s" : ""} logged`;
+                        }
+                        return "";
+                      })()}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Styled Close Button */}
+                <TouchableOpacity
+                  style={styles.popupCloseBtn}
+                  onPress={() => {
+                    setActivePopupCategory(null);
+                    setPopupSearchQuery("");
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="close" size={18} color="#475569" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Search input inside modal */}
+              <View style={styles.popupSearchContainer}>
+                <Ionicons name="search" size={18} color="#64748b" style={{ marginRight: 8 }} />
+                <TextInput
+                  style={styles.popupSearchField}
+                  placeholder={`Search ${activePopupCategory || ""} claims...`}
+                  placeholderTextColor="#94a3b8"
+                  value={popupSearchQuery}
+                  onChangeText={setPopupSearchQuery}
+                />
+                {popupSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setPopupSearchQuery("")}>
+                    <Ionicons name="close-circle" size={16} color="#94a3b8" />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Claims List */}
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+                showsVerticalScrollIndicator={false}
+              >
+                {(() => {
+                  if (!activePopupCategory) return [];
+                  let list: Claim[] = [];
+                  if (activePopupCategory === "urgent") {
+                    list = activeClaims.filter(c => getSeverity(c.damageType) === "Urgent");
+                  } else if (activePopupCategory === "assigned") {
+                    list = activeClaims;
+                  } else if (activePopupCategory === "completed") {
+                    list = completedClaims;
+                  }
+
+                  return list.filter(
+                    (claim) =>
+                      claim.claimNumber.toLowerCase().includes(popupSearchQuery.toLowerCase()) ||
+                      claim.vehiclePlate.toLowerCase().includes(popupSearchQuery.toLowerCase()) ||
+                      claim.damageType.toLowerCase().includes(popupSearchQuery.toLowerCase()) ||
+                      claim.status.toLowerCase().includes(popupSearchQuery.toLowerCase())
+                  );
+                })().length === 0 ? (
+                  <View style={styles.emptyCard}>
+                    <Ionicons 
+                      name={
+                        activePopupCategory === "completed" 
+                          ? "checkmark-done-outline" 
+                          : "document-text-outline"
+                      } 
+                      size={44} 
+                      color="#cbd5e1" 
+                    />
+                    <Text style={styles.emptyText}>No matching claims found.</Text>
+                  </View>
+                ) : (
+                  (() => {
+                    if (!activePopupCategory) return [];
+                    let list: Claim[] = [];
+                    if (activePopupCategory === "urgent") {
+                      list = activeClaims.filter(c => getSeverity(c.damageType) === "Urgent");
+                    } else if (activePopupCategory === "assigned") {
+                      list = activeClaims;
+                    } else if (activePopupCategory === "completed") {
+                      list = completedClaims;
+                    }
+
+                    return list.filter(
+                      (claim) =>
+                        claim.claimNumber.toLowerCase().includes(popupSearchQuery.toLowerCase()) ||
+                        claim.vehiclePlate.toLowerCase().includes(popupSearchQuery.toLowerCase()) ||
+                        claim.damageType.toLowerCase().includes(popupSearchQuery.toLowerCase()) ||
+                        claim.status.toLowerCase().includes(popupSearchQuery.toLowerCase())
+                    );
+                  })().map((claim) => {
+                    const sev = getSeverity(claim.damageType);
+                    const isCompleted = claim.status === "Approved" || claim.status === "Rejected";
+                    const statusColor = claim.status === "Approved" ? "#16a34a"
+                      : claim.status === "Rejected" ? "#dc2626"
+                      : claim.status === "In Progress" ? "#0ea5e9" : "#f59e0b";
+                    return (
+                      <TouchableOpacity
+                        key={claim._id}
+                        style={[
+                          styles.claimCard,
+                          {
+                            backgroundColor: "#ffffff",
+                            borderColor: "#e2e8f0",
+                            borderLeftWidth: 4,
+                            borderLeftColor: isCompleted ? statusColor : "#1e3a8a",
+                            marginBottom: 10,
+                          },
+                        ]}
+                        onPress={() => {
+                          setActivePopupCategory(null);
+                          setPopupSearchQuery("");
+                          setTimeout(() => {
+                            setSelectedClaim(claim);
+                          }, 350);
+                        }}
+                        activeOpacity={0.85}
+                      >
+                        {/* Left Side: Circular Status/Vehicle Icon Badge */}
+                        <View style={[styles.claimIconWrap, { backgroundColor: "#f0f7ff" }]}>
+                          <Ionicons
+                            name="car-sport"
+                            size={20}
+                            color={isCompleted ? statusColor : "#1e3a8a"}
+                          />
+                        </View>
+
+                        {/* Right Side: Claim Details */}
+                        <View style={{ flex: 1, marginLeft: 12, paddingRight: 8 }}>
+                          {/* Header Row: Plate Number and Status/Severity Badge */}
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                            <Text style={styles.claimPlateText}>{claim.vehiclePlate}</Text>
+                            <View style={[styles.claimBadge, { backgroundColor: "#f0f7ff", borderColor: isCompleted ? statusColor + "30" : "#dbeafe" }]}>
+                              <Text style={[styles.claimBadgeText, { color: isCompleted ? statusColor : "#1e3a8a" }]}>
+                                {isCompleted ? claim.status.toUpperCase() : sev.toUpperCase()}
+                              </Text>
+                            </View>
+                          </View>
+
+                          {/* Highlighted Location & Damage Type */}
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                            <Ionicons name="location" size={14} color="#f97316" />
+                            <Text style={styles.claimLocationHighlightText} numberOfLines={1}>
+                              {claim.location}
+                            </Text>
+                            <Text style={{ color: "#cbd5e1", fontWeight: "bold" }}>·</Text>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b" }}>
+                              {claim.damageType}
+                            </Text>
+                          </View>
+
+                          {/* Bottom Row: Claim ID */}
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: "#f1f5f9" }}>
+                            <Ionicons name="document-text-outline" size={12} color="#94a3b8" />
+                            <Text style={styles.claimNumberBottomText}>{claim.claimNumber}</Text>
+                          </View>
+                        </View>
+
+                        {/* Far Right: Tap indicator arrow */}
+                        <View style={{ justifyContent: "center", alignItems: "center" }}>
+                          <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
       {/* ── CUSTOM ALERT ── */}
       {customAlert && (
         <View style={styles.alertOverlay}>
@@ -1393,7 +1679,7 @@ const styles = StyleSheet.create({
   heroGradient: {
     width: "100%",
     paddingTop: Platform.OS === "ios" ? 60 : 48,
-    paddingBottom: 48,
+    paddingBottom: 42,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 40,
     borderBottomRightRadius: 40,
@@ -1559,6 +1845,17 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     fontWeight: "600",
   },
+  claimLocationHighlightText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0f172a",
+    maxWidth: 160,
+  },
+  claimNumberBottomText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#94a3b8",
+  },
 
   /* Support */
   supportCard: { borderRadius: 20, overflow: "hidden", shadowColor: "#0e7490", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 4 },
@@ -1665,18 +1962,18 @@ const styles = StyleSheet.create({
   approveBtnText: { color: "#ffffff", fontSize: 14, fontWeight: "800" },
   closeBtn: {
     paddingHorizontal: 20,
-    borderRadius: 12,
+    borderRadius: 16,
     height: 48,
-    backgroundColor: "#f0f7ff",
+    backgroundColor: "#f1f5f9",
     borderWidth: 1,
-    borderColor: "#dbeafe",
+    borderColor: "#e2e8f0",
     alignItems: "center",
     justifyContent: "center",
   },
   closeBtnText: {
-    color: "#1e3a8a",
+    color: "#334155",
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
   },
 
   /* Custom alert */
@@ -1966,6 +2263,129 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /* Header Premium Metrics Cards */
+  headerStatsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginTop: 10,
+    width: "100%",
+  },
+  headerStatCard: {
+    flex: 1,
+    borderRadius: 20,
+    borderWidth: 1.2,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: "flex-start",
+    position: "relative",
+    overflow: "hidden",
+  },
+  cardHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    marginBottom: 6,
+  },
+  glowDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  headerStatVal: {
+    fontSize: 26,
+    fontWeight: "900",
+    color: "#ffffff",
+    letterSpacing: -0.5,
+  },
+  headerStatLbl: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: "#94a3b8",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+    marginTop: 2,
+  },
+  popupSearchContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f1f5f9",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: Platform.OS === "ios" ? 10 : 6,
+    marginHorizontal: 16,
+    marginTop: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+  },
+  popupSearchField: {
+    flex: 1,
+    color: "#0f172a",
+    fontSize: 13.5,
+    fontWeight: "600",
+  },
+  modalDragHandle: {
+    width: 40,
+    height: 4.5,
+    borderRadius: 9,
+    backgroundColor: "#e2e8f0",
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  premiumPopupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  popupHeaderIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  popupHeaderTitle: {
+    fontSize: 16.5,
+    fontWeight: "900",
+    color: "#0f172a",
+    letterSpacing: -0.2,
+  },
+  popupHeaderSubtext: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
+    letterSpacing: -0.1,
+  },
+  popupCountBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 99,
+  },
+  popupCountBadgeText: {
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  popupCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: "#f1f5f9",
     alignItems: "center",
     justifyContent: "center",

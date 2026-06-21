@@ -673,21 +673,30 @@ export default function AgentClaimsPage() {
             style={{ width: "100%", maxWidth: 460, alignSelf: "center", flex: 1, justifyContent: "flex-end" }}
           >
             <View style={styles.modalCard}>
-              <LinearGradient
-                colors={["#0f172a", "#1e293b"]}
-                style={styles.modalHeader}
-              >
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.modalHeaderTitle}>Claim Details</Text>
-                  <Text style={styles.modalHeaderSub}>{selectedClaim?.claimNumber}</Text>
+              {/* Drag Handle */}
+              <View style={styles.modalDragHandle} />
+
+              {/* Premium Header */}
+              <View style={styles.premiumPopupHeader}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+                  <View style={[styles.popupHeaderIconWrap, { backgroundColor: "rgba(30, 58, 138, 0.08)", borderColor: "rgba(30, 58, 138, 0.15)" }]}>
+                    <Ionicons name="document-text" size={20} color="#1e3a8a" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.popupHeaderTitle}>Claim Details</Text>
+                    <Text style={[styles.popupHeaderSubtext, { color: "#64748b" }]}>
+                      {selectedClaim?.claimNumber}
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity
-                  style={styles.modalCloseBtn}
+                  style={styles.popupCloseBtn}
                   onPress={() => setSelectedClaim(null)}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons name="close" size={20} color="#ffffff" />
+                  <Ionicons name="close" size={18} color="#475569" />
                 </TouchableOpacity>
-              </LinearGradient>
+              </View>
 
               <ScrollView
                 style={{ flexShrink: 1 }}
@@ -1147,8 +1156,8 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: "row", gap: 10, marginTop: 10 },
   approveBtn: { flex: 1, height: 44, borderRadius: 14, backgroundColor: "#1e3a8a", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 },
   approveBtnText: { color: "#ffffff", fontSize: 13, fontWeight: "800" },
-  closeBtn: { flex: 1, height: 44, borderRadius: 14, backgroundColor: "#f1f5f9", borderWidth: 1, borderColor: "#cbd5e1", alignItems: "center", justifyContent: "center" },
-  closeBtnText: { color: "#475569", fontSize: 13, fontWeight: "800" },
+  closeBtn: { flex: 1, height: 48, borderRadius: 16, backgroundColor: "#f1f5f9", borderWidth: 1, borderColor: "#e2e8f0", alignItems: "center", justifyContent: "center" },
+  closeBtnText: { color: "#334155", fontSize: 14, fontWeight: "800" },
 
   /* Tab selector */
   tabRow: {
@@ -1169,4 +1178,51 @@ const styles = StyleSheet.create({
   },
   tabBtnText: { fontSize: 13, fontWeight: "700", color: "#64748b" },
   tabBtnTextActive: { color: "#f97316" },
+  modalDragHandle: {
+    width: 40,
+    height: 4.5,
+    borderRadius: 9,
+    backgroundColor: "#e2e8f0",
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  premiumPopupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  popupHeaderIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  popupHeaderTitle: {
+    fontSize: 16.5,
+    fontWeight: "900",
+    color: "#0f172a",
+    letterSpacing: -0.2,
+  },
+  popupHeaderSubtext: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
+    letterSpacing: -0.1,
+  },
+  popupCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

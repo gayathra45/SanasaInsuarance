@@ -343,17 +343,28 @@ export default function AgentActivityPage() {
           return (
             <View style={styles.modalOverlay}>
               <View style={[styles.modalContent, { height: SCREEN_H * 0.8 }]}>
-                {/* Modal Header */}
-                <View style={styles.modalHeader}>
-                  <View>
-                    <Text style={styles.modalTitle}>Activity Details</Text>
-                    <Text style={styles.modalSubtitle}>{selectedClaim.claimNumber}</Text>
+                 {/* Drag Handle */}
+                <View style={styles.modalDragHandle} />
+
+                {/* Premium Header */}
+                <View style={styles.premiumPopupHeader}>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}>
+                    <View style={[styles.popupHeaderIconWrap, { backgroundColor: "rgba(30, 58, 138, 0.08)", borderColor: "rgba(30, 58, 138, 0.15)" }]}>
+                      <Ionicons name="document-text" size={20} color="#1e3a8a" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.popupHeaderTitle}>Activity Details</Text>
+                      <Text style={[styles.popupHeaderSubtext, { color: "#64748b" }]}>
+                        {selectedClaim.claimNumber}
+                      </Text>
+                    </View>
                   </View>
                   <TouchableOpacity
+                    style={styles.popupCloseBtn}
                     onPress={() => setSelectedClaim(null)}
-                    style={styles.closeModalBtn}
+                    activeOpacity={0.7}
                   >
-                    <Ionicons name="close" size={24} color="#64748b" />
+                    <Ionicons name="close" size={18} color="#475569" />
                   </TouchableOpacity>
                 </View>
 
@@ -644,11 +655,60 @@ const styles = StyleSheet.create({
 
   modalFooter: { borderTopWidth: 1, borderColor: "#f1f5f9", paddingHorizontal: 20, paddingTop: 14 },
   closeFooterBtn: {
-    backgroundColor: "#1e3a8a",
-    borderRadius: 99,
+    backgroundColor: "#f1f5f9",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 16,
     paddingVertical: 12,
     alignItems: "center",
     justifyContent: "center",
   },
-  closeFooterBtnText: { fontSize: 14, color: "#ffffff", fontWeight: "800" },
+  closeFooterBtnText: { fontSize: 14, color: "#334155", fontWeight: "800" },
+  modalDragHandle: {
+    width: 40,
+    height: 4.5,
+    borderRadius: 9,
+    backgroundColor: "#e2e8f0",
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 2,
+  },
+  premiumPopupHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: "#ffffff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  popupHeaderIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  popupHeaderTitle: {
+    fontSize: 16.5,
+    fontWeight: "900",
+    color: "#0f172a",
+    letterSpacing: -0.2,
+  },
+  popupHeaderSubtext: {
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
+    letterSpacing: -0.1,
+  },
+  popupCloseBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });
