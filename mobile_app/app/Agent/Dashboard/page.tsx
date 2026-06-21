@@ -17,11 +17,13 @@ import {
   TextInput,
   Modal,
   KeyboardAvoidingView,
+  Linking,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
 import AgentNavbar from "../../Components/Agent/page";
 import { API_BASE_URL } from "../../config";
 
@@ -48,6 +50,10 @@ interface Claim {
   inspectionReport?: string;
   inspectionSubmitted?: boolean;
   paymentReceipt?: string;
+  additionalDocuments?: { name: string; url: string; uploadedAt: string; uploadedBy?: string }[];
+  requestedDocuments?: string[];
+  documentRequestTo?: string;
+  messages?: { sender: string; message: string; sentAt: string }[];
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,6 +98,192 @@ export default function AgentDashboard() {
   const [inspectionReportText, setInspectionReportText] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [isAcceptingClaim, setIsAcceptingClaim] = useState(false);
+
+  // Agent Document Upload Redesign States & Handlers
+  const [isAgentUploading, setIsAgentUploading] = useState(false);
+  const [agentUploadFileBase64, setAgentUploadFileBase64] = useState<string | null>(null);
+  const [agentUploadFileName, setAgentUploadFileName] = useState("");
+  const [agentUploadDocName, setAgentUploadDocName] = useState("Repair Estimate");
+
+  const getRecipientForDoc = (claim: Claim, name: string) => {
+    const msg = [...(claim.messages || [])]
+      .reverse()
+      .find(m => m.message && typeof m.message === "string" && m.message.includes(`Requested: ${name}`));
+    if (msg && msg.message) {
+      if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+      if (msg.message.includes("[Document Request to User]")) return "User";
+    }
+    return claim.documentRequestTo || "User";
+  };
+
+  const getDocDetails = (claim: Claim, name: string, status: "Pending" | "Submitted") => {
+    let requestedAt = "";
+    let submittedAt = "";
+
+    const msg = [...(claim.messages || [])]
+      .reverse()
+      .find(m => m.message && typeof m.message === "string" && m.message.includes(`Requested: ${name}`));
+    if (msg) {
+      requestedAt = formatDate(msg.sentAt);
+    } else {
+      requestedAt = formatDate(claim.createdAt);
+    }
+
+    if (status === "Submitted") {
+      const doc = (claim.additionalDocuments || []).find(
+        d => d.name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+      if (doc && doc.uploadedAt) {
+        submittedAt = formatDate(doc.uploadedAt);
+      }
+    }
+
+    return { requestedAt, submittedAt };
+  };
+
+  const handleViewDocument = (url?: string | null) => {
+    if (!url) {
+      showAlert("Error", "No document URL available.");
+      return;
+    }
+    let fullUrl = url;
+    if (!url.startsWith("http") && !url.startsWith("data:")) {
+      const cleanBase = API_BASE_URL.replace("/api", "");
+      fullUrl = `${cleanBase}/uploads/${url}`;
+    }
+    Linking.openURL(fullUrl).catch(() => {
+      showAlert("Error", "Failed to open document URL.");
+    });
+  };
+
+  const handlePickAgentDoc = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      showAlert("Permission Required", "Allow storage permissions to select images.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0];
+      const prefix = "data:image/jpeg;base64,";
+      const base64Data = asset.base64 ? `${prefix}${asset.base64}` : null;
+      
+      if (base64Data) {
+        setAgentUploadFileBase64(base64Data);
+        setAgentUploadFileName(asset.fileName || `agent_doc_${Date.now().toString().slice(-4)}.jpg`);
+      }
+    }
+  };
+
+  const handleAgentDocUploadPicker = async (docName: string) => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      showAlert("Permission Required", "Allow storage permissions to select images.");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.7,
+      base64: true,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const asset = result.assets[0];
+      const prefix = "data:image/jpeg;base64,";
+      const base64Data = asset.base64 ? `${prefix}${asset.base64}` : null;
+      
+      if (base64Data) {
+        uploadAgentDocImmediate(docName, base64Data);
+      }
+    }
+  };
+
+  const uploadAgentDocImmediate = async (docName: string, base64Data: string) => {
+    if (!selectedClaim) return;
+    setIsAgentUploading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/policy-holder/update-claim/${selectedClaim.claimNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploadedDocuments: [
+            {
+              documentName: docName,
+              fileData: base64Data,
+              uploadedBy: "Agent"
+            }
+          ]
+        })
+      });
+
+      if (res.ok) {
+        showAlert("Success", `${docName} uploaded successfully!`);
+        await fetchClaims(agentEmail);
+        const listRes = await fetch(`${API_BASE_URL}/api/agent/claims?email=${encodeURIComponent(agentEmail)}`);
+        if (listRes.ok) {
+          const data = await listRes.json();
+          const freshClaim = data.find((c: Claim) => c._id === selectedClaim._id);
+          if (freshClaim) setSelectedClaim(freshClaim);
+        }
+      } else {
+        const errData = await res.json();
+        showAlert("Error", errData.error || "Failed to upload document.");
+      }
+    } catch (e) {
+      showAlert("Error", "An error occurred during document upload.");
+    } finally {
+      setIsAgentUploading(false);
+    }
+  };
+
+  const handleAgentDocSubmit = async () => {
+    if (!selectedClaim || !agentUploadFileBase64) return;
+    setIsAgentUploading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/policy-holder/update-claim/${selectedClaim.claimNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploadedDocuments: [
+            {
+              documentName: agentUploadDocName,
+              fileData: agentUploadFileBase64,
+              uploadedBy: "Agent"
+            }
+          ]
+        })
+      });
+
+      if (res.ok) {
+        showAlert("Success", "Document uploaded successfully!");
+        setAgentUploadFileBase64(null);
+        setAgentUploadFileName("");
+        await fetchClaims(agentEmail);
+        const listRes = await fetch(`${API_BASE_URL}/api/agent/claims?email=${encodeURIComponent(agentEmail)}`);
+        if (listRes.ok) {
+          const data = await listRes.json();
+          const freshClaim = data.find((c: Claim) => c._id === selectedClaim._id);
+          if (freshClaim) setSelectedClaim(freshClaim);
+        }
+      } else {
+        const errData = await res.json();
+        showAlert("Error", errData.error || "Failed to upload document.");
+      }
+    } catch (e) {
+      showAlert("Error", "An error occurred during document upload.");
+    } finally {
+      setIsAgentUploading(false);
+    }
+  };
 
   // Animations
   const contentFadeAnim = useRef(new Animated.Value(0)).current;
@@ -736,6 +928,226 @@ export default function AgentDashboard() {
                         </View>
                       ) : null}
 
+                      {/* Requested Agent Documents Status Section */}
+                      {selectedClaim.requestedDocuments && selectedClaim.requestedDocuments.length > 0 && (() => {
+                        const requestedDocsList = [
+                          ...(selectedClaim.requestedDocuments || []).map((name) => ({
+                            name,
+                            status: "Pending" as const,
+                            url: null,
+                            recipient: getRecipientForDoc(selectedClaim, name),
+                          })),
+                          ...(selectedClaim.additionalDocuments || []).map((doc) => ({
+                            name: doc.name,
+                            status: "Submitted" as const,
+                            url: doc.url,
+                            recipient: doc.uploadedBy === "Agent" ? "Agent" : "User",
+                          })),
+                        ];
+
+                        const agentDocs = requestedDocsList.filter((d) => d.recipient === "Agent");
+
+                        if (agentDocs.length === 0) return null;
+
+                        return (
+                          <View style={styles.modalDescBox}>
+                            <Text style={styles.modalDescLabel}>Requested Agent Documents</Text>
+                            {agentDocs.map((item, idx) => {
+                              const { requestedAt, submittedAt } = getDocDetails(selectedClaim, item.name, item.status);
+                              const isPending = item.status === "Pending";
+
+                              if (isPending) {
+                                return (
+                                  <View key={idx} style={styles.agentDocCardPending}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                                      <View style={styles.agentSirenIconWrap}>
+                                        <Ionicons name="document-text-outline" size={20} color="#f97316" />
+                                      </View>
+                                      <View style={{ flex: 1 }}>
+                                        <Text style={styles.agentDocTitlePending} numberOfLines={1}>{item.name}</Text>
+                                        <Text style={styles.agentDocSubPending}>Requested: {requestedAt}</Text>
+                                      </View>
+                                    </View>
+                                    <TouchableOpacity
+                                      style={styles.agentUploadCardBtn}
+                                      onPress={() => handleAgentDocUploadPicker(item.name)}
+                                    >
+                                      <Ionicons name="cloud-upload-outline" size={14} color="#ffffff" />
+                                      <Text style={styles.agentUploadCardBtnText}>Upload</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                );
+                              } else {
+                                return (
+                                  <View key={idx} style={styles.agentDocCardSubmitted}>
+                                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                                      <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center" }}>
+                                        <Ionicons name="checkmark-circle-outline" size={20} color="#16a34a" />
+                                      </View>
+                                      <View style={{ flex: 1 }}>
+                                        <Text style={styles.agentDocTitleSubmitted} numberOfLines={1}>{item.name}</Text>
+                                        <Text style={styles.agentDocSubSubmitted}>Uploaded: {submittedAt || "Recent"}</Text>
+                                      </View>
+                                    </View>
+                                    <TouchableOpacity
+                                      style={styles.agentDocViewBtn}
+                                      onPress={() => handleViewDocument(item.url)}
+                                    >
+                                      <Text style={styles.agentDocViewBtnText}>View</Text>
+                                    </TouchableOpacity>
+                                  </View>
+                                );
+                              }
+                            })}
+                          </View>
+                        );
+                      })()}
+
+                      {/* Uploaded Agent Documents List */}
+                      {(() => {
+                        const agentUploadedDocs = (selectedClaim.additionalDocuments || []).filter(
+                          (doc) => doc.uploadedBy === "Agent"
+                        );
+                        if (agentUploadedDocs.length === 0) return null;
+                        return (
+                          <View style={styles.modalDescBox}>
+                            <Text style={styles.modalDescLabel}>Uploaded Agent Documents</Text>
+                            {agentUploadedDocs.map((doc, idx) => {
+                              const submittedAt = formatDate(doc.uploadedAt);
+                              return (
+                                <View key={idx} style={styles.agentDocCardSubmitted}>
+                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                                    <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center" }}>
+                                      <Ionicons name="document-text-outline" size={20} color="#16a34a" />
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={styles.agentDocTitleSubmitted} numberOfLines={1}>{doc.name}</Text>
+                                      <Text style={styles.agentDocSubSubmitted}>Uploaded: {submittedAt || "Recent"}</Text>
+                                    </View>
+                                  </View>
+                                  <TouchableOpacity
+                                    style={styles.agentDocViewBtn}
+                                    onPress={() => handleViewDocument(doc.url)}
+                                  >
+                                    <Text style={styles.agentDocViewBtnText}>View</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        );
+                      })()}
+
+                      {/* Upload new agent doc */}
+                      {isActive && (
+                        <View style={styles.modalDescBox}>
+                          <Text style={styles.modalDescLabel}>Upload Agent Document</Text>
+                          
+                          {/* Selector Pills */}
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+                            {["Repair Estimate", "Inspection Photos", "Damage Assessment", "Other"].map((type) => {
+                              const isSelected = agentUploadDocName === type;
+                              return (
+                                <TouchableOpacity
+                                  key={type}
+                                  onPress={() => setAgentUploadDocName(type)}
+                                  style={{
+                                    paddingHorizontal: 10,
+                                    paddingVertical: 5,
+                                    borderRadius: 14,
+                                    borderWidth: 1,
+                                    borderColor: isSelected ? "#f97316" : "#cbd5e1",
+                                    backgroundColor: isSelected ? "#fff7ed" : "#ffffff",
+                                  }}
+                                >
+                                  <Text style={{ fontSize: 11, fontWeight: "700", color: isSelected ? "#f97316" : "#64748b" }}>
+                                    {type}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+
+                          {/* Upload Slot Design */}
+                          {agentUploadFileBase64 ? (
+                            <View style={styles.agentDocCardSubmitted}>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+                                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: "#dcfce7", alignItems: "center", justifyContent: "center" }}>
+                                  <Ionicons name="image-outline" size={20} color="#16a34a" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.agentDocTitleSubmitted} numberOfLines={1}>
+                                    {agentUploadFileName}
+                                  </Text>
+                                  <Text style={styles.agentDocSubSubmitted}>Ready to upload ({agentUploadDocName})</Text>
+                                </View>
+                              </View>
+                              <TouchableOpacity
+                                style={{ padding: 6 }}
+                                onPress={() => {
+                                  setAgentUploadFileBase64(null);
+                                  setAgentUploadFileName("");
+                                }}
+                              >
+                                <Ionicons name="trash-outline" size={20} color="#dc2626" />
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
+                            <TouchableOpacity
+                              style={{
+                                borderStyle: "dashed",
+                                borderWidth: 1.5,
+                                borderColor: "#cbd5e1",
+                                backgroundColor: "#f8fafc",
+                                borderRadius: 16,
+                                paddingVertical: 20,
+                                alignItems: "center",
+                                justifyContent: "center",
+                                gap: 6,
+                              }}
+                              onPress={handlePickAgentDoc}
+                            >
+                              <Ionicons name="cloud-upload-outline" size={26} color="#94a3b8" />
+                              <Text style={{ fontSize: 13, fontWeight: "700", color: "#334155" }}>
+                                Select document file
+                              </Text>
+                              <Text style={{ fontSize: 10, fontWeight: "600", color: "#94a3b8" }}>
+                                Image (Max 5MB)
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+
+                          {agentUploadFileBase64 && (
+                            <TouchableOpacity
+                              style={[
+                                styles.approveBtn,
+                                {
+                                  backgroundColor: "#f97316",
+                                  marginTop: 10,
+                                  height: 40,
+                                  flexDirection: "row",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  gap: 6,
+                                },
+                                isAgentUploading && { opacity: 0.7 }
+                              ]}
+                              onPress={handleAgentDocSubmit}
+                              disabled={isAgentUploading}
+                            >
+                              {isAgentUploading ? (
+                                <ActivityIndicator color="#ffffff" size="small" />
+                              ) : (
+                                <>
+                                  <Ionicons name="cloud-upload-outline" size={16} color="#ffffff" />
+                                  <Text style={styles.approveBtnText}>Upload to Claim</Text>
+                                </>
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+
                       {/* Assessment Amount */}
                       {isActive && (
                         <View style={styles.modalAssessBox}>
@@ -1105,4 +1517,91 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25, shadowRadius: 6, elevation: 3,
   },
   alertButtonText: { color: "#fff", fontSize: 14, fontWeight: "bold" },
+
+  /* New Agent Document Card Redesign */
+  agentDocCardPending: {
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: "#f97316",
+    backgroundColor: "#fff7ed",
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  agentSirenIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#ffedd5",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  agentDocTitlePending: {
+    fontSize: 12.5,
+    fontWeight: "800",
+    color: "#c2410c",
+  },
+  agentDocSubPending: {
+    fontSize: 10,
+    color: "#ea580c",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  agentUploadCardBtn: {
+    backgroundColor: "#f97316",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    shadowColor: "#f97316",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  agentUploadCardBtnText: {
+    color: "#ffffff",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  agentDocCardSubmitted: {
+    borderWidth: 1,
+    borderColor: "#bbf7d0",
+    backgroundColor: "#f0fdf4",
+    borderRadius: 16,
+    padding: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  agentDocTitleSubmitted: {
+    fontSize: 12.5,
+    fontWeight: "800",
+    color: "#166534",
+  },
+  agentDocSubSubmitted: {
+    fontSize: 10,
+    color: "#15803d",
+    fontWeight: "600",
+    marginTop: 2,
+  },
+  agentDocViewBtn: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#86efac",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  agentDocViewBtnText: {
+    color: "#10b981",
+    fontSize: 11,
+    fontWeight: "800",
+  },
 });

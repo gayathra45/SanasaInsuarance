@@ -44,6 +44,9 @@ interface Claim {
   inspectionSubmitted?: boolean;
   paymentReceipt?: string;
   additionalDocuments?: AdditionalDoc[];
+  documentsRequested?: boolean;
+  requestedDocuments?: string[];
+  documentRequestTo?: string;
 }
 
 export default function AgentDashboard() {
@@ -61,9 +64,23 @@ export default function AgentDashboard() {
   const [inspectionReportText, setInspectionReportText] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
   const [agentUploadFile, setAgentUploadFile] = useState<File | null>(null);
+  const [agentUploadPreview, setAgentUploadPreview] = useState<string | null>(null);
   const [agentUploadDocName, setAgentUploadDocName] = useState<string>("Repair Estimate");
   const [isAgentUploading, setIsAgentUploading] = useState(false);
   const [isAcceptingClaim, setIsAcceptingClaim] = useState(false);
+  const agentFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (file: File | null) => {
+    if (agentUploadPreview) {
+      URL.revokeObjectURL(agentUploadPreview);
+    }
+    setAgentUploadFile(file);
+    if (file) {
+      setAgentUploadPreview(URL.createObjectURL(file));
+    } else {
+      setAgentUploadPreview(null);
+    }
+  };
 
   const fetchClaims = async (email: string) => {
     try {
@@ -124,6 +141,63 @@ export default function AgentDashboard() {
     return "Low";
   };
 
+  const getRecipientForDoc = (claim: Claim, name: string) => {
+    const msg = [...(claim.messages || [])]
+      .reverse()
+      .find(m => m.message && typeof m.message === "string" && m.message.includes(`Requested: ${name}`));
+    if (msg && msg.message) {
+      if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+      if (msg.message.includes("[Document Request to User]")) return "User";
+    }
+    return claim.documentRequestTo || "User";
+  };
+
+  const getAgentPendingRequests = (claim: Claim) => {
+    if (!claim.requestedDocuments) return [];
+    return claim.requestedDocuments.filter(name => {
+      const isUploaded = (claim.additionalDocuments || []).some(
+        doc => doc.name.trim().toLowerCase() === name.trim().toLowerCase() && doc.uploadedBy === "Agent"
+      );
+      if (isUploaded) return false;
+      return getRecipientForDoc(claim, name) === "Agent";
+    });
+  };
+
+  const formatDate = (dateStr?: string | Date) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return String(dateStr);
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    } catch { return String(dateStr); }
+  };
+
+  const getDocDetails = (claim: Claim, name: string, status: "Pending" | "Submitted") => {
+    let requestedAt = "";
+    let submittedAt = "";
+
+    const msg = [...(claim.messages || [])]
+      .reverse()
+      .find(m => m.message && typeof m.message === "string" && m.message.includes(`Requested: ${name}`));
+    if (msg) {
+      requestedAt = formatDate(msg.sentAt);
+    } else {
+      requestedAt = formatDate(claim.createdAt);
+    }
+
+    if (status === "Submitted") {
+      const doc = (claim.additionalDocuments || []).find(
+        d => d.name.trim().toLowerCase() === name.trim().toLowerCase()
+      );
+      if (doc && doc.uploadedAt) {
+        submittedAt = formatDate(doc.uploadedAt);
+      }
+    }
+
+    return { requestedAt, submittedAt };
+  };
+
   // Derive columns from MongoDB collection
   const activeClaims = claims
     .filter(c => c.status !== "Approved" && c.status !== "Rejected")
@@ -135,6 +209,10 @@ export default function AgentDashboard() {
       return 0;
     });
   const completedClaims = claims.filter(c => c.status === "Approved" || c.status === "Rejected");
+
+  const claimsWithPendingAgentRequests = activeClaims.filter(
+    claim => getAgentPendingRequests(claim).length > 0
+  );
 
   const totalAssigned = activeClaims.length;
   const urgentCount = activeClaims.filter(c => getSeverity(c.damageType) === "Urgent").length;
@@ -254,7 +332,7 @@ export default function AgentDashboard() {
       });
       if (res.ok) {
         alert("Document uploaded successfully!");
-        setAgentUploadFile(null);
+        handleFileChange(null);
         // Refresh claims list
         await fetchClaims(agentEmail);
         // Also refresh the selectedClaim state with the new data
@@ -361,6 +439,45 @@ export default function AgentDashboard() {
         
         {/* Left Column: New Claims (Takes 2 grid columns on large screens) */}
         <div className="lg:col-span-2 flex flex-col gap-6">
+          
+          {/* Pending Document Requests Section */}
+          {claimsWithPendingAgentRequests.length > 0 && (
+            <div className="flex flex-col gap-4 bg-orange-50/50 border border-orange-200/80 rounded-3xl p-6 shadow-sm">
+              <h2 className="text-xl font-extrabold text-orange-850 tracking-tight flex items-center gap-2 select-none">
+                <svg className="w-5 h-5 text-orange-650 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                Action Required: Pending Agent Document Requests
+              </h2>
+              <div className="flex flex-col gap-4">
+                {claimsWithPendingAgentRequests.map((claim) => {
+                  const pendingDocs = getAgentPendingRequests(claim);
+                  return (
+                    <div key={claim._id} className="bg-white border border-orange-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-orange-200 transition-colors">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Claim / Plate</span>
+                        <span className="text-sm font-bold text-slate-800">{claim.claimNumber} · {claim.vehiclePlate}</span>
+                        <div className="flex flex-wrap gap-2 mt-1.5">
+                          {pendingDocs.map((docName, idx) => (
+                            <span key={idx} className="text-[10px] font-extrabold bg-orange-50 text-orange-700 border border-orange-200 px-2 py-0.5 rounded-full select-none">
+                              ⚠️ Upload: {docName}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedClaim(claim)}
+                        className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-extrabold text-xs py-2.5 px-4 rounded-xl transition-all cursor-pointer shadow-sm self-start md:self-center border-none"
+                      >
+                        Upload Documents
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between border-b border-slate-200 pb-3">
             <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
               New Claims
@@ -660,6 +777,121 @@ export default function AgentDashboard() {
                 </div>
               )}
 
+              {/* Requested Documents Status Section */}
+              {selectedClaim && selectedClaim.requestedDocuments && selectedClaim.requestedDocuments.length > 0 && (() => {
+                const requestedDocsList = [
+                  ...(selectedClaim.requestedDocuments || []).map((name) => ({
+                    name,
+                    status: "Pending" as const,
+                    url: null,
+                    recipient: getRecipientForDoc(selectedClaim, name),
+                  })),
+                  ...(selectedClaim.additionalDocuments || []).map((doc) => ({
+                    name: doc.name,
+                    status: "Submitted" as const,
+                    url: doc.url,
+                    recipient: doc.uploadedBy === "Agent" ? "Agent" : "User",
+                  })),
+                ];
+
+                const policyHolderDocs = requestedDocsList.filter((d) => d.recipient === "User");
+                const agentDocs = requestedDocsList.filter((d) => d.recipient === "Agent");
+                const hasPending = requestedDocsList.some((d) => d.status === "Pending");
+
+                return (
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 flex flex-col gap-4">
+                    <h3 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2 uppercase tracking-wider flex items-center gap-2 select-none">
+                      {hasPending ? (
+                        <svg className="w-4.5 h-4.5 text-amber-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                        </svg>
+                      ) : (
+                        <svg className="w-4.5 h-4.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                      Requested Documents Status
+                    </h3>
+
+                    {/* Policy Holder Docs */}
+                    <div className="space-y-2">
+                      <span className="text-[10px] bg-blue-100 text-blue-800 font-black tracking-wider uppercase px-2 py-0.5 rounded border border-blue-200">
+                        Policy Holder Documents
+                      </span>
+                      {policyHolderDocs.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {policyHolderDocs.map((item, idx) => {
+                            const { requestedAt, submittedAt } = getDocDetails(selectedClaim, item.name, item.status);
+                            return (
+                              <div key={idx} className="flex items-center justify-between py-2 px-3 bg-white border border-slate-100 rounded-xl">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${item.status === "Pending" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-bold text-slate-700 truncate">{item.name}</span>
+                                    <span className="text-[9px] text-slate-400 font-bold">
+                                      {item.status === "Pending" ? `Requested: ${requestedAt}` : `Requested: ${requestedAt} · Uploaded: ${submittedAt || "Recent"}`}
+                                    </span>
+                                  </div>
+                                </div>
+                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${item.status === "Pending" ? "bg-amber-500/10 text-amber-600 border-amber-200" : "bg-emerald-500/10 text-emerald-600 border-emerald-200"}`}>
+                                  {item.status}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400 font-bold italic pl-1">No requests for policy holder.</p>
+                      )}
+                    </div>
+
+                    {/* Agent Docs */}
+                    <div className="space-y-2 pt-2 border-t border-slate-200/60">
+                      <span className="text-[10px] bg-cyan-100 text-cyan-800 font-black tracking-wider uppercase px-2 py-0.5 rounded border border-cyan-200">
+                        Agent Documents
+                      </span>
+                      {agentDocs.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                          {agentDocs.map((item, idx) => {
+                            const { requestedAt, submittedAt } = getDocDetails(selectedClaim, item.name, item.status);
+                            return (
+                              <div key={idx} className="flex items-center justify-between py-2 px-3 bg-white border border-slate-100 rounded-xl">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className={`w-1.5 h-1.5 rounded-full ${item.status === "Pending" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-xs font-bold text-slate-700 truncate">{item.name}</span>
+                                    <span className="text-[9px] text-slate-400 font-bold">
+                                      {item.status === "Pending" ? `Requested: ${requestedAt}` : `Requested: ${requestedAt} · Uploaded: ${submittedAt || "Recent"}`}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${item.status === "Pending" ? "bg-amber-500/10 text-amber-600 border-amber-200" : "bg-emerald-500/10 text-emerald-600 border-emerald-200"}`}>
+                                    {item.status}
+                                  </span>
+                                  {item.status === "Submitted" && item.url && (
+                                    <a
+                                      href={item.url.startsWith("http") || item.url.startsWith("data:") ? item.url : `${API_URL.replace("/api", "")}/uploads/${item.url}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="text-[10px] font-black text-cyan-600 hover:text-cyan-700 hover:underline"
+                                    >
+                                      View
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-400 font-bold italic pl-1">No requests for agent.</p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Agent Documents Section */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-4">
                 <div className="flex items-center justify-between border-b pb-2 border-slate-200">
@@ -701,43 +933,121 @@ export default function AgentDashboard() {
 
                 {/* Upload new agent doc */}
                 {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && (
-                  <div className="border-t border-slate-200 pt-3 flex flex-col gap-3">
-                    <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider">Upload New Document</span>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[9px] text-slate-500 font-bold uppercase">Document Type</label>
-                        <select
-                          value={agentUploadDocName}
-                          onChange={(e) => setAgentUploadDocName(e.target.value)}
-                          className="bg-white border border-slate-200 rounded-lg p-2 text-xs font-bold text-slate-800 focus:outline-none"
-                        >
-                          <option value="Repair Estimate">Repair Estimate</option>
-                          <option value="Inspection Photos">Inspection Photos</option>
-                          <option value="Damage Assessment">Damage Assessment</option>
-                          <option value="Other">Other / Custom</option>
-                        </select>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[9px] text-slate-500 font-bold uppercase">Select File</label>
-                        <input
-                          type="file"
-                          accept="image/*,application/pdf"
-                          onChange={(e) => {
-                            if (e.target.files && e.target.files[0]) {
-                              setAgentUploadFile(e.target.files[0]);
-                            }
-                          }}
-                          className="text-xs font-semibold text-slate-600 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border-0 file:text-[10px] file:font-extrabold file:bg-slate-200 file:text-slate-800 file:cursor-pointer"
-                        />
+                  <div className="border-t border-slate-200 pt-4 flex flex-col gap-4">
+                    <span className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Upload Claim Document</span>
+                    
+                    {/* Select Doc Type Pills */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Document Type</label>
+                      <div className="flex flex-wrap gap-2">
+                        {["Repair Estimate", "Inspection Photos", "Damage Assessment", "Other"].map((type) => {
+                          const isSelected = agentUploadDocName === type;
+                          return (
+                            <button
+                              key={type}
+                              type="button"
+                              onClick={() => setAgentUploadDocName(type)}
+                              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer select-none ${
+                                isSelected
+                                  ? "bg-[#ff9800] border-[#ff9800] text-white shadow-sm"
+                                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                              }`}
+                            >
+                              {type}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
+
+                    {/* Drag and drop / file selector zones */}
+                    <div className="flex flex-col gap-2">
+                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">File Attachment</label>
+                      
+                      <input
+                        type="file"
+                        ref={agentFileInputRef}
+                        accept="image/*,application/pdf"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleFileChange(e.target.files[0]);
+                          }
+                        }}
+                        className="hidden"
+                      />
+
+                      {!agentUploadFile ? (
+                        <div
+                          onClick={() => agentFileInputRef.current?.click()}
+                          className="w-full border-2 border-dashed border-slate-300 hover:border-orange-500 rounded-2xl py-6 px-4 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-orange-50/5 cursor-pointer transition-all duration-150 group"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-8 h-8 text-slate-400 mb-2 group-hover:text-orange-500 transition-colors">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                          </svg>
+                          <span className="text-slate-800 text-[13px] font-bold">Select document file</span>
+                          <span className="text-slate-400 text-[10px] font-semibold mt-1">Image or PDF (Max 5MB)</span>
+                        </div>
+                      ) : (
+                        <div className="w-full border-2 border-emerald-500 bg-emerald-50/5 rounded-2xl p-4 flex items-center justify-between relative shadow-sm">
+                          <div className="flex items-center gap-3">
+                            {agentUploadFile.type.startsWith("image/") && agentUploadPreview ? (
+                              <img
+                                src={agentUploadPreview}
+                                alt="preview"
+                                className="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm"
+                              />
+                            ) : (
+                              <div className="w-11 h-11 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-600 flex items-center justify-center">
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                </svg>
+                              </div>
+                            )}
+                            <div className="flex flex-col min-w-0 max-w-[200px] md:max-w-[280px]">
+                              <span className="text-emerald-800 text-[13px] font-bold truncate">
+                                {agentUploadFile.name}
+                              </span>
+                              <span className="text-slate-400 text-[10px] font-semibold mt-0.5">
+                                {(agentUploadFile.size / 1024 / 1024).toFixed(2)} MB
+                              </span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleFileChange(null)}
+                            className="bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-full p-2 transition-colors cursor-pointer"
+                            title="Remove file"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="w-4.5 h-4.5">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                            </svg>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
                     {agentUploadFile && (
                       <button
                         onClick={handleAgentUpload}
                         disabled={isAgentUploading}
-                        className="bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold text-xs py-2 px-4 rounded-xl border-none cursor-pointer self-start active:scale-95 transition-all disabled:opacity-50 mt-1"
+                        className="w-full bg-[#ff9800] hover:bg-[#ff8f00] text-white font-extrabold text-xs py-3 px-4 rounded-xl border-none cursor-pointer active:scale-[0.98] transition-all disabled:opacity-50 mt-1 shadow-md hover:shadow-orange-500/25 flex items-center justify-center gap-2"
                       >
-                        {isAgentUploading ? "Uploading..." : "Upload Document"}
+                        {isAgentUploading ? (
+                          <>
+                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Uploading...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                            </svg>
+                            <span>Upload to Claim</span>
+                          </>
+                        )}
                       </button>
                     )}
                   </div>
