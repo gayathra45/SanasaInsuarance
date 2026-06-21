@@ -3,13 +3,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export default function PolicyHolderNavbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const lastScrollY = useRef(0);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,6 +33,22 @@ export default function PolicyHolderNavbar() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [isOpen]);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleLogout = () => {
+    sessionStorage.clear();
+    router.push("/Login");
+  };
 
   const isActive = (href: string) => {
     if (href === "/Policy_Holder/Home") {
@@ -107,11 +126,13 @@ export default function PolicyHolderNavbar() {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
             </button>
 
-            {/* Profile Menu */}
-            <Link href="/Policy_Holder/Profile">
+            {/* Profile Dropdown */}
+            <div className="relative" ref={profileMenuRef}>
               <button
+                onClick={() => setProfileMenuOpen((prev) => !prev)}
                 className="transition-colors duration-150 bg-transparent border-none cursor-pointer p-0 text-black hover:text-[#00ddff] focus:outline-none"
                 aria-label="User Profile"
+                aria-expanded={profileMenuOpen}
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -126,7 +147,41 @@ export default function PolicyHolderNavbar() {
                   <path d="M6 18c0-3.2 2.8-4.2 6-4.2s6 1 6 4.2" fill="currentColor" stroke="none" />
                 </svg>
               </button>
-            </Link>
+
+              {/* Dropdown Menu */}
+              {profileMenuOpen && (
+                <div
+                  className="absolute right-0 mt-3 w-52 bg-white rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] border border-slate-100 py-2 z-50 animate-fade-in"
+                  style={{ top: "100%" }}
+                >
+                  {/* Arrow */}
+                  <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-l border-t border-slate-100 rotate-45" />
+
+                  <Link
+                    href="/Policy_Holder/Profile"
+                    onClick={() => setProfileMenuOpen(false)}
+                    className="flex items-center gap-3 px-5 py-3 text-slate-700 hover:bg-slate-50 hover:text-[#00ddff] font-semibold text-sm transition-colors no-underline"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    My Profile
+                  </Link>
+
+                  <div className="mx-4 my-1 border-t border-slate-100" />
+
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 w-full px-5 py-3 text-red-500 hover:bg-red-50 font-semibold text-sm transition-colors text-left bg-transparent border-none cursor-pointer"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+                    </svg>
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
 
             {/* Hamburger Menu Icon for Mobile View */}
             <button

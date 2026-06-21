@@ -2,11 +2,12 @@
 
 import React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 
 export default function AdminNavbar() {
   const pathname = usePathname();
+  const router = useRouter();
 
   const menuItems = [
     { name: "Home", href: "/Admin/Dashboard" },
@@ -18,6 +19,11 @@ export default function AdminNavbar() {
     { name: "Analytics & Reports", href: "/Admin/Analytics" },
     { name: "Contact", href: "/Admin/Contact" },
   ];
+
+  const handleLogout = () => {
+    sessionStorage.clear();
+    router.push("/Login");
+  };
 
   return (
     <aside className="w-[280px] bg-[#1a365d] min-h-screen flex flex-col text-white shadow-xl flex-shrink-0 select-none">
@@ -58,9 +64,9 @@ export default function AdminNavbar() {
 
       {/* Logout Footer Section */}
       <div className="p-6 mt-auto">
-        <Link
-          href="/Login"
-          className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white font-extrabold text-base transition-colors no-underline duration-150"
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2 px-4 py-2 text-slate-300 hover:text-white font-extrabold text-base transition-colors duration-150 bg-transparent border-none cursor-pointer w-full"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -73,11 +79,11 @@ export default function AdminNavbar() {
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
-              d="M5.636 5.636a9 9 0 1012.728 0M12 3v9"
+              d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1"
             />
           </svg>
           Logout
-        </Link>
+        </button>
       </div>
     </aside>
   );
