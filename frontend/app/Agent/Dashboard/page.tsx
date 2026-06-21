@@ -104,8 +104,7 @@ export default function AgentDashboard() {
     });
   const completedClaims = claims.filter(c => c.status === "Approved" || c.status === "Rejected");
 
-  const totalAssigned = activeClaims.length;
-  const urgentCount = activeClaims.filter(c => getSeverity(c.damageType) === "Urgent").length;
+
 
   const handleApproveAssessment = async (claimId: string) => {
     try {
@@ -173,8 +172,8 @@ export default function AgentDashboard() {
               Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-cyan-200">{agentName}</span>!
             </h1>
             <p className="text-lg md:text-xl text-slate-300 max-w-3xl leading-relaxed font-medium">
-              You have <span className="text-[#ffa500] font-extrabold">{totalAssigned} assigned claims</span> today including{" "}
-              <span className="text-red-500 font-extrabold">{urgentCount} urgent</span> case. Stay safe on the road!
+              You have <span className="text-[#ffa500] font-extrabold">0 assigned claims</span> today including{" "}
+              <span className="text-red-500 font-extrabold">0 urgent</span> case. Stay safe on the road!
             </p>
           </div>
 
@@ -192,7 +191,7 @@ export default function AgentDashboard() {
                 <span className="text-base text-white font-extrabold tracking-wide -mt-0.5">Claims</span>
               </div>
               {/* Large count number on the right */}
-              <span className="text-3xl font-black text-white ml-auto">{urgentCount}</span>
+              <span className="text-3xl font-black text-white ml-auto">0</span>
             </div>
 
             {/* Assigned Card */}
@@ -207,7 +206,7 @@ export default function AgentDashboard() {
                 <span className="text-base text-white font-extrabold tracking-wide -mt-0.5">Claims</span>
               </div>
               {/* Large count number on the right */}
-              <span className="text-3xl font-black text-white ml-auto">{totalAssigned}</span>
+              <span className="text-3xl font-black text-white ml-auto">0</span>
             </div>
           </div>
         </div>
