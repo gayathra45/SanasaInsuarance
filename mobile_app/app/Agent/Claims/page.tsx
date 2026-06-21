@@ -609,51 +609,83 @@ export default function AgentClaimsPage() {
           ) : (
             filteredClaims.map((claim) => {
               const statusCfg = getStatusDetails(claim.status);
+              const isCompleted = claim.status === "Approved" || claim.status === "Rejected";
+              const statusColor = claim.status === "Approved" ? "#16a34a"
+                : claim.status === "Rejected" ? "#dc2626"
+                : claim.status === "In Progress" ? "#0ea5e9" : "#f59e0b";
+
               return (
-                <View key={claim._id} style={styles.claimCard}>
-                  <View style={styles.cardHeader}>
-                    <View>
-                      <Text style={styles.claimIdText}>{claim.claimNumber}</Text>
-                      <Text style={styles.claimVehicle}>{formatNumberPlate(claim.vehiclePlate)}</Text>
-                    </View>
-                    <View
-                      style={[
-                        styles.statusBadge,
-                        { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }
-                      ]}
-                    >
-                      <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.text}</Text>
-                    </View>
+                <TouchableOpacity
+                  key={claim._id}
+                  style={[
+                    styles.claimCard,
+                    {
+                      backgroundColor: "#ffffff",
+                      borderColor: "#e2e8f0",
+                      borderLeftWidth: 4,
+                      borderLeftColor: isCompleted ? statusColor : "#1e3a8a",
+                    },
+                  ]}
+                  onPress={() => setSelectedClaim(claim)}
+                  activeOpacity={0.85}
+                >
+                  {/* Left Side: Circular Status/Vehicle Icon Badge */}
+                  <View style={[styles.claimIconWrap, { backgroundColor: "#f0f7ff" }]}>
+                    <Ionicons
+                      name="car-sport"
+                      size={20}
+                      color={isCompleted ? statusColor : "#1e3a8a"}
+                    />
                   </View>
 
-                  <View style={styles.cardDivider} />
+                  {/* Right Side: Claim Details */}
+                  <View style={{ flex: 1, marginLeft: 12, paddingRight: 8 }}>
+                    {/* Header Row: Plate Number and Status Badge */}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <Text style={styles.claimPlateText}>{claim.vehiclePlate}</Text>
+                      <View
+                        style={[
+                          styles.statusBadge,
+                          { backgroundColor: statusCfg.bg, borderColor: statusCfg.border }
+                        ]}
+                      >
+                        <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.text}</Text>
+                      </View>
+                    </View>
 
-                  <View style={styles.cardBody}>
-                    <View style={styles.bodyRow}>
-                      <Ionicons name="calendar-outline" size={16} color="#64748b" />
-                      <Text style={styles.bodyVal}>{formatDate(claim.createdAt)}</Text>
+                    {/* Highlighted Location & Damage Type */}
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                      <Ionicons name="location" size={14} color="#f97316" />
+                      <Text style={styles.claimLocationHighlightText} numberOfLines={1}>
+                        {claim.location}
+                      </Text>
+                      <Text style={{ color: "#cbd5e1", fontWeight: "bold" }}>·</Text>
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: "#64748b" }}>
+                        {claim.damageType}
+                      </Text>
                     </View>
-                    <View style={styles.bodyRow}>
-                      <Ionicons name="construct-outline" size={16} color="#64748b" />
-                      <Text style={styles.bodyVal}>{claim.damageType}</Text>
-                    </View>
-                    <View style={styles.bodyRow}>
-                      <Ionicons name="cash-outline" size={16} color="#64748b" />
-                      <Text style={styles.bodyVal}>
-                        {claim.amount ? `LKR ${Number(claim.amount).toLocaleString()}` : "Pending Evaluation"}
+
+                    {/* Bottom Row: Claim ID, Date, Amount */}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: "#f1f5f9" }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Ionicons name="document-text-outline" size={12} color="#94a3b8" />
+                          <Text style={styles.claimNumberBottomText}>{claim.claimNumber}</Text>
+                        </View>
+                        <Text style={{ fontSize: 11, color: "#cbd5e1" }}>|</Text>
+                        <Text style={{ fontSize: 11, color: "#64748b", fontWeight: "600" }}>{formatDate(claim.createdAt)}</Text>
+                      </View>
+                      <Text style={{ fontSize: 12, fontWeight: "800", color: claim.amount ? "#16a34a" : "#64748b" }}>
+                        {claim.amount ? `LKR ${Number(claim.amount).toLocaleString()}` : "Pending"}
                       </Text>
                     </View>
                   </View>
 
-                  <TouchableOpacity
-                    style={styles.viewDetailsBtn}
-                    onPress={() => setSelectedClaim(claim)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.viewDetailsBtnText}>View Details & Action</Text>
-                    <Ionicons name="arrow-forward" size={15} color="#0284c7" />
-                  </TouchableOpacity>
-                </View>
+                  {/* Far Right: Tap indicator arrow */}
+                  <View style={{ justifyContent: "center", alignItems: "center" }}>
+                    <Ionicons name="chevron-forward" size={18} color="#cbd5e1" />
+                  </View>
+                </TouchableOpacity>
               );
             })
           )}
@@ -1043,46 +1075,54 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, color: "#0f172a", fontSize: 14, fontWeight: "600" },
 
   claimCard: {
+    flexDirection: "row",
     backgroundColor: "#ffffff",
     borderRadius: 22,
     borderWidth: 1,
     borderColor: "#e2e8f0",
     padding: 16,
-    marginBottom: 14,
+    marginBottom: 12,
     shadowColor: "#0f172a",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.02,
     shadowRadius: 8,
-    elevation: 1,
+    elevation: 2,
   },
-  cardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-  claimIdText: { fontSize: 15, fontWeight: "800", color: "#0f172a" },
-  claimVehicle: { fontSize: 12, color: "#64748b", fontWeight: "700", marginTop: 2 },
+  claimIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  claimPlateText: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  claimLocationHighlightText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0f172a",
+    maxWidth: 160,
+  },
+  claimNumberBottomText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#94a3b8",
+  },
   statusBadge: {
     borderWidth: 1.5,
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 99,
-    minWidth: 80,
-    alignItems: "center",
   },
-  statusText: { fontSize: 11, fontWeight: "800" },
-  cardDivider: { height: 1, backgroundColor: "#f1f5f9", marginVertical: 12 },
-  cardBody: { gap: 8 },
-  bodyRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  bodyVal: { fontSize: 13, color: "#475569", fontWeight: "600" },
-  viewDetailsBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 4,
-    borderWidth: 1.5,
-    borderColor: "#e2e8f0",
-    borderRadius: 12,
-    paddingVertical: 10,
-    marginTop: 14,
+  statusText: {
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.2,
   },
-  viewDetailsBtnText: { fontSize: 12, color: "#0284c7", fontWeight: "800" },
 
   emptyCard: { backgroundColor: "#ffffff", borderRadius: 22, borderWidth: 1, borderColor: "#e2e8f0", paddingVertical: 40, alignItems: "center", gap: 10 },
   emptyText: { fontSize: 13, color: "#64748b", fontWeight: "700" },
