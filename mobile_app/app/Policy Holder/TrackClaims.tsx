@@ -344,7 +344,7 @@ export default function TrackClaims() {
             {trackedClaim.description && (
               <View style={styles.descriptionContainer}>
                 <Text style={styles.descriptionHeader}>Claim Description</Text>
-                <Text style={styles.descriptionText}>"{trackedClaim.description}"</Text>
+                <Text style={styles.descriptionText}>&quot;{trackedClaim.description}&quot;</Text>
               </View>
             )}
 
@@ -403,13 +403,13 @@ export default function TrackClaims() {
         ) : searchAttempted ? (
           <View style={styles.errorContainer}>
             <Ionicons name="warning-outline" size={40} color="#dc2626" />
-            <Text style={styles.errorText}>No claim found with ID "{claimId.trim().toUpperCase()}"</Text>
+            <Text style={styles.errorText}>No claim found with ID &quot;{claimId.trim().toUpperCase()}&quot;</Text>
             <Text style={styles.errorDesc}>Please double check your reference number plate and try again.</Text>
           </View>
         ) : (
           <View style={styles.emptyContainer}>
             <Ionicons name="search-outline" size={60} color="#cbd5e1" style={{ marginBottom: 12 }} />
-            <Text style={styles.emptyText}>Enter your Claim ID in the search bar above to track your claim's status.</Text>
+            <Text style={styles.emptyText}>Enter your Claim ID in the search bar above to track your claim&apos;s status.</Text>
           </View>
         )}
       </ScrollView>

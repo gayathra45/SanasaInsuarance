@@ -242,7 +242,7 @@ export default function NotificationsPage() {
               </View>
               <Text style={styles.emptyTitle}>No Notifications</Text>
               <Text style={styles.emptyDesc}>
-                You're all caught up! Check back later for updates on your claims and policy.
+                You&apos;re all caught up! Check back later for updates on your claims and policy.
               </Text>
             </View>
           )}

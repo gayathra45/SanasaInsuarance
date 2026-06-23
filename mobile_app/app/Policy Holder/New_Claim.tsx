@@ -23,6 +23,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import PolicyHolderNavbar from "../Components/policy holder/page";
 import { API_BASE_URL } from "../config";
+import MapDisplay from "../Components/policy holder/MapDisplay";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -53,6 +54,8 @@ export default function FileNewClaim() {
   const [damageType, setDamageType] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("Colombo, Sri Lanka");
+  const [latitude, setLatitude] = useState(6.9271);
+  const [longitude, setLongitude] = useState(79.8612);
 
   // Loading States
   const [isVehiclesLoading, setIsVehiclesLoading] = useState(true);
@@ -123,26 +126,11 @@ export default function FileNewClaim() {
     }
   };
 
-  const handleGPSLocation = async () => {
-    setIsLocating(true);
+  const reverseGeocode = async (lat: number, lon: number) => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Denied", "Please enable location permissions in your app settings to retrieve your coordinates.");
-        setIsLocating(false);
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const { latitude, longitude } = location.coords;
-      
-      // Perform reverse geocoding to get address
       const addressArray = await Location.reverseGeocodeAsync({
-        latitude,
-        longitude
+        latitude: lat,
+        longitude: lon
       });
 
       if (addressArray && addressArray.length > 0) {
@@ -160,10 +148,55 @@ export default function FileNewClaim() {
 
         // Clean up trailing comma/space
         fullAddress = fullAddress.trim().replace(/,\s*$/, "");
-        setAddress(fullAddress || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        setAddress(fullAddress || `${lat.toFixed(6)}, ${lon.toFixed(6)}`);
       } else {
-        setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        setAddress(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
       }
+    } catch (e) {
+      console.warn("Reverse geocoding error:", e);
+      setAddress(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+    }
+  };
+
+  const geocodeAddress = async (addrStr: string) => {
+    if (!addrStr || addrStr.trim() === "") return;
+    try {
+      const geoResult = await Location.geocodeAsync(addrStr);
+      if (geoResult && geoResult.length > 0) {
+        const { latitude: lat, longitude: lon } = geoResult[0];
+        setLatitude(lat);
+        setLongitude(lon);
+      }
+    } catch (e) {
+      console.warn("Geocoding address error:", e);
+    }
+  };
+
+  const handleLocationSelect = async (lat: number, lon: number) => {
+    setLatitude(lat);
+    setLongitude(lon);
+    await reverseGeocode(lat, lon);
+  };
+
+  const handleGPSLocation = async () => {
+    setIsLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "Please enable location permissions in your app settings to retrieve your coordinates.");
+        setIsLocating(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const { latitude: lat, longitude: lon } = location.coords;
+      setLatitude(lat);
+      setLongitude(lon);
+      
+      await reverseGeocode(lat, lon);
     } catch (e) {
       console.error("GPS retrieval error:", e);
       Alert.alert("Error", "Could not retrieve your current location. Please verify that your device GPS is turned on and try again.");
@@ -427,9 +460,15 @@ export default function FileNewClaim() {
               <TextInput
                 value={address}
                 onChangeText={setAddress}
+                onEndEditing={() => geocodeAddress(address)}
                 placeholder="Where did the incident occur?"
                 placeholderTextColor="#94a3b8"
                 style={styles.textInput}
+              />
+              <MapDisplay
+                latitude={latitude}
+                longitude={longitude}
+                onLocationSelect={handleLocationSelect}
               />
             </View>
 

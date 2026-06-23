@@ -417,7 +417,7 @@ export default function MyClaims() {
                 {selectedClaim.description && (
                   <View style={styles.descriptionContainer}>
                     <Text style={styles.descriptionHeader}>Incident Description</Text>
-                    <Text style={styles.descriptionText}>"{selectedClaim.description}"</Text>
+                    <Text style={styles.descriptionText}>&quot;{selectedClaim.description}&quot;</Text>
                   </View>
                 )}
 
