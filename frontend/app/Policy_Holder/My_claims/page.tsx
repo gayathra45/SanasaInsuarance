@@ -284,10 +284,10 @@ export default function MyClaims() {
             <table className="w-full border-collapse">
               <thead className="bg-[#e2e8f0]/60">
                 <tr className="border-b border-slate-200">
-                  <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Claim ID</th>
-                  <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Vehicle</th>
-                  <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Date</th>
-                  <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Type</th>
+                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Claim ID</th>
+                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Vehicle</th>
+                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Date</th>
+                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Type</th>
                   <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Amount</th>
                   <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Status</th>
                   <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Action</th>
@@ -436,29 +436,29 @@ export default function MyClaims() {
                 {/* 2-Column Grid matching mockup inline labels */}
                 <div className="grid grid-cols-2 gap-x-12 gap-y-5 text-[15px] font-semibold text-slate-700 mb-6 px-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-bold">Vehicle:</span>
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Vehicle:</span>
                     <span className="font-extrabold text-slate-800">{formatNumberPlate(selectedClaim.vehiclePlate)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-bold">Type:</span>
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Type:</span>
                     <span className="font-extrabold text-slate-800">{selectedClaim.damageType}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-bold">Est. Amount:</span>
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Est. Amount:</span>
                     <span className="font-extrabold text-slate-800">
                       {selectedClaim.amount.startsWith("Rs.") ? "LKR " + selectedClaim.amount.substring(4) : selectedClaim.amount}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-bold">Date:</span>
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Date:</span>
                     <span className="font-extrabold text-slate-800">{selectedClaim.incidentDate}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-bold">Officer:</span>
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Officer:</span>
                     <span className="font-extrabold text-slate-800">{selectedClaim.officer || "Agent Saman"}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="text-slate-400 font-bold">Location:</span>
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Location:</span>
                     <span className="font-extrabold text-slate-800">{selectedClaim.location || "N/A"}</span>
                   </div>
                 </div>
