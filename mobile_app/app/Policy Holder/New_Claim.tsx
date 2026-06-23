@@ -24,6 +24,7 @@ import * as Location from "expo-location";
 import PolicyHolderNavbar from "../Components/policy holder/page";
 import { API_BASE_URL } from "../config";
 import MapDisplay from "../Components/policy holder/MapDisplay";
+import MapSelectorModal from "../Components/policy holder/MapSelectorModal";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -65,6 +66,7 @@ export default function FileNewClaim() {
   // Success Modal States
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [generatedClaimNumber, setGeneratedClaimNumber] = useState("");
+  const [showMapModal, setShowMapModal] = useState(false);
 
   // Photo uploads
   const [accidentFront, setAccidentFront] = useState<PhotoState | null>(null);
@@ -472,22 +474,41 @@ export default function FileNewClaim() {
               />
             </View>
 
-            {/* GPS Retrieval Simulator button */}
-            <TouchableOpacity
-              style={styles.gpsBtn}
-              onPress={handleGPSLocation}
-              disabled={isLocating}
-              activeOpacity={0.8}
-            >
-              {isLocating ? (
-                <ActivityIndicator size="small" color="#0284c7" />
-              ) : (
-                <Ionicons name="location" size={18} color="#0284c7" />
-              )}
-              <Text style={styles.gpsBtnText}>
-                {isLocating ? "Retrieving Coordinates..." : "Use My Current GPS Location"}
-              </Text>
-            </TouchableOpacity>
+            {/* GPS and Map select buttons */}
+            <View style={styles.locationButtonsRow}>
+              <TouchableOpacity
+                style={[styles.locationBtnGps, { flex: 1 }]}
+                onPress={handleGPSLocation}
+                disabled={isLocating}
+                activeOpacity={0.8}
+              >
+                {isLocating ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="location" size={16} color="#ffffff" />
+                )}
+                <Text style={styles.locationBtnTextGps}>
+                  {isLocating ? "Locating..." : "Use GPS"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.locationBtnMap, { flex: 1 }]}
+                onPress={() => setShowMapModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="map" size={16} color="#ffffff" />
+                <Text style={styles.locationBtnTextMap}>Select on Map</Text>
+              </TouchableOpacity>
+            </View>
+
+            <MapSelectorModal
+              visible={showMapModal}
+              onClose={() => setShowMapModal(false)}
+              latitude={latitude}
+              longitude={longitude}
+              onLocationSelect={handleLocationSelect}
+            />
 
             {/* Action Row */}
             <View style={styles.actionsRow}>
@@ -638,20 +659,54 @@ const styles = StyleSheet.create({
   vehiclePillText: { fontSize: 12.5, color: "#475569", fontWeight: "700" },
   vehiclePillTextActive: { color: "#2563eb" },
 
-  gpsBtn: {
+  locationButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  locationBtnGps: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#0284c7",
     borderWidth: 1.5,
-    borderColor: "#bae6fd",
-    backgroundColor: "#f0f9ff",
-    borderRadius: 16,
+    borderColor: "#0284c7",
+    borderRadius: 99,
     paddingVertical: 12,
-    marginTop: 4,
-    marginBottom: 24,
     gap: 8,
+    shadowColor: "rgba(2, 132, 199, 0.2)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  gpsBtnText: { fontSize: 13, color: "#0284c7", fontWeight: "800" },
+  locationBtnTextGps: {
+    fontSize: 13,
+    color: "#ffffff",
+    fontWeight: "800",
+  },
+  locationBtnMap: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0284c7",
+    borderWidth: 1.5,
+    borderColor: "#0284c7",
+    borderRadius: 99,
+    paddingVertical: 12,
+    gap: 8,
+    shadowColor: "rgba(2, 132, 199, 0.2)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  locationBtnTextMap: {
+    fontSize: 13,
+    color: "#ffffff",
+    fontWeight: "800",
+  },
 
   /* Photos layout */
   photosGrid: {

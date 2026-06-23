@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Animated, Easing, LayoutChangeEvent } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Animated } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 
@@ -18,34 +18,7 @@ interface PolicyHolderNavbarProps {
 export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarProps) {
   const pathname = usePathname();
   const currentRoute = activeRoute ?? pathname;
-  const [navWidth, setNavWidth] = useState(0);
-  const indicatorX = useRef(new Animated.Value(0)).current;
-  const indicatorOpacity = useRef(new Animated.Value(1)).current;
   const centerPulse = useRef(new Animated.Value(1)).current;
-  const activeIndex = useMemo(
-    () => NAV_ITEMS.findIndex((item) => currentRoute === item.route || currentRoute.startsWith(item.route.replace("/page", ""))),
-    [currentRoute]
-  );
-
-  useEffect(() => {
-    if (!navWidth) return;
-    const slot = navWidth / NAV_ITEMS.length;
-    const isCenter = activeIndex === 2;
-    const targetX = Math.max(0, activeIndex) * slot + (slot - 34) / 2;
-    Animated.parallel([
-      Animated.timing(indicatorX, {
-        toValue: targetX,
-        duration: 260,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(indicatorOpacity, {
-        toValue: isCenter ? 0 : 1,
-        duration: 180,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [activeIndex, indicatorOpacity, indicatorX, navWidth]);
 
   useEffect(() => {
     Animated.loop(
@@ -56,17 +29,16 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
     ).start();
   }, [centerPulse]);
 
-  const onShellLayout = (e: LayoutChangeEvent) => {
-    setNavWidth(e.nativeEvent.layout.width);
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.shadowPad} />
-      <View style={styles.shell} onLayout={onShellLayout}>
-        <Animated.View style={[styles.indicator, { opacity: indicatorOpacity, transform: [{ translateX: indicatorX }] }]} />
+      <View style={styles.shell}>
       {NAV_ITEMS.map((item) => {
-        const isActive = currentRoute === item.route || currentRoute.startsWith(item.route.replace("/page", ""));
+        const isActive = currentRoute === item.route || 
+          (item.route.endsWith("/page") 
+            ? (currentRoute === item.route.replace("/page", "") || currentRoute === item.route) 
+            : currentRoute.startsWith(item.route)
+          );
         const isCenter = "isCenter" in item && item.isCenter;
 
         if (isCenter) {
@@ -95,12 +67,11 @@ export default function PolicyHolderNavbar({ activeRoute }: PolicyHolderNavbarPr
             <Ionicons
               name={(isActive ? item.iconActive : item.icon) as any}
               size={22}
-              color={isActive ? "#2dd4bf" : "#94a3b8"}
+              color={isActive ? "#0f766e" : "#94a3b8"}
             />
             <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
               {item.label}
             </Text>
-            {isActive && <View style={styles.activeBar} />}
           </TouchableOpacity>
         );
       })}

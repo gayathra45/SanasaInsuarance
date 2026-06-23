@@ -56,6 +56,28 @@ export default function FileNewClaim() {
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("Colombo, Sri Lanka");
   const [isLocating, setIsLocating] = useState(false);
+  const [latitude, setLatitude] = useState(6.9271);
+  const [longitude, setLongitude] = useState(79.8612);
+  const [initialCoords] = useState({ latitude: 6.9271, longitude: 79.8612 });
+  const [modalInitialCoords, setModalInitialCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [showMapModal, setShowMapModal] = useState(false);
+
+  // Message listener for location select from map iframe
+  useEffect(() => {
+    const handleMapMessage = (event: MessageEvent) => {
+      try {
+        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
+        if (data.latitude && data.longitude) {
+          setLatitude(data.latitude);
+          setLongitude(data.longitude);
+          reverseGeocode(data.latitude, data.longitude);
+        }
+      } catch (err) {}
+    };
+
+    window.addEventListener("message", handleMapMessage);
+    return () => window.removeEventListener("message", handleMapMessage);
+  }, []);
 
   // Load vehicles from sessionStorage or fetch from backend on mount
   useEffect(() => {
@@ -124,6 +146,61 @@ export default function FileNewClaim() {
     "Other Accident Damage"
   ];
 
+  const reverseGeocode = async (lat: number, lon: number) => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
+        {
+          headers: {
+            "Accept-Language": "en"
+          }
+        }
+      );
+      const data = await res.json();
+      if (data && data.display_name) {
+        setAddress(data.display_name);
+      } else {
+        setAddress(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+      }
+    } catch (geocodeError) {
+      console.error("Reverse geocoding failed, falling back to coordinates:", geocodeError);
+      setAddress(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+    }
+  };
+
+  const geocodeAddress = async (addrStr: string) => {
+    if (!addrStr || addrStr.trim() === "") return;
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`,
+        {
+          headers: {
+            "Accept-Language": "en"
+          }
+        }
+      );
+      const data = await res.json();
+      if (data && data.length > 0) {
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        setLatitude(lat);
+        setLongitude(lon);
+        
+        // Update map iframe
+        const iframe = document.getElementById("map-iframe") as HTMLIFrameElement;
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage(JSON.stringify({ latitude: lat, longitude: lon }), "*");
+        }
+        const modalIframe = document.getElementById("modal-map-iframe") as HTMLIFrameElement;
+        if (modalIframe && modalIframe.contentWindow) {
+          modalIframe.contentWindow.postMessage(JSON.stringify({ latitude: lat, longitude: lon }), "*");
+        }
+      }
+    } catch (err) {
+      console.error("Geocoding address failed:", err);
+    }
+  };
+
   // Geolocation Handler
   const handleGPSLocation = () => {
     if (!navigator.geolocation) {
@@ -152,28 +229,21 @@ export default function FileNewClaim() {
           position = await getPosition({ enableHighAccuracy: false, timeout: 10000 });
         }
 
-        const { latitude, longitude } = position.coords;
+        const { latitude: lat, longitude: lon } = position.coords;
+        setLatitude(lat);
+        setLongitude(lon);
 
-        try {
-          // Reverse-geocoding using OpenStreetMap Nominatim API
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-            {
-              headers: {
-                "Accept-Language": "en"
-              }
-            }
-          );
-          const data = await res.json();
-          if (data && data.display_name) {
-            setAddress(data.display_name);
-          } else {
-            setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
-          }
-        } catch (geocodeError) {
-          console.error("Reverse geocoding failed, falling back to coordinates:", geocodeError);
-          setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        // Update map iframe marker location
+        const iframe = document.getElementById("map-iframe") as HTMLIFrameElement;
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage(JSON.stringify({ latitude: lat, longitude: lon }), "*");
         }
+        const modalIframe = document.getElementById("modal-map-iframe") as HTMLIFrameElement;
+        if (modalIframe && modalIframe.contentWindow) {
+          modalIframe.contentWindow.postMessage(JSON.stringify({ latitude: lat, longitude: lon }), "*");
+        }
+
+        await reverseGeocode(lat, lon);
       } catch (err: any) {
         console.error("Geolocation failed:", err);
         let errorMsg = "Could not retrieve your location.";
@@ -386,6 +456,7 @@ export default function FileNewClaim() {
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                  onBlur={() => geocodeAddress(address)}
                   className="w-full bg-[#e2e8f0]/80 text-slate-800 rounded-2xl py-3.5 pl-4 pr-12 border border-transparent focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#00ddff] focus:border-transparent font-medium transition-all"
                 />
                 <span className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-black">
@@ -403,34 +474,161 @@ export default function FileNewClaim() {
               {/* Map Iframe */}
               <div className="flex-1 h-[280px] bg-slate-100 rounded-3xl overflow-hidden relative border border-slate-200/80 shadow-sm">
                 <iframe
+                  id="map-iframe"
                   width="100%"
                   height="100%"
                   className="border-none"
-                  src={`https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                  src={`/api/map?lat=${initialCoords.latitude}&lon=${initialCoords.longitude}`}
                   allowFullScreen
-                  loading="lazy"
                 ></iframe>
               </div>
 
-              {/* GPS Button */}
-              <div className="flex flex-col justify-center items-center md:w-[200px]">
+              {/* Action Buttons on the right of the Map */}
+              <div className="flex flex-row md:flex-col gap-4 justify-between items-stretch md:w-[200px]">
+                {/* Use GPS Button */}
                 <button
                   type="button"
                   onClick={handleGPSLocation}
                   disabled={isLocating}
-                  className="bg-[#00ddff] hover:bg-[#00c8e6] disabled:bg-[#a6ecf7] text-white font-bold text-[14px] leading-tight px-4 rounded-3xl shadow-sm transition-all duration-150 active:scale-[0.97] flex flex-col items-center justify-center gap-3 cursor-pointer border-none text-center h-[120px] w-full"
+                  className="flex-1 bg-[#0284c7] hover:bg-[#0275a1] disabled:bg-[#0284c7]/50 text-white font-bold text-[14px] leading-tight px-4 rounded-[24px] shadow-[0_4px_12px_rgba(2,132,199,0.25)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 flex flex-col items-center justify-center gap-3 border-none cursor-pointer text-center h-[130px]"
                 >
-                  <svg className={`w-8 h-8 ${isLocating ? "animate-spin" : ""}`} fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="9" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v3m0 14v3M2 12h3m14 0h3M12 9a3 3 0 100 6 3 3 0 000-6z" />
+                  <svg className={`w-8 h-8 text-white ${isLocating ? "animate-pulse" : ""}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
                   </svg>
                   <span className="font-semibold block">
-                    Use my GPS<br />location
+                    {isLocating ? "Locating..." : "Use GPS"}
+                  </span>
+                </button>
+
+                {/* Select on Map Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setModalInitialCoords({ latitude, longitude });
+                    setShowMapModal(true);
+                  }}
+                  className="flex-1 bg-[#0284c7] hover:bg-[#0275a1] text-white font-bold text-[14px] leading-tight px-4 rounded-[24px] shadow-[0_4px_12px_rgba(2,132,199,0.25)] hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 flex flex-col items-center justify-center gap-3 border-none cursor-pointer text-center h-[130px]"
+                >
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  <span className="font-semibold block">
+                    Select on Map
                   </span>
                 </button>
               </div>
 
             </div>
+
+            {/* Full-screen web Map Modal */}
+            {showMapModal && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
+                <div className="bg-white rounded-[32px] w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col h-[85vh] border border-slate-100">
+                  {/* Header */}
+                  <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-white">
+                    <h3 className="text-lg font-bold text-[#0d2a3a]">Select Location on Map</h3>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalInitialCoords(null);
+                        setShowMapModal(false);
+                      }}
+                      className="text-slate-400 hover:text-slate-700 text-xl font-bold cursor-pointer border-none bg-transparent transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  
+                  {/* Map Frame Container (with floating overlays) */}
+                  <div className="flex-1 bg-slate-50 relative overflow-hidden">
+                    <iframe
+                      id="modal-map-iframe"
+                      width="100%"
+                      height="100%"
+                      className="border-none"
+                      src={`/api/map?lat=${modalInitialCoords?.latitude ?? latitude}&lon=${modalInitialCoords?.longitude ?? longitude}`}
+                      allowFullScreen
+                    ></iframe>
+
+                    {/* Floating Geocoding Search Panel */}
+                    <div className="absolute top-4 left-4 right-4 z-10 max-w-md bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-full pl-5 pr-1.5 py-1.5 shadow-[0_10px_25px_-5px_rgba(15,23,42,0.15)] flex items-center gap-2 transition-all">
+                      <span className="text-slate-400 flex items-center justify-center pointer-events-none">
+                        <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </span>
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            geocodeAddress(address);
+                          }
+                        }}
+                        placeholder="Search address or landmark..."
+                        className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none font-medium"
+                      />
+                      {address && (
+                        <button
+                          type="button"
+                          onClick={() => setAddress("")}
+                          className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer p-1"
+                        >
+                          ✕
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => geocodeAddress(address)}
+                        className="bg-[#0284c7] hover:bg-[#0275a1] active:scale-95 text-white p-2.5 rounded-full transition-all duration-150 border-none cursor-pointer flex items-center justify-center shadow-md shadow-[#0284c7]/20"
+                        title="Search"
+                      >
+                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Floating GPS Button */}
+                    <button
+                      type="button"
+                      onClick={handleGPSLocation}
+                      disabled={isLocating}
+                      className="absolute top-4 right-4 z-10 w-12 h-12 bg-white/90 backdrop-blur-md hover:bg-white text-slate-700 hover:text-sky-600 rounded-2xl shadow-xl flex items-center justify-center border border-slate-200/60 cursor-pointer transition-all duration-150 active:scale-95 disabled:bg-slate-100"
+                      title="Locate Me"
+                    >
+                      <svg className={`w-6 h-6 ${isLocating ? "animate-pulse text-sky-500" : "text-slate-600"}`} fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <line x1="2" x2="5" y1="12" y2="12" />
+                        <line x1="19" x2="22" y1="12" y2="12" />
+                        <line x1="12" x2="12" y1="2" y2="5" />
+                        <line x1="12" x2="12" y1="19" y2="22" />
+                        <circle cx="12" cy="12" r="7" />
+                        <circle cx="12" cy="12" r="2" fill="currentColor" />
+                      </svg>
+                    </button>
+
+
+                  </div>
+
+                  {/* Footer */}
+                  <div className="px-6 py-4 border-t border-slate-100 flex justify-end items-center bg-white">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setModalInitialCoords(null);
+                        setShowMapModal(false);
+                      }}
+                      className="bg-[#0d2a3a] hover:bg-[#0284c7] text-white font-bold text-sm px-8 py-3.5 rounded-full shadow-[0_4px_12px_rgba(13,42,58,0.25)] hover:shadow-[0_4px_16px_rgba(2,132,199,0.3)] transition-all duration-200 cursor-pointer border-none hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      Confirm Location
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Action Button Row */}
