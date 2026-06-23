@@ -227,22 +227,38 @@ export default function MyClaims() {
       {/* Main Table Content */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-6 md:px-16 py-10">
         
-        {/* Search Bar matching screenshot */}
+        {/* Premium Search Bar */}
         <div className="flex justify-start mb-8 select-none">
-          <div className="relative w-full max-w-[280px]">
-            <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <circle cx="11" cy="11" r="8" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35" />
+          <div className="relative w-full max-w-[420px] bg-slate-50 hover:bg-white focus-within:bg-white border border-slate-200 rounded-full pl-5 pr-2.5 py-2 flex items-center gap-3 transition-all duration-200 shadow-sm focus-within:shadow-md focus-within:border-[#0284c7] focus-within:ring-4 focus-within:ring-[#0284c7]/10">
+            <span className="text-slate-400 flex items-center justify-center">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </span>
             <input
               type="text"
-              placeholder=""
+              placeholder="Search claims by ID, vehicle, type, or status..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#f1f5f9] text-slate-800 rounded-full py-2.5 pl-12 pr-4 text-base focus:outline-none focus:ring-2 focus:ring-[#00ddff] transition-all border border-slate-300 font-medium"
+              className="flex-1 bg-transparent text-slate-800 text-[15px] placeholder-slate-400 focus:outline-none font-medium"
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer p-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+            <button
+              type="button"
+              className="bg-[#0284c7] hover:bg-[#0275a1] active:scale-95 text-white py-2 px-5 rounded-full text-xs font-bold transition-all duration-150 border-none cursor-pointer flex items-center justify-center shadow-md shadow-[#0284c7]/20"
+            >
+              Search
+            </button>
           </div>
         </div>
 
@@ -277,12 +293,12 @@ export default function MyClaims() {
                 ) : (
                   filteredClaims.map((claim) => (
                     <tr key={claim.claimNumber} className="hover:bg-slate-50/40 transition-colors">
-                      <td className="px-6 py-4.5 text-sm font-extrabold text-slate-800 whitespace-nowrap">{claim.claimNumber}</td>
-                      <td className="px-6 py-4.5 text-sm font-extrabold text-slate-800 whitespace-nowrap">{formatNumberPlate(claim.vehiclePlate)}</td>
-                      <td className="px-6 py-4.5 text-sm font-extrabold text-slate-800 whitespace-nowrap">{claim.incidentDate}</td>
-                      <td className="px-6 py-4.5 text-sm font-extrabold text-slate-800 whitespace-nowrap">{claim.damageType}</td>
-                      <td className="px-6 py-4.5 text-sm font-extrabold text-slate-800 whitespace-nowrap">{claim.amount}</td>
-                      <td className="px-6 py-4.5 text-sm font-extrabold text-slate-800 whitespace-nowrap">{getStatusBadge(claim.status)}</td>
+                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.claimNumber}</td>
+                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{formatNumberPlate(claim.vehiclePlate)}</td>
+                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.incidentDate}</td>
+                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.damageType}</td>
+                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.amount}</td>
+                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{getStatusBadge(claim.status)}</td>
                       <td className="px-6 py-4.5 text-sm whitespace-nowrap">
                         <button
                           onClick={() => setSelectedClaim(claim)}
