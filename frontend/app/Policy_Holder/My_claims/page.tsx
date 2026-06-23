@@ -288,9 +288,9 @@ export default function MyClaims() {
                   <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Vehicle</th>
                   <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Date</th>
                   <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Type</th>
-                  <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Amount</th>
-                  <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Status</th>
-                  <th className="px-6 py-4.5 text-left text-base font-extrabold text-slate-800 whitespace-nowrap">Action</th>
+                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Amount</th>
+                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
@@ -313,9 +313,9 @@ export default function MyClaims() {
                       <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{formatNumberPlate(claim.vehiclePlate)}</td>
                       <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.incidentDate}</td>
                       <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.damageType}</td>
-                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.amount}</td>
-                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{getStatusBadge(claim.status)}</td>
-                      <td className="px-6 py-4.5 text-sm whitespace-nowrap">
+                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium text-center whitespace-nowrap">{claim.amount}</td>
+                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium text-center whitespace-nowrap">{getStatusBadge(claim.status)}</td>
+                      <td className="px-6 py-4.5 text-sm text-center whitespace-nowrap">
                         <button
                           onClick={() => setSelectedClaim(claim)}
                           className="border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold py-1 px-4.5 rounded-lg transition-all shadow-sm cursor-pointer"
