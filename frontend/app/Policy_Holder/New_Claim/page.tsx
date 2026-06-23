@@ -450,21 +450,40 @@ export default function FileNewClaim() {
               <label className="text-slate-800 text-sm font-semibold mb-1">
                 Enter Address or Land Mark <span className="text-red-500 ml-0.5">*</span>
               </label>
-              <div className="relative">
+              <div className="relative w-full bg-[#e2e8f0]/80 hover:bg-[#e2e8f0]/95 focus-within:bg-white border border-transparent focus-within:border-[#0284c7] focus-within:ring-4 focus-within:ring-[#0284c7]/10 rounded-2xl pl-5 pr-2.5 py-2 flex items-center gap-3 transition-all duration-200 shadow-sm focus-within:shadow-md">
                 <input
                   type="text"
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      geocodeAddress(address);
+                    }
+                  }}
                   onBlur={() => geocodeAddress(address)}
-                  className="w-full bg-[#e2e8f0]/80 text-slate-800 rounded-2xl py-3.5 pl-4 pr-12 border border-transparent focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#00ddff] focus:border-transparent font-medium transition-all"
+                  placeholder="Enter address or landmark..."
+                  className="flex-1 bg-transparent text-slate-800 text-[15px] placeholder-slate-400 focus:outline-none font-medium border-none"
                 />
-                <span className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-black">
-                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                    <path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.155-1.155C14.702 20.018 16 18.27 16 16c0-2.828-2.172-5-5-5S6 13.172 6 16c0 2.27 1.298 4.018 2.484 5.196.386.383.77.747 1.155 1.055l.07.04zM11 16a2 2 0 114 0 2 2 0 01-4 0z" clipRule="evenodd" />
-                    <path fillRule="evenodd" d="M12 2C8.134 2 5 5.134 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.866-3.134-7-7-7zm0 9.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" clipRule="evenodd" />
-                  </svg>
-                </span>
+                {address && (
+                  <button
+                    type="button"
+                    onClick={() => setAddress("")}
+                    className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer p-1 flex items-center justify-center"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => geocodeAddress(address)}
+                  className="bg-[#0284c7] hover:bg-[#0275a1] active:scale-95 text-white py-2 px-5 rounded-full text-xs font-bold transition-all duration-150 border-none cursor-pointer flex items-center justify-center shadow-md shadow-[#0284c7]/20 whitespace-nowrap"
+                >
+                  Search
+                </button>
               </div>
             </div>
 

@@ -213,7 +213,8 @@ export default function MyClaims() {
       claim.claimNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       claim.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
       claim.damageType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      claim.status.toLowerCase().includes(searchQuery.toLowerCase())
+      claim.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (claim.location && claim.location.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (

@@ -172,7 +172,10 @@ const getHtmlContent = (lat: number, lon: number) => `
 
     var map = L.map('map', {
       zoomControl: false,
-      maxZoom: 21
+      maxZoom: 21,
+      minZoom: 7,
+      maxBounds: [[5.5, 78.5], [10.5, 82.5]],
+      maxBoundsViscosity: 1.0
     }).setView([startLat, startLon], 15);
 
     var layers = {
