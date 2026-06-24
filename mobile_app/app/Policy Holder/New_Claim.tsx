@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -23,6 +23,8 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import PolicyHolderNavbar from "../Components/policy holder/page";
 import { API_BASE_URL } from "../config";
+import MapDisplay from "../Components/policy holder/MapDisplay";
+import MapSelectorModal from "../Components/policy holder/MapSelectorModal";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -53,6 +55,15 @@ export default function FileNewClaim() {
   const [damageType, setDamageType] = useState("");
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState("Colombo, Sri Lanka");
+  const [latitude, setLatitude] = useState(6.9271);
+  const [longitude, setLongitude] = useState(79.8612);
+
+  // Search suggestion state variables
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResultsDropdown, setShowResultsDropdown] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isUserTyping, setIsUserTyping] = useState(false);
+  const isRestored = useRef(false);
 
   // Loading States
   const [isVehiclesLoading, setIsVehiclesLoading] = useState(true);
@@ -62,6 +73,7 @@ export default function FileNewClaim() {
   // Success Modal States
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [generatedClaimNumber, setGeneratedClaimNumber] = useState("");
+  const [showMapModal, setShowMapModal] = useState(false);
 
   // Photo uploads
   const [accidentFront, setAccidentFront] = useState<PhotoState | null>(null);
@@ -83,6 +95,7 @@ export default function FileNewClaim() {
 
   useEffect(() => {
     (async () => {
+      // 1. Load user context
       const userStr = await AsyncStorage.getItem("logged_in_user");
       if (userStr) {
         try {
@@ -94,6 +107,26 @@ export default function FileNewClaim() {
         } catch (e) {
           console.error(e);
         }
+      }
+
+      // 2. Load draft details
+      try {
+        const draftStr = await AsyncStorage.getItem("current_claim_draft");
+        if (draftStr) {
+          const draft = JSON.parse(draftStr);
+          if (draft.selectedVehicle) setSelectedVehicle(draft.selectedVehicle);
+          if (draft.incidentDate) setIncidentDate(draft.incidentDate);
+          if (draft.incidentTime) setIncidentTime(draft.incidentTime);
+          if (draft.damageType) setDamageType(draft.damageType);
+          if (draft.description) setDescription(draft.description);
+          if (draft.address) setAddress(draft.address);
+          if (draft.latitude) setLatitude(draft.latitude);
+          if (draft.longitude) setLongitude(draft.longitude);
+        }
+      } catch (err) {
+        console.error("Error restoring draft", err);
+      } finally {
+        isRestored.current = true;
       }
     })();
   }, []);
@@ -123,26 +156,11 @@ export default function FileNewClaim() {
     }
   };
 
-  const handleGPSLocation = async () => {
-    setIsLocating(true);
+  const reverseGeocode = async (lat: number, lon: number) => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Denied", "Please enable location permissions in your app settings to retrieve your coordinates.");
-        setIsLocating(false);
-        return;
-      }
-
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-
-      const { latitude, longitude } = location.coords;
-      
-      // Perform reverse geocoding to get address
       const addressArray = await Location.reverseGeocodeAsync({
-        latitude,
-        longitude
+        latitude: lat,
+        longitude: lon
       });
 
       if (addressArray && addressArray.length > 0) {
@@ -160,10 +178,135 @@ export default function FileNewClaim() {
 
         // Clean up trailing comma/space
         fullAddress = fullAddress.trim().replace(/,\s*$/, "");
-        setAddress(fullAddress || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        setAddress(fullAddress || `${lat.toFixed(6)}, ${lon.toFixed(6)}`);
       } else {
-        setAddress(`${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+        setAddress(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
       }
+    } catch (e) {
+      console.warn("Reverse geocoding error:", e);
+      setAddress(`${lat.toFixed(6)}, ${lon.toFixed(6)}`);
+    }
+  };
+
+  // Save draft whenever form fields change
+  useEffect(() => {
+    if (!isRestored.current || !userNic) return;
+    (async () => {
+      const draft = {
+        selectedVehicle,
+        incidentDate,
+        incidentTime,
+        damageType,
+        description,
+        address,
+        latitude,
+        longitude
+      };
+      await AsyncStorage.setItem("current_claim_draft", JSON.stringify(draft));
+    })();
+  }, [selectedVehicle, incidentDate, incidentTime, damageType, description, address, latitude, longitude, userNic]);
+
+  // Autocomplete suggestions debouncer for main page
+  useEffect(() => {
+    if (!isUserTyping || !address || address.trim() === "" || address === "Colombo, Sri Lanka" || address.startsWith("Loading")) {
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=15&countrycodes=lk&accept-language=en`, {
+          headers: {
+            "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
+          }
+        });
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setSearchResults(data);
+          setShowResultsDropdown(true);
+        } else {
+          setSearchResults([]);
+          setShowResultsDropdown(false);
+        }
+      } catch (err) {
+        console.warn("Autocomplete error:", err);
+      }
+    }, 400); // 400ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [address, isUserTyping]);
+
+  const handleSelectSuggestion = (result: any) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    setIsUserTyping(false);
+    setLatitude(lat);
+    setLongitude(lon);
+    setAddress(result.display_name);
+    setShowResultsDropdown(false);
+    setSearchResults([]);
+  };
+
+  const geocodeAddress = async (addrStr: string) => {
+    if (!addrStr || addrStr.trim() === "") return;
+    setIsUserTyping(false);
+    setShowResultsDropdown(false);
+    setIsSearching(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=15&countrycodes=lk&accept-language=en`, {
+        headers: {
+          "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
+        }
+      });
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setSearchResults(data);
+        setShowResultsDropdown(true);
+        
+        // Auto-select the first result
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        setLatitude(lat);
+        setLongitude(lon);
+        setAddress(data[0].display_name);
+        setShowResultsDropdown(false);
+      } else {
+        setSearchResults([]);
+        setShowResultsDropdown(false);
+        Alert.alert("Location Not Found", "Could not find coordinates for this address.");
+      }
+    } catch (e) {
+      console.warn("Geocoding error:", e);
+      Alert.alert("Search Error", "An error occurred while searching for the location.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleLocationSelect = async (lat: number, lon: number) => {
+    setLatitude(lat);
+    setLongitude(lon);
+    await reverseGeocode(lat, lon);
+  };
+
+  const handleGPSLocation = async () => {
+    setIsLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Denied", "Please enable location permissions in your app settings to retrieve your coordinates.");
+        setIsLocating(false);
+        return;
+      }
+
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+
+      const { latitude: lat, longitude: lon } = location.coords;
+      setLatitude(lat);
+      setLongitude(lon);
+      
+      await reverseGeocode(lat, lon);
     } catch (e) {
       console.error("GPS retrieval error:", e);
       Alert.alert("Error", "Could not retrieve your current location. Please verify that your device GPS is turned on and try again.");
@@ -259,6 +402,9 @@ export default function FileNewClaim() {
         status: "Submitted",
         createdAt: new Date().toISOString()
       }));
+
+      // Clear the current claim draft
+      await AsyncStorage.removeItem("current_claim_draft");
 
       setGeneratedClaimNumber(data.claimNumber);
       setShowSuccessModal(true);
@@ -422,33 +568,124 @@ export default function FileNewClaim() {
             </View>
 
             {/* Address */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, { zIndex: 50 }]}>
               <Text style={styles.fieldLabel}>Enter Address or Land Mark *</Text>
-              <TextInput
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Where did the incident occur?"
-                placeholderTextColor="#94a3b8"
-                style={styles.textInput}
+              
+              <View style={styles.searchBarContainer}>
+                <View style={styles.searchInputWrapper}>
+                  <Ionicons name="search" size={18} color="#94a3b8" style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    value={address}
+                    onChangeText={(text) => {
+                      setAddress(text);
+                      setIsUserTyping(true);
+                      if (!text) {
+                        setSearchResults([]);
+                        setShowResultsDropdown(false);
+                      }
+                    }}
+                    onSubmitEditing={() => geocodeAddress(address)}
+                    placeholder="Where did the incident occur?"
+                    placeholderTextColor="#94a3b8"
+                    returnKeyType="search"
+                  />
+                  {address ? (
+                    <TouchableOpacity onPress={() => {
+                      setAddress("");
+                      setSearchResults([]);
+                      setShowResultsDropdown(false);
+                      setIsUserTyping(false);
+                    }} style={styles.clearSearchBtn}>
+                      <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+                <TouchableOpacity style={styles.searchBtn} onPress={() => geocodeAddress(address)} disabled={isSearching}>
+                  {isSearching ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Ionicons name="search" size={18} color="#ffffff" />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Suggestions Dropdown */}
+              {showResultsDropdown && searchResults.length > 0 && (
+                <View style={styles.suggestionsWrapper}>
+                  <ScrollView style={styles.suggestionsContainer} keyboardShouldPersistTaps="handled">
+                    {searchResults.map((result, idx) => {
+                      const parts = result.display_name.split(",");
+                      const mainTitle = parts[0]?.trim() || "";
+                      const subTitle = parts.slice(1).join(",").trim() || "";
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          style={styles.suggestionItem}
+                          onPress={() => handleSelectSuggestion(result)}
+                        >
+                          <View style={styles.suggestionIconWrapper}>
+                            <Ionicons name="location" size={16} color="#64748b" />
+                          </View>
+                          <View style={{ flex: 1, flexDirection: "column" }}>
+                            <Text numberOfLines={1} style={styles.suggestionTitle}>
+                              {mainTitle}
+                            </Text>
+                            {subTitle ? (
+                              <Text numberOfLines={1} style={styles.suggestionSubtitle}>
+                                {subTitle}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
+              <MapDisplay
+                latitude={latitude}
+                longitude={longitude}
+                onLocationSelect={handleLocationSelect}
               />
             </View>
 
-            {/* GPS Retrieval Simulator button */}
-            <TouchableOpacity
-              style={styles.gpsBtn}
-              onPress={handleGPSLocation}
-              disabled={isLocating}
-              activeOpacity={0.8}
-            >
-              {isLocating ? (
-                <ActivityIndicator size="small" color="#0284c7" />
-              ) : (
-                <Ionicons name="location" size={18} color="#0284c7" />
-              )}
-              <Text style={styles.gpsBtnText}>
-                {isLocating ? "Retrieving Coordinates..." : "Use My Current GPS Location"}
-              </Text>
-            </TouchableOpacity>
+            {/* GPS and Map select buttons */}
+            <View style={styles.locationButtonsRow}>
+              <TouchableOpacity
+                style={[styles.locationBtnGps, { flex: 1 }]}
+                onPress={handleGPSLocation}
+                disabled={isLocating}
+                activeOpacity={0.8}
+              >
+                {isLocating ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <Ionicons name="location" size={16} color="#ffffff" />
+                )}
+                <Text style={styles.locationBtnTextGps}>
+                  {isLocating ? "Locating..." : "Use GPS"}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.locationBtnMap, { flex: 1 }]}
+                onPress={() => setShowMapModal(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="map" size={16} color="#ffffff" />
+                <Text style={styles.locationBtnTextMap}>Select on Map</Text>
+              </TouchableOpacity>
+            </View>
+
+            <MapSelectorModal
+              visible={showMapModal}
+              onClose={() => setShowMapModal(false)}
+              latitude={latitude}
+              longitude={longitude}
+              onLocationSelect={handleLocationSelect}
+            />
 
             {/* Action Row */}
             <View style={styles.actionsRow}>
@@ -512,7 +749,7 @@ export default function FileNewClaim() {
         <View style={styles.modalOverlay}>
           <View style={styles.successCard}>
             <View style={styles.checkCircle}>
-              <Ionicons name="checkmark" size={42} color="#4ade80" />
+              <Ionicons name="checkmark" size={42} color="#ffffff" />
             </View>
 
             <Text style={styles.successTitle}>Thank You.</Text>
@@ -599,20 +836,54 @@ const styles = StyleSheet.create({
   vehiclePillText: { fontSize: 12.5, color: "#475569", fontWeight: "700" },
   vehiclePillTextActive: { color: "#2563eb" },
 
-  gpsBtn: {
+  locationButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 4,
+    marginBottom: 24,
+  },
+  locationBtnGps: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: "#0284c7",
     borderWidth: 1.5,
-    borderColor: "#bae6fd",
-    backgroundColor: "#f0f9ff",
-    borderRadius: 16,
+    borderColor: "#0284c7",
+    borderRadius: 99,
     paddingVertical: 12,
-    marginTop: 4,
-    marginBottom: 24,
     gap: 8,
+    shadowColor: "rgba(2, 132, 199, 0.2)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  gpsBtnText: { fontSize: 13, color: "#0284c7", fontWeight: "800" },
+  locationBtnTextGps: {
+    fontSize: 13,
+    color: "#ffffff",
+    fontWeight: "800",
+  },
+  locationBtnMap: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0284c7",
+    borderWidth: 1.5,
+    borderColor: "#0284c7",
+    borderRadius: 99,
+    paddingVertical: 12,
+    gap: 8,
+    shadowColor: "rgba(2, 132, 199, 0.2)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  locationBtnTextMap: {
+    fontSize: 13,
+    color: "#ffffff",
+    fontWeight: "800",
+  },
 
   /* Photos layout */
   photosGrid: {
@@ -696,70 +967,164 @@ const styles = StyleSheet.create({
 
   /* MODAL SUCCESS STYLE */
   modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(2, 11, 13, 0.95)",
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.7)",
     alignItems: "center",
     justifyContent: "center",
-    zIndex: 9999,
+    padding: 20,
   },
   successCard: {
-    width: "85%",
-    maxWidth: 340,
-    backgroundColor: "rgba(10, 34, 40, 0.95)",
-    borderRadius: 32,
-    borderWidth: 1.5,
-    borderColor: "rgba(255, 255, 255, 0.15)",
+    backgroundColor: "#e2e8f0",
+    borderWidth: 1,
+    borderColor: "#cbd5e1",
+    borderRadius: 36,
+    width: "100%",
+    maxWidth: 420,
     padding: 24,
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 6,
   },
   checkCircle: {
-    width: 76,
-    height: 76,
-    borderRadius: 38,
-    backgroundColor: "rgba(74, 222, 128, 0.12)",
-    borderWidth: 1,
-    borderColor: "rgba(74, 222, 128, 0.3)",
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "#00b050",
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 20,
-    shadowColor: "#4ade80",
-    shadowOffset: { width: 0, height: 0 },
+    shadowColor: "rgba(0, 176, 80, 0.4)",
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  successTitle: { fontSize: 26, fontWeight: "900", color: "#ffffff", marginTop: 18 },
-  successSubtitle: { fontSize: 18, fontWeight: "800", color: "#ffffff", marginTop: 4 },
+  successTitle: { fontSize: 22, fontWeight: "900", color: "#0d2a3a", marginTop: 18 },
+  successSubtitle: { fontSize: 18, fontWeight: "800", color: "#0d2a3a", marginTop: 4 },
   refPill: {
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 16,
-    width: "100%",
-    paddingVertical: 12,
-    alignItems: "center",
-    marginBottom: 20,
+    backgroundColor: "#000000",
+    borderRadius: 99,
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    marginTop: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  refText: { color: "#ff9800", fontSize: 18, fontWeight: "bold", letterSpacing: 0.5 },
+  refText: { color: "#ffffff", fontSize: 14, fontWeight: "800", letterSpacing: 0.5 },
   successDesc: {
-    fontSize: 13.5,
-    color: "rgba(255, 255, 255, 0.75)",
+    fontSize: 12.5,
+    color: "#475569",
+    fontWeight: "700",
     textAlign: "center",
     lineHeight: 18,
-    marginBottom: 20,
+    marginTop: 20,
+    paddingHorizontal: 10,
   },
   returnBtn: {
-    backgroundColor: "#ff9800",
-    borderRadius: 20,
-    paddingVertical: 10,
-    paddingHorizontal: 32,
-    shadowColor: "#ff9800",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0d2a3a",
+    borderRadius: 99,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    marginTop: 24,
+    width: "100%",
+  },
+  returnBtnText: { color: "#ffffff", fontSize: 13, fontWeight: "800" },
+
+  searchBarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 10,
+    gap: 8,
+    height: 48,
+    marginBottom: 10,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: "100%",
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13.5,
+    color: "#0f172a",
+    fontWeight: "600",
+    height: "100%",
+    paddingVertical: 0,
+  },
+  clearSearchBtn: {
+    padding: 4,
+  },
+  searchBtn: {
+    backgroundColor: "#0284c7",
+    borderRadius: 12,
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "rgba(2, 132, 199, 0.3)",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.3,
     shadowRadius: 6,
     elevation: 3,
   },
-  returnBtnText: { color: "#ffffff", fontSize: 14, fontWeight: "bold" },
+  suggestionsWrapper: {
+    position: "absolute",
+    top: 76,
+    left: 0,
+    right: 0,
+    zIndex: 999,
+    elevation: 10,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#cbd5e1",
+    maxHeight: 200,
+    overflow: "hidden",
+  },
+  suggestionsContainer: {
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  suggestionIconWrapper: {
+    backgroundColor: "#f1f5f9",
+    borderRadius: 99,
+    padding: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestionTitle: {
+    fontSize: 13,
+    color: "#0f172a",
+    fontWeight: "700",
+  },
+  suggestionSubtitle: {
+    fontSize: 10,
+    color: "#64748b",
+    fontWeight: "400",
+    marginTop: 2,
+  },
 });

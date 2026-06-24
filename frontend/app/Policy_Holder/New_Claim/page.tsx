@@ -180,7 +180,8 @@ export default function FileNewClaim() {
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`,
         {
           headers: {
-            "Accept-Language": "en"
+            "Accept-Language": "en",
+            "User-Agent": "SanasaInsuranceWebApp/1.0 (contact: support@sanasainsurance.lk)"
           }
         }
       );
@@ -203,7 +204,8 @@ export default function FileNewClaim() {
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=15&countrycodes=lk`,
         {
           headers: {
-            "Accept-Language": "en"
+            "Accept-Language": "en",
+            "User-Agent": "SanasaInsuranceWebApp/1.0 (contact: support@sanasainsurance.lk)"
           }
         }
       );
@@ -229,7 +231,8 @@ export default function FileNewClaim() {
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=15&countrycodes=lk`,
         {
           headers: {
-            "Accept-Language": "en"
+            "Accept-Language": "en",
+            "User-Agent": "SanasaInsuranceWebApp/1.0 (contact: support@sanasainsurance.lk)"
           }
         }
       );

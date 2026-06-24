@@ -308,7 +308,11 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
 
     const delayDebounceFn = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=15&countrycodes=lk&accept-language=en`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=15&countrycodes=lk&accept-language=en`, {
+          headers: {
+            "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
+          }
+        });
         const data = await res.json();
         if (data && data.length > 0) {
           setSearchResults(data);
@@ -355,7 +359,11 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
     setShowResultsDropdown(false);
     try {
       if (Platform.OS === "web") {
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`, {
+          headers: {
+            "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
+          }
+        });
         const data = await res.json();
         if (data && data.display_name) {
           setModalAddress(data.display_name);
@@ -454,7 +462,11 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
     setShowResultsDropdown(false);
     setIsSearching(true);
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=15&countrycodes=lk&accept-language=en`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=15&countrycodes=lk&accept-language=en`, {
+        headers: {
+          "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
+        }
+      });
       const data = await res.json();
       if (data && data.length > 0) {
         setSearchResults(data);
