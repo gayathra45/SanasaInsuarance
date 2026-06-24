@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { StyleSheet, View, Text, Modal, TouchableOpacity, Platform, ActivityIndicator, TextInput } from "react-native";
+import { StyleSheet, View, Text, Modal, TouchableOpacity, Platform, ActivityIndicator, TextInput, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 interface MapSelectorModalProps {
@@ -301,15 +301,7 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
 
     const delayDebounceFn = setTimeout(async () => {
       try {
-        const biasLat = tempCoords.latitude;
-        const biasLon = tempCoords.longitude;
-        const left = biasLon - 0.5;
-        const right = biasLon + 0.5;
-        const top = biasLat + 0.5;
-        const bottom = biasLat - 0.5;
-        const viewboxParam = `&viewbox=${left},${top},${right},${bottom}`;
-
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=5&countrycodes=lk&accept-language=en${viewboxParam}`);
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=15&countrycodes=lk&accept-language=en`);
         const data = await res.json();
         if (data && data.length > 0) {
           setSearchResults(data);
@@ -408,15 +400,7 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
     setShowResultsDropdown(false);
     setIsSearching(true);
     try {
-      const biasLat = tempCoords.latitude;
-      const biasLon = tempCoords.longitude;
-      const left = biasLon - 1.0;
-      const right = biasLon + 1.0;
-      const top = biasLat + 1.0;
-      const bottom = biasLat - 1.0;
-      const viewboxParam = `&viewbox=${left},${top},${right},${bottom}`;
-
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=5&countrycodes=lk&accept-language=en${viewboxParam}`);
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=15&countrycodes=lk&accept-language=en`);
       const data = await res.json();
       if (data && data.length > 0) {
         setSearchResults(data);
@@ -505,7 +489,7 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
 
           {/* Suggestions Dropdown */}
           {showResultsDropdown && searchResults.length > 0 && (
-            <View style={styles.suggestionsContainer}>
+            <ScrollView style={styles.suggestionsContainer} keyboardShouldPersistTaps="handled">
               {searchResults.map((result, idx) => {
                 const parts = result.display_name.split(",");
                 const mainTitle = parts[0]?.trim() || "";
@@ -545,7 +529,7 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
                   </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           )}
 
           <iframe

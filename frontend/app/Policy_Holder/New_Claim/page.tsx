@@ -174,15 +174,8 @@ export default function FileNewClaim() {
   const geocodeAddressForSuggestions = async (addrStr: string) => {
     if (!addrStr || addrStr.trim() === "") return;
     try {
-      // Calculate viewbox bias based on current latitude/longitude
-      const left = longitude - 0.5;
-      const right = longitude + 0.5;
-      const top = latitude + 0.5;
-      const bottom = latitude - 0.5;
-      const viewboxParam = `&viewbox=${left},${top},${right},${bottom}`;
-
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=5&countrycodes=lk${viewboxParam}`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=15&countrycodes=lk`,
         {
           headers: {
             "Accept-Language": "en"
@@ -207,15 +200,8 @@ export default function FileNewClaim() {
     setIsUserTyping(false);
     setShowResultsDropdown(false);
     try {
-      // Biased search
-      const left = longitude - 1.0;
-      const right = longitude + 1.0;
-      const top = latitude + 1.0;
-      const bottom = latitude - 1.0;
-      const viewboxParam = `&viewbox=${left},${top},${right},${bottom}`;
-
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1&countrycodes=lk${viewboxParam}`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=15&countrycodes=lk`,
         {
           headers: {
             "Accept-Language": "en"
@@ -224,6 +210,8 @@ export default function FileNewClaim() {
       );
       const data = await res.json();
       if (data && data.length > 0) {
+        setSearchResults(data);
+        setShowResultsDropdown(true);
         const lat = parseFloat(data[0].lat);
         const lon = parseFloat(data[0].lon);
         setLatitude(lat);
