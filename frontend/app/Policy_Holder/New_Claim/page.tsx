@@ -61,6 +61,9 @@ export default function FileNewClaim() {
   const [initialCoords] = useState({ latitude: 6.9271, longitude: 79.8612 });
   const [modalInitialCoords, setModalInitialCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResultsDropdown, setShowResultsDropdown] = useState(false);
+  const [isUserTyping, setIsUserTyping] = useState(false);
 
   // Message listener for location select from map iframe
   useEffect(() => {
@@ -168,11 +171,51 @@ export default function FileNewClaim() {
     }
   };
 
-  const geocodeAddress = async (addrStr: string) => {
+  const geocodeAddressForSuggestions = async (addrStr: string) => {
     if (!addrStr || addrStr.trim() === "") return;
     try {
+      // Calculate viewbox bias based on current latitude/longitude
+      const left = longitude - 0.5;
+      const right = longitude + 0.5;
+      const top = latitude + 0.5;
+      const bottom = latitude - 0.5;
+      const viewboxParam = `&viewbox=${left},${top},${right},${bottom}`;
+
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1`,
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=5&countrycodes=lk${viewboxParam}`,
+        {
+          headers: {
+            "Accept-Language": "en"
+          }
+        }
+      );
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setSearchResults(data);
+        setShowResultsDropdown(true);
+      } else {
+        setSearchResults([]);
+        setShowResultsDropdown(false);
+      }
+    } catch (err) {
+      console.error("Suggestions geocoding failed:", err);
+    }
+  };
+
+  const geocodeAddress = async (addrStr: string) => {
+    if (!addrStr || addrStr.trim() === "") return;
+    setIsUserTyping(false);
+    setShowResultsDropdown(false);
+    try {
+      // Biased search
+      const left = longitude - 1.0;
+      const right = longitude + 1.0;
+      const top = latitude + 1.0;
+      const bottom = latitude - 1.0;
+      const viewboxParam = `&viewbox=${left},${top},${right},${bottom}`;
+
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=1&countrycodes=lk${viewboxParam}`,
         {
           headers: {
             "Accept-Language": "en"
@@ -185,6 +228,7 @@ export default function FileNewClaim() {
         const lon = parseFloat(data[0].lon);
         setLatitude(lat);
         setLongitude(lon);
+        setAddress(data[0].display_name);
         
         // Update map iframe
         const iframe = document.getElementById("map-iframe") as HTMLIFrameElement;
@@ -200,6 +244,19 @@ export default function FileNewClaim() {
       console.error("Geocoding address failed:", err);
     }
   };
+
+  // Autocomplete suggestions debouncer
+  useEffect(() => {
+    if (!isUserTyping || !address || address.trim() === "" || address === "Colombo, Sri Lanka") {
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(() => {
+      geocodeAddressForSuggestions(address);
+    }, 450); // 450ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [address, isUserTyping]);
 
   // Geolocation Handler
   const handleGPSLocation = () => {
@@ -446,7 +503,7 @@ export default function FileNewClaim() {
               Incident Location <span className="font-semibold text-2xl text-[#0d2a3a]">&gt;</span>
             </h2>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 relative">
               <label className="text-slate-800 text-sm font-semibold mb-1">
                 Enter Address or Land Mark <span className="text-red-500 ml-0.5">*</span>
               </label>
@@ -455,21 +512,31 @@ export default function FileNewClaim() {
                   type="text"
                   required
                   value={address}
-                  onChange={(e) => setAddress(e.target.value)}
+                  onChange={(e) => {
+                    setAddress(e.target.value);
+                    setIsUserTyping(true);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       geocodeAddress(address);
                     }
                   }}
-                  onBlur={() => geocodeAddress(address)}
+                  onBlur={() => {
+                    setTimeout(() => setShowResultsDropdown(false), 250);
+                  }}
                   placeholder="Enter address or landmark..."
                   className="flex-1 bg-transparent text-slate-800 text-[15px] placeholder-slate-400 focus:outline-none font-medium border-none"
                 />
                 {address && (
                   <button
                     type="button"
-                    onClick={() => setAddress("")}
+                    onClick={() => {
+                      setAddress("");
+                      setSearchResults([]);
+                      setShowResultsDropdown(false);
+                      setIsUserTyping(false);
+                    }}
                     className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer p-1 flex items-center justify-center"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -485,6 +552,52 @@ export default function FileNewClaim() {
                   Search
                 </button>
               </div>
+
+              {showResultsDropdown && !showMapModal && searchResults.length > 0 && (
+                <div className="absolute top-[80px] left-0 right-0 z-50 bg-white border border-slate-200/80 rounded-2xl shadow-xl max-h-[240px] overflow-y-auto mt-1.5 p-1.5 flex flex-col gap-1">
+                  {searchResults.map((result, idx) => {
+                    const parts = result.display_name.split(",");
+                    const mainTitle = parts[0]?.trim() || "";
+                    const subTitle = parts.slice(1).join(",").trim() || "";
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          const lat = parseFloat(result.lat);
+                          const lon = parseFloat(result.lon);
+                          setLatitude(lat);
+                          setLongitude(lon);
+                          setAddress(result.display_name);
+                          setIsUserTyping(false);
+                          setShowResultsDropdown(false);
+                          
+                          // Update map iframe
+                          const iframe = document.getElementById("map-iframe") as HTMLIFrameElement;
+                          if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage(JSON.stringify({ latitude: lat, longitude: lon }), "*");
+                          }
+                        }}
+                        className="text-left w-full hover:bg-slate-50 p-2.5 rounded-xl transition-all border-none bg-transparent cursor-pointer flex items-start gap-3"
+                        title={result.display_name}
+                      >
+                        <div className="mt-0.5 bg-slate-100 text-slate-500 rounded-full p-1.5 flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="font-semibold text-slate-800 text-sm truncate">{mainTitle}</span>
+                          {subTitle && (
+                            <span className="text-[11px] text-slate-500 truncate mt-0.5">{subTitle}</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Map and GPS Retrieval */}
@@ -571,7 +684,7 @@ export default function FileNewClaim() {
                     ></iframe>
 
                     {/* Floating Geocoding Search Panel */}
-                    <div className="absolute top-4 left-4 right-4 z-10 max-w-md bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-full pl-5 pr-1.5 py-1.5 shadow-[0_10px_25px_-5px_rgba(15,23,42,0.15)] flex items-center gap-2 transition-all">
+                    <div className="absolute top-4 left-4 right-4 z-20 max-w-md bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-full pl-5 pr-1.5 py-1.5 shadow-[0_10px_25px_-5px_rgba(15,23,42,0.15)] flex items-center gap-2 transition-all">
                       <span className="text-slate-400 flex items-center justify-center pointer-events-none">
                         <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -580,12 +693,18 @@ export default function FileNewClaim() {
                       <input
                         type="text"
                         value={address}
-                        onChange={(e) => setAddress(e.target.value)}
+                        onChange={(e) => {
+                          setAddress(e.target.value);
+                          setIsUserTyping(true);
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
                             geocodeAddress(address);
                           }
+                        }}
+                        onBlur={() => {
+                          setTimeout(() => setShowResultsDropdown(false), 250);
                         }}
                         placeholder="Search address or landmark..."
                         className="flex-1 bg-transparent text-sm text-slate-800 placeholder-slate-400 focus:outline-none font-medium"
@@ -593,7 +712,12 @@ export default function FileNewClaim() {
                       {address && (
                         <button
                           type="button"
-                          onClick={() => setAddress("")}
+                          onClick={() => {
+                            setAddress("");
+                            setSearchResults([]);
+                            setShowResultsDropdown(false);
+                            setIsUserTyping(false);
+                          }}
                           className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer p-1"
                         >
                           ✕
@@ -610,6 +734,53 @@ export default function FileNewClaim() {
                         </svg>
                       </button>
                     </div>
+
+                    {/* Suggestions inside map modal */}
+                    {showResultsDropdown && showMapModal && searchResults.length > 0 && (
+                      <div className="absolute top-[64px] left-4 right-4 z-30 max-w-md bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-xl max-h-[200px] overflow-y-auto mt-1.5 p-1.5 flex flex-col gap-1">
+                        {searchResults.map((result, idx) => {
+                          const parts = result.display_name.split(",");
+                          const mainTitle = parts[0]?.trim() || "";
+                          const subTitle = parts.slice(1).join(",").trim() || "";
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                const lat = parseFloat(result.lat);
+                                const lon = parseFloat(result.lon);
+                                setLatitude(lat);
+                                setLongitude(lon);
+                                setAddress(result.display_name);
+                                setIsUserTyping(false);
+                                setShowResultsDropdown(false);
+                                
+                                // Update modal map iframe
+                                const modalIframe = document.getElementById("modal-map-iframe") as HTMLIFrameElement;
+                                if (modalIframe && modalIframe.contentWindow) {
+                                  modalIframe.contentWindow.postMessage(JSON.stringify({ latitude: lat, longitude: lon }), "*");
+                                }
+                              }}
+                              className="text-left w-full hover:bg-slate-50 p-2 rounded-xl transition-all border-none bg-transparent cursor-pointer flex items-start gap-3"
+                              title={result.display_name}
+                            >
+                              <div className="mt-0.5 bg-slate-100 text-slate-500 rounded-full p-1.5 flex items-center justify-center flex-shrink-0">
+                                <svg className="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
+                                </svg>
+                              </div>
+                              <div className="flex flex-col min-w-0 flex-1">
+                                <span className="font-semibold text-slate-800 text-xs truncate">{mainTitle}</span>
+                                {subTitle && (
+                                  <span className="text-[10px] text-slate-500 truncate mt-0.5">{subTitle}</span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Floating GPS Button */}
                     <button

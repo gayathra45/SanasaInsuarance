@@ -293,8 +293,45 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
   const [tempCoords, setTempCoords] = useState({ latitude, longitude });
   const [modalAddress, setModalAddress] = useState("Loading address...");
   const [isLocating, setIsLocating] = useState(false);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResultsDropdown, setShowResultsDropdown] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isUserTyping, setIsUserTyping] = useState(false);
   const webViewRef = React.useRef<any>(null);
   const htmlContent = getHtmlContent(latitude, longitude);
+
+  // Autocomplete suggestions debouncer
+  React.useEffect(() => {
+    if (!isUserTyping || !modalAddress || modalAddress.trim() === "" || modalAddress === "Loading address..." || modalAddress.startsWith("Loading")) {
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const biasLat = tempCoords.latitude;
+        const biasLon = tempCoords.longitude;
+        const left = biasLon - 0.5;
+        const right = biasLon + 0.5;
+        const top = biasLat + 0.5;
+        const bottom = biasLat - 0.5;
+        const viewboxParam = `&viewbox=${left},${top},${right},${bottom}`;
+
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=5&countrycodes=lk&accept-language=en${viewboxParam}`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setSearchResults(data);
+          setShowResultsDropdown(true);
+        } else {
+          setSearchResults([]);
+          setShowResultsDropdown(false);
+        }
+      } catch (err) {
+        console.warn("Autocomplete error:", err);
+      }
+    }, 400); // 400ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [modalAddress, isUserTyping]);
 
   // Sync state with props when modal becomes visible
   React.useEffect(() => {
@@ -322,6 +359,8 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
 
   // Fetch address based on selection
   const fetchAddress = async (lat: number, lon: number) => {
+    setIsUserTyping(false);
+    setShowResultsDropdown(false);
     try {
       if (Platform.OS === "web") {
         const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`);
@@ -419,34 +458,46 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
 
   const handleSearch = async () => {
     if (!modalAddress || modalAddress.trim() === "") return;
+    setIsUserTyping(false);
+    setShowResultsDropdown(false);
+    setIsSearching(true);
     try {
-      if (Platform.OS === "web") {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=1&accept-language=en`);
-        const data = await res.json();
-        if (data && data.length > 0) {
-          const lat = parseFloat(data[0].lat);
-          const lon = parseFloat(data[0].lon);
-          setTempCoords({ latitude: lat, longitude: lon });
-          
-          // Post message to iframe
+      const biasLat = tempCoords.latitude;
+      const biasLon = tempCoords.longitude;
+      const left = biasLon - 1.0;
+      const right = biasLon + 1.0;
+      const top = biasLat + 1.0;
+      const bottom = biasLat - 1.0;
+      const viewboxParam = `&viewbox=${left},${top},${right},${bottom}`;
+
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=5&countrycodes=lk&accept-language=en${viewboxParam}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setSearchResults(data);
+        setShowResultsDropdown(true);
+        
+        // Auto-select the first result
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        setTempCoords({ latitude: lat, longitude: lon });
+        
+        // Post message to map
+        const msgData = JSON.stringify({ latitude: lat, longitude: lon });
+        if (Platform.OS === "web") {
           const iframe = document.querySelector("iframe") as HTMLIFrameElement;
           if (iframe && iframe.contentWindow) {
-            iframe.contentWindow.postMessage(JSON.stringify({ latitude: lat, longitude: lon }), "*");
+            iframe.contentWindow.postMessage(msgData, "*");
           }
         } else {
-          alert("Location Not Found. Could not find coordinates for this address.");
+          if (webViewRef.current) {
+            webViewRef.current.postMessage(msgData);
+          }
         }
       } else {
-        const results = await Location.geocodeAsync(modalAddress);
-        if (results && results.length > 0) {
-          const { latitude: lat, longitude: lon } = results[0];
-          setTempCoords({ latitude: lat, longitude: lon });
-          
-          // Post message to WebView
-          const data = JSON.stringify({ latitude: lat, longitude: lon });
-          if (webViewRef.current) {
-            webViewRef.current.postMessage(data);
-          }
+        setSearchResults([]);
+        setShowResultsDropdown(false);
+        if (Platform.OS === "web") {
+          alert("Location Not Found. Could not find coordinates for this address.");
         } else {
           Alert.alert("Location Not Found", "Could not find coordinates for this address.");
         }
@@ -458,6 +509,8 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
       } else {
         Alert.alert("Search Error", "An error occurred while searching for the location.");
       }
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -486,22 +539,90 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
               <TextInput
                 style={styles.searchInput}
                 value={modalAddress}
-                onChangeText={setModalAddress}
+                onChangeText={(text) => {
+                  setModalAddress(text);
+                  setIsUserTyping(true);
+                  if (!text) {
+                    setSearchResults([]);
+                    setShowResultsDropdown(false);
+                  }
+                }}
                 onSubmitEditing={handleSearch}
                 placeholder="Search address or landmark..."
                 placeholderTextColor="#94a3b8"
                 returnKeyType="search"
               />
               {modalAddress ? (
-                <TouchableOpacity onPress={() => setModalAddress("")} style={styles.clearSearchBtn}>
+                <TouchableOpacity onPress={() => {
+                  setModalAddress("");
+                  setSearchResults([]);
+                  setShowResultsDropdown(false);
+                  setIsUserTyping(false);
+                }} style={styles.clearSearchBtn}>
                   <Ionicons name="close-circle" size={18} color="#94a3b8" />
                 </TouchableOpacity>
               ) : null}
             </View>
-            <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-              <Ionicons name="search" size={18} color="#ffffff" />
+            <TouchableOpacity style={styles.searchBtn} onPress={handleSearch} disabled={isSearching}>
+              {isSearching ? (
+                <ActivityIndicator size="small" color="#ffffff" />
+              ) : (
+                <Ionicons name="search" size={18} color="#ffffff" />
+              )}
             </TouchableOpacity>
           </View>
+
+          {/* Suggestions Dropdown */}
+          {showResultsDropdown && searchResults.length > 0 && (
+            <View style={styles.suggestionsContainer}>
+              {searchResults.map((result, idx) => {
+                const parts = result.display_name.split(",");
+                const mainTitle = parts[0]?.trim() || "";
+                const subTitle = parts.slice(1).join(",").trim() || "";
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={styles.suggestionItem}
+                    onPress={() => {
+                      const lat = parseFloat(result.lat);
+                      const lon = parseFloat(result.lon);
+                      setIsUserTyping(false);
+                      setTempCoords({ latitude: lat, longitude: lon });
+                      setModalAddress(result.display_name);
+                      setShowResultsDropdown(false);
+                      
+                      // Post message to map
+                      const msgData = JSON.stringify({ latitude: lat, longitude: lon });
+                      if (Platform.OS === "web") {
+                        const iframe = document.querySelector("iframe") as HTMLIFrameElement;
+                        if (iframe && iframe.contentWindow) {
+                          iframe.contentWindow.postMessage(msgData, "*");
+                        }
+                      } else {
+                        if (webViewRef.current) {
+                          webViewRef.current.postMessage(msgData);
+                        }
+                      }
+                    }}
+                  >
+                    <View style={styles.suggestionIconWrapper}>
+                      <Ionicons name="location" size={16} color="#64748b" />
+                    </View>
+                    <View style={{ flex: 1, flexDirection: "column" }}>
+                      <Text numberOfLines={1} style={styles.suggestionTitle}>
+                        {mainTitle}
+                      </Text>
+                      {subTitle ? (
+                        <Text numberOfLines={1} style={styles.suggestionSubtitle}>
+                          {subTitle}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
 
           {Platform.OS === "web" ? (
             <iframe
@@ -730,5 +851,49 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 13,
     fontWeight: "700",
+  },
+  suggestionsContainer: {
+    position: "absolute",
+    top: 72,
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.98)",
+    borderRadius: 20,
+    padding: 6,
+    zIndex: 11,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: "rgba(226, 232, 240, 0.8)",
+    maxHeight: 220,
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    gap: 10,
+  },
+  suggestionIconWrapper: {
+    backgroundColor: "#f1f5f9",
+    borderRadius: 99,
+    padding: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestionTitle: {
+    fontSize: 13,
+    color: "#0f172a",
+    fontWeight: "700",
+  },
+  suggestionSubtitle: {
+    fontSize: 10,
+    color: "#64748b",
+    fontWeight: "400",
+    marginTop: 2,
   },
 });
