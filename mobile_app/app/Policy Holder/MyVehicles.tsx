@@ -6,7 +6,8 @@ export default function MyVehicles() {
   return (
     <View style={styles.root}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
-      {/* Blank page content */}
+      {/* Empty flex view to push the navbar to the bottom */}
+      <View style={styles.content} />
       <PolicyHolderNavbar />
     </View>
   );
@@ -14,4 +15,5 @@ export default function MyVehicles() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#f8fafc" },
+  content: { flex: 1 },
 });
