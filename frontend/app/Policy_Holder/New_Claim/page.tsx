@@ -58,12 +58,37 @@ export default function FileNewClaim() {
   const [isLocating, setIsLocating] = useState(false);
   const [latitude, setLatitude] = useState(6.9271);
   const [longitude, setLongitude] = useState(79.8612);
-  const [initialCoords] = useState({ latitude: 6.9271, longitude: 79.8612 });
+  const [initialCoords, setInitialCoords] = useState({ latitude: 6.9271, longitude: 79.8612 });
   const [modalInitialCoords, setModalInitialCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [showMapModal, setShowMapModal] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [showResultsDropdown, setShowResultsDropdown] = useState(false);
   const [isUserTyping, setIsUserTyping] = useState(false);
+
+  // Restore draft details from sessionStorage if it exists on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const draftStr = sessionStorage.getItem("current_claim_draft");
+      if (draftStr) {
+        try {
+          const draft = JSON.parse(draftStr);
+          if (draft.selectedVehicle) setSelectedVehicle(draft.selectedVehicle);
+          if (draft.incidentDate) setIncidentDate(draft.incidentDate);
+          if (draft.incidentTime) setIncidentTime(draft.incidentTime);
+          if (draft.damageType) setDamageType(draft.damageType);
+          if (draft.description) setDescription(draft.description);
+          if (draft.address) setAddress(draft.address);
+          if (draft.latitude && draft.longitude) {
+            setLatitude(draft.latitude);
+            setLongitude(draft.longitude);
+            setInitialCoords({ latitude: draft.latitude, longitude: draft.longitude });
+          }
+        } catch (err) {
+          console.error("Error restoring draft", err);
+        }
+      }
+    }
+  }, []);
 
   // Message listener for location select from map iframe
   useEffect(() => {
@@ -338,6 +363,8 @@ export default function FileNewClaim() {
       damageType,
       description,
       address,
+      latitude,
+      longitude,
       status: "In Progress",
       createdAt: new Date().toISOString()
     };
