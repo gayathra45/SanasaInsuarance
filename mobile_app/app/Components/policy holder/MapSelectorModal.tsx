@@ -287,7 +287,171 @@ const getHtmlContent = (lat: number, lon: number) => `
 </html>
 `;
 
-const WebViewComponent = WebView as any;
+const WebViewComponent = WebView as any;function cleanCountry(country?: string): string {
+  if (!country) return "Sri Lanka";
+  const c = country.toLowerCase();
+  if (c.includes("ශ්‍රී ලංකා") || c.includes("இலங்கை") || c.includes("lanka")) {
+    return "Sri Lanka";
+  }
+  return country;
+}
+
+function formatPhotonResult(f: any): any {
+  const props = f.properties || {};
+  const coords = f.geometry?.coordinates || [0, 0];
+  
+  const parts = [];
+  if (props.name) parts.push(props.name);
+  
+  if (props.housenumber && props.street) {
+    parts.push(`${props.housenumber} ${props.street}`);
+  } else if (props.street) {
+    parts.push(props.street);
+  } else if (props.housenumber) {
+    parts.push(props.housenumber);
+  }
+  
+  if (props.locality) {
+    const loc = props.locality.split(';')[0].trim();
+    if (loc) parts.push(loc);
+  }
+  
+  if (props.district) parts.push(props.district);
+  if (props.city) parts.push(props.city);
+  if (props.county) parts.push(props.county);
+  if (props.state) parts.push(props.state);
+  if (props.postcode) parts.push(props.postcode);
+  if (props.country) {
+    parts.push(cleanCountry(props.country));
+  } else {
+    parts.push("Sri Lanka");
+  }
+
+  const displayName = parts.filter((v, i, self) => self.indexOf(v) === i).join(", ");
+  
+  return formatDisplayNameWithCategory({
+    display_name: displayName,
+    lat: coords[1].toString(),
+    lon: coords[0].toString(),
+    category_key: props.osm_key,
+    category_value: props.osm_value
+  });
+}
+
+function formatDisplayNameWithCategory(item: any): any {
+  if (!item || !item.display_name) return item;
+  
+  const key = (item.category_key || "").toLowerCase();
+  const value = (item.category_value || "").toLowerCase();
+  
+  const parts = item.display_name.split(",");
+  let firstName = parts[0]?.trim() || "";
+  const firstNameLower = firstName.toLowerCase();
+  
+  let modified = false;
+  
+  if (key === "railway" && value === "station") {
+    if (!firstNameLower.includes("station") && !firstNameLower.includes("railway")) {
+      firstName += " Railway Station";
+      modified = true;
+    }
+  } else if (key === "amenity" && value === "police") {
+    if (!firstNameLower.includes("police")) {
+      firstName += " Police Station";
+      modified = true;
+    }
+  } else if (key === "amenity" && (value === "bus_station" || value === "bus_stop")) {
+    if (!firstNameLower.includes("bus")) {
+      firstName += value === "bus_stop" ? " Bus Stop" : " Bus Station";
+      modified = true;
+    }
+  } else if (key === "amenity" && value === "hospital") {
+    if (!firstNameLower.includes("hospital")) {
+      firstName += " Hospital";
+      modified = true;
+    }
+  }
+  
+  if (modified) {
+    parts[0] = firstName;
+    item.display_name = parts.join(", ");
+  }
+  
+  return item;
+}
+
+function areCoordsClose(lat1: string, lon1: string, lat2: string, lon2: string): boolean {
+  const threshold = 0.0005; // approx 50m
+  return Math.abs(parseFloat(lat1) - parseFloat(lat2)) < threshold &&
+         Math.abs(parseFloat(lon1) - parseFloat(lon2)) < threshold;
+}
+
+function areNamesSimilar(n1: string, n2: string): boolean {
+  const name1 = n1.split(',')[0].toLowerCase().trim();
+  const name2 = n2.split(',')[0].toLowerCase().trim();
+  if (name1 === name2) return true;
+  if (name1.includes(name2) || name2.includes(name1)) {
+    return true;
+  }
+  return false;
+}
+
+function getResultScore(item: any, queryWords: string[]): number {
+  const name = item.display_name.toLowerCase();
+  const key = (item.category_key || "").toLowerCase();
+  const value = (item.category_value || "").toLowerCase();
+  
+  const firstPart = item.display_name.split(',')[0].toLowerCase();
+  const restPart = item.display_name.split(',').slice(1).join(',').toLowerCase();
+
+  let score = 0;
+
+  for (const word of queryWords) {
+    if (firstPart.includes(word)) {
+      score += 25;
+    } else if (restPart.includes(word)) {
+      score += 5;
+    }
+  }
+
+  if (queryWords.length > 0 && firstPart.includes(queryWords[0])) {
+    score += 30;
+  }
+
+  const queryStr = queryWords.join(' ');
+  if (firstPart === queryStr) {
+    score += 40;
+  }
+
+  if (queryWords.includes("railway") || queryWords.includes("train")) {
+    if (key === "railway") {
+      score += 50;
+    }
+    if (value === "station") {
+      score += 20;
+    }
+  }
+  
+  if (queryWords.includes("police")) {
+    if (value === "police" || key === "police" || name.includes("police")) {
+      score += 50;
+    }
+  }
+
+  if (queryWords.includes("bus")) {
+    if (value === "bus_station" || value === "bus_stop" || key === "bus") {
+      score += 50;
+    }
+  }
+
+  if (queryWords.includes("hospital") || queryWords.includes("clinic")) {
+    if (value === "hospital" || value === "clinic" || (key === "amenity" && value === "hospital")) {
+      score += 50;
+    }
+  }
+
+  return score;
+}
 
 export default function MapSelectorModal({ visible, onClose, latitude, longitude, onLocationSelect }: MapSelectorModalProps) {
   const [tempCoords, setTempCoords] = useState({ latitude, longitude });
@@ -300,6 +464,78 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
   const webViewRef = React.useRef<any>(null);
   const htmlContent = getHtmlContent(latitude, longitude);
 
+  const geocodeAddressForSuggestions = async (addrStr: string) => {
+    if (!addrStr || addrStr.trim() === "") return;
+
+    const bbox = "78.5,5.5,82.5,10.5";
+    const headers = {
+      "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
+    };
+
+    const variations = [addrStr];
+    const qLower = addrStr.toLowerCase();
+    const queryWords = qLower.split(/\s+/).filter(w => w.length > 0);
+
+    if ((qLower.includes("railway") || qLower.includes("train") || qLower.includes("police") || qLower.includes("bus")) && !qLower.includes("station") && !qLower.includes("stand")) {
+      variations.push(addrStr + " station");
+    }
+
+    try {
+      const fetchPromises = [];
+      for (const qVar of variations) {
+        const urlNominatim = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(qVar)}&limit=20&countrycodes=lk`;
+        const urlPhoton = `https://photon.komoot.io/api/?q=${encodeURIComponent(qVar)}&limit=20&bbox=${bbox}&lang=en`;
+
+        fetchPromises.push(
+          fetch(urlNominatim, { headers }).then(r => r.json().catch(() => [])),
+          fetch(urlPhoton).then(r => r.json().catch(() => ({ features: [] })))
+        );
+      }
+
+      const fetchResults = await Promise.all(fetchPromises);
+      let combined: any[] = [];
+
+      for (let i = 0; i < fetchResults.length; i++) {
+        const isPhotonResult = (i % 2 === 1);
+        const data = fetchResults[i];
+        if (isPhotonResult) {
+          combined = [...combined, ...(data.features || []).map(formatPhotonResult)];
+        } else {
+          combined = [...combined, ...(data || []).map((r: any) => formatDisplayNameWithCategory({
+            display_name: r.display_name,
+            lat: r.lat,
+            lon: r.lon,
+            category_key: r.class,
+            category_value: r.type
+          }))];
+        }
+      }
+
+      combined.sort((a, b) => getResultScore(b, queryWords) - getResultScore(a, queryWords));
+
+      const deduplicated: any[] = [];
+      for (const item of combined) {
+        const exists = deduplicated.some(d => 
+          (areCoordsClose(d.lat, d.lon, item.lat, item.lon) && areNamesSimilar(d.display_name, item.display_name)) ||
+          d.display_name.toLowerCase() === item.display_name.toLowerCase()
+        );
+        if (!exists) {
+          deduplicated.push(item);
+        }
+      }
+
+      if (deduplicated.length > 0) {
+        setSearchResults(deduplicated);
+        setShowResultsDropdown(true);
+      } else {
+        setSearchResults([]);
+        setShowResultsDropdown(false);
+      }
+    } catch (err) {
+      console.warn("Suggestions geocoding failed:", err);
+    }
+  };
+
   // Autocomplete suggestions debouncer
   React.useEffect(() => {
     if (!isUserTyping || !modalAddress || modalAddress.trim() === "" || modalAddress === "Loading address..." || modalAddress.startsWith("Loading")) {
@@ -307,24 +543,8 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
     }
 
     const delayDebounceFn = setTimeout(async () => {
-      try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=15&countrycodes=lk&accept-language=en`, {
-          headers: {
-            "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
-          }
-        });
-        const data = await res.json();
-        if (data && data.length > 0) {
-          setSearchResults(data);
-          setShowResultsDropdown(true);
-        } else {
-          setSearchResults([]);
-          setShowResultsDropdown(false);
-        }
-      } catch (err) {
-        console.warn("Autocomplete error:", err);
-      }
-    }, 400); // 400ms debounce
+      geocodeAddressForSuggestions(modalAddress);
+    }, 250); // 250ms debounce
 
     return () => clearTimeout(delayDebounceFn);
   }, [modalAddress, isUserTyping]);
@@ -461,22 +681,72 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
     setIsUserTyping(false);
     setShowResultsDropdown(false);
     setIsSearching(true);
+
+    const bbox = "78.5,5.5,82.5,10.5";
+    const headers = {
+      "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
+    };
+
+    const variations = [modalAddress];
+    const qLower = modalAddress.toLowerCase();
+    const queryWords = qLower.split(/\s+/).filter(w => w.length > 0);
+
+    if ((qLower.includes("railway") || qLower.includes("train") || qLower.includes("police") || qLower.includes("bus")) && !qLower.includes("station") && !qLower.includes("stand")) {
+      variations.push(modalAddress + " station");
+    }
+
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(modalAddress)}&limit=15&countrycodes=lk&accept-language=en`, {
-        headers: {
-          "User-Agent": "SanasaInsuranceMobileApp/1.0 (contact: support@sanasainsurance.lk)"
+      const fetchPromises = [];
+      for (const qVar of variations) {
+        const urlNominatim = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(qVar)}&limit=20&countrycodes=lk`;
+        const urlPhoton = `https://photon.komoot.io/api/?q=${encodeURIComponent(qVar)}&limit=20&bbox=${bbox}&lang=en`;
+
+        fetchPromises.push(
+          fetch(urlNominatim, { headers }).then(r => r.json().catch(() => [])),
+          fetch(urlPhoton).then(r => r.json().catch(() => ({ features: [] })))
+        );
+      }
+
+      const fetchResults = await Promise.all(fetchPromises);
+      let combined: any[] = [];
+
+      for (let i = 0; i < fetchResults.length; i++) {
+        const isPhotonResult = (i % 2 === 1);
+        const data = fetchResults[i];
+        if (isPhotonResult) {
+          combined = [...combined, ...(data.features || []).map(formatPhotonResult)];
+        } else {
+          combined = [...combined, ...(data || []).map((r: any) => formatDisplayNameWithCategory({
+            display_name: r.display_name,
+            lat: r.lat,
+            lon: r.lon,
+            category_key: r.class,
+            category_value: r.type
+          }))];
         }
-      });
-      const data = await res.json();
-      if (data && data.length > 0) {
-        setSearchResults(data);
+      }
+
+      combined.sort((a, b) => getResultScore(b, queryWords) - getResultScore(a, queryWords));
+
+      const deduplicated: any[] = [];
+      for (const item of combined) {
+        const exists = deduplicated.some(d => 
+          (areCoordsClose(d.lat, d.lon, item.lat, item.lon) && areNamesSimilar(d.display_name, item.display_name)) ||
+          d.display_name.toLowerCase() === item.display_name.toLowerCase()
+        );
+        if (!exists) {
+          deduplicated.push(item);
+        }
+      }
+
+      if (deduplicated.length > 0) {
+        setSearchResults(deduplicated);
         setShowResultsDropdown(true);
-        
-        // Auto-select the first result
-        const lat = parseFloat(data[0].lat);
-        const lon = parseFloat(data[0].lon);
+
+        const lat = parseFloat(deduplicated[0].lat);
+        const lon = parseFloat(deduplicated[0].lon);
         setTempCoords({ latitude: lat, longitude: lon });
-        
+
         // Post message to map
         const msgData = JSON.stringify({ latitude: lat, longitude: lon });
         if (Platform.OS === "web") {
@@ -498,12 +768,12 @@ export default function MapSelectorModal({ visible, onClose, latitude, longitude
           Alert.alert("Location Not Found", "Could not find coordinates for this address.");
         }
       }
-    } catch (e) {
-      console.warn("Geocoding error:", e);
+    } catch (err) {
+      console.warn("Geocoding address failed:", err);
       if (Platform.OS === "web") {
-        alert("Search Error. An error occurred while searching for the location.");
+        alert("Location Not Found. Could not find coordinates for this address.");
       } else {
-        Alert.alert("Search Error", "An error occurred while searching for the location.");
+        Alert.alert("Location Not Found", "Could not find coordinates for this address.");
       }
     } finally {
       setIsSearching(false);
@@ -864,7 +1134,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     borderWidth: 1,
     borderColor: "rgba(226, 232, 240, 0.8)",
-    maxHeight: 220,
+    maxHeight: 320,
   },
   suggestionItem: {
     flexDirection: "row",
