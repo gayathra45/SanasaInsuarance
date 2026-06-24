@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -58,6 +58,13 @@ export default function FileNewClaim() {
   const [latitude, setLatitude] = useState(6.9271);
   const [longitude, setLongitude] = useState(79.8612);
 
+  // Search suggestion state variables
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showResultsDropdown, setShowResultsDropdown] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isUserTyping, setIsUserTyping] = useState(false);
+  const isRestored = useRef(false);
+
   // Loading States
   const [isVehiclesLoading, setIsVehiclesLoading] = useState(true);
   const [isLocating, setIsLocating] = useState(false);
@@ -88,6 +95,7 @@ export default function FileNewClaim() {
 
   useEffect(() => {
     (async () => {
+      // 1. Load user context
       const userStr = await AsyncStorage.getItem("logged_in_user");
       if (userStr) {
         try {
@@ -99,6 +107,26 @@ export default function FileNewClaim() {
         } catch (e) {
           console.error(e);
         }
+      }
+
+      // 2. Load draft details
+      try {
+        const draftStr = await AsyncStorage.getItem("current_claim_draft");
+        if (draftStr) {
+          const draft = JSON.parse(draftStr);
+          if (draft.selectedVehicle) setSelectedVehicle(draft.selectedVehicle);
+          if (draft.incidentDate) setIncidentDate(draft.incidentDate);
+          if (draft.incidentTime) setIncidentTime(draft.incidentTime);
+          if (draft.damageType) setDamageType(draft.damageType);
+          if (draft.description) setDescription(draft.description);
+          if (draft.address) setAddress(draft.address);
+          if (draft.latitude) setLatitude(draft.latitude);
+          if (draft.longitude) setLongitude(draft.longitude);
+        }
+      } catch (err) {
+        console.error("Error restoring draft", err);
+      } finally {
+        isRestored.current = true;
       }
     })();
   }, []);
@@ -160,17 +188,89 @@ export default function FileNewClaim() {
     }
   };
 
+  // Save draft whenever form fields change
+  useEffect(() => {
+    if (!isRestored.current || !userNic) return;
+    (async () => {
+      const draft = {
+        selectedVehicle,
+        incidentDate,
+        incidentTime,
+        damageType,
+        description,
+        address,
+        latitude,
+        longitude
+      };
+      await AsyncStorage.setItem("current_claim_draft", JSON.stringify(draft));
+    })();
+  }, [selectedVehicle, incidentDate, incidentTime, damageType, description, address, latitude, longitude, userNic]);
+
+  // Autocomplete suggestions debouncer for main page
+  useEffect(() => {
+    if (!isUserTyping || !address || address.trim() === "" || address === "Colombo, Sri Lanka" || address.startsWith("Loading")) {
+      return;
+    }
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=15&countrycodes=lk&accept-language=en`);
+        const data = await res.json();
+        if (data && data.length > 0) {
+          setSearchResults(data);
+          setShowResultsDropdown(true);
+        } else {
+          setSearchResults([]);
+          setShowResultsDropdown(false);
+        }
+      } catch (err) {
+        console.warn("Autocomplete error:", err);
+      }
+    }, 400); // 400ms debounce
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [address, isUserTyping]);
+
+  const handleSelectSuggestion = (result: any) => {
+    const lat = parseFloat(result.lat);
+    const lon = parseFloat(result.lon);
+    setIsUserTyping(false);
+    setLatitude(lat);
+    setLongitude(lon);
+    setAddress(result.display_name);
+    setShowResultsDropdown(false);
+    setSearchResults([]);
+  };
+
   const geocodeAddress = async (addrStr: string) => {
     if (!addrStr || addrStr.trim() === "") return;
+    setIsUserTyping(false);
+    setShowResultsDropdown(false);
+    setIsSearching(true);
     try {
-      const geoResult = await Location.geocodeAsync(addrStr);
-      if (geoResult && geoResult.length > 0) {
-        const { latitude: lat, longitude: lon } = geoResult[0];
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addrStr)}&limit=15&countrycodes=lk&accept-language=en`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setSearchResults(data);
+        setShowResultsDropdown(true);
+        
+        // Auto-select the first result
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
         setLatitude(lat);
         setLongitude(lon);
+        setAddress(data[0].display_name);
+        setShowResultsDropdown(false);
+      } else {
+        setSearchResults([]);
+        setShowResultsDropdown(false);
+        Alert.alert("Location Not Found", "Could not find coordinates for this address.");
       }
     } catch (e) {
-      console.warn("Geocoding address error:", e);
+      console.warn("Geocoding error:", e);
+      Alert.alert("Search Error", "An error occurred while searching for the location.");
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -294,6 +394,9 @@ export default function FileNewClaim() {
         status: "Submitted",
         createdAt: new Date().toISOString()
       }));
+
+      // Clear the current claim draft
+      await AsyncStorage.removeItem("current_claim_draft");
 
       setGeneratedClaimNumber(data.claimNumber);
       setShowSuccessModal(true);
@@ -457,16 +560,82 @@ export default function FileNewClaim() {
             </View>
 
             {/* Address */}
-            <View style={styles.inputGroup}>
+            <View style={[styles.inputGroup, { zIndex: 50 }]}>
               <Text style={styles.fieldLabel}>Enter Address or Land Mark *</Text>
-              <TextInput
-                value={address}
-                onChangeText={setAddress}
-                onEndEditing={() => geocodeAddress(address)}
-                placeholder="Where did the incident occur?"
-                placeholderTextColor="#94a3b8"
-                style={styles.textInput}
-              />
+              
+              <View style={styles.searchBarContainer}>
+                <View style={styles.searchInputWrapper}>
+                  <Ionicons name="search" size={18} color="#94a3b8" style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    value={address}
+                    onChangeText={(text) => {
+                      setAddress(text);
+                      setIsUserTyping(true);
+                      if (!text) {
+                        setSearchResults([]);
+                        setShowResultsDropdown(false);
+                      }
+                    }}
+                    onSubmitEditing={() => geocodeAddress(address)}
+                    placeholder="Where did the incident occur?"
+                    placeholderTextColor="#94a3b8"
+                    returnKeyType="search"
+                  />
+                  {address ? (
+                    <TouchableOpacity onPress={() => {
+                      setAddress("");
+                      setSearchResults([]);
+                      setShowResultsDropdown(false);
+                      setIsUserTyping(false);
+                    }} style={styles.clearSearchBtn}>
+                      <Ionicons name="close-circle" size={18} color="#94a3b8" />
+                    </TouchableOpacity>
+                  ) : null}
+                </View>
+                <TouchableOpacity style={styles.searchBtn} onPress={() => geocodeAddress(address)} disabled={isSearching}>
+                  {isSearching ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Ionicons name="search" size={18} color="#ffffff" />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Suggestions Dropdown */}
+              {showResultsDropdown && searchResults.length > 0 && (
+                <View style={styles.suggestionsWrapper}>
+                  <ScrollView style={styles.suggestionsContainer} keyboardShouldPersistTaps="handled">
+                    {searchResults.map((result, idx) => {
+                      const parts = result.display_name.split(",");
+                      const mainTitle = parts[0]?.trim() || "";
+                      const subTitle = parts.slice(1).join(",").trim() || "";
+                      return (
+                        <TouchableOpacity
+                          key={idx}
+                          style={styles.suggestionItem}
+                          onPress={() => handleSelectSuggestion(result)}
+                        >
+                          <View style={styles.suggestionIconWrapper}>
+                            <Ionicons name="location" size={16} color="#64748b" />
+                          </View>
+                          <View style={{ flex: 1, flexDirection: "column" }}>
+                            <Text numberOfLines={1} style={styles.suggestionTitle}>
+                              {mainTitle}
+                            </Text>
+                            {subTitle ? (
+                              <Text numberOfLines={1} style={styles.suggestionSubtitle}>
+                                {subTitle}
+                              </Text>
+                            ) : null}
+                          </View>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+              )}
+
               <MapDisplay
                 latitude={latitude}
                 longitude={longitude}
@@ -860,4 +1029,94 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   returnBtnText: { color: "#ffffff", fontSize: 13, fontWeight: "800" },
+
+  searchBarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: "#e2e8f0",
+    paddingHorizontal: 10,
+    gap: 8,
+    height: 48,
+    marginBottom: 10,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: "100%",
+  },
+  searchIcon: {
+    marginRight: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13.5,
+    color: "#0f172a",
+    fontWeight: "600",
+    height: "100%",
+    paddingVertical: 0,
+  },
+  clearSearchBtn: {
+    padding: 4,
+  },
+  searchBtn: {
+    backgroundColor: "#0284c7",
+    borderRadius: 12,
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "rgba(2, 132, 199, 0.3)",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  suggestionsWrapper: {
+    position: "absolute",
+    top: 76,
+    left: 0,
+    right: 0,
+    zIndex: 999,
+    elevation: 10,
+    backgroundColor: "#ffffff",
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: "#cbd5e1",
+    maxHeight: 200,
+    overflow: "hidden",
+  },
+  suggestionsContainer: {
+    maxHeight: 200,
+  },
+  suggestionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+  },
+  suggestionIconWrapper: {
+    backgroundColor: "#f1f5f9",
+    borderRadius: 99,
+    padding: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestionTitle: {
+    fontSize: 13,
+    color: "#0f172a",
+    fontWeight: "700",
+  },
+  suggestionSubtitle: {
+    fontSize: 10,
+    color: "#64748b",
+    fontWeight: "400",
+    marginTop: 2,
+  },
 });
