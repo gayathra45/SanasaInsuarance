@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
+import { API_URL } from "@/app/config";
 
 interface Claim {
   claimNumber: string;
@@ -19,8 +20,9 @@ interface Claim {
   officer?: string;
   documentsRequested?: boolean;
   requestedDocuments?: string[];
+  documentRequestTo?: string;
   currentStep?: number;
-  messages?: { sender: string; message: string; sentAt: string }[];
+  messages?: { sender: string; message: string; sentAt: string; recipient?: string }[];
 }
 
 export default function MyClaims() {
@@ -28,6 +30,20 @@ export default function MyClaims() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const getUserRequestedDocs = (claim: Claim): string[] => {
+    const getRecipientForDoc = (name: string) => {
+      const msg = [...(claim.messages || [])]
+        .reverse()
+        .find(m => m.message.includes(`Requested: ${name}`));
+      if (msg) {
+        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+        if (msg.message.includes("[Document Request to User]")) return "User";
+      }
+      return claim.documentRequestTo || "User";
+    };
+    return (claim.requestedDocuments || []).filter(name => getRecipientForDoc(name) === "User");
+  };
 
 
   useEffect(() => {
@@ -54,7 +70,7 @@ export default function MyClaims() {
         // 2. Fetch Claims from MongoDB API (if NIC exists)
         if (userNic) {
           try {
-            const res = await fetch(`http://localhost:5000/api/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`);
+            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`);
             if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data.claims)) {
@@ -197,7 +213,8 @@ export default function MyClaims() {
       claim.claimNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       claim.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
       claim.damageType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      claim.status.toLowerCase().includes(searchQuery.toLowerCase())
+      claim.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (claim.location && claim.location.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -456,19 +473,46 @@ export default function MyClaims() {
                     </p>
                   </div>
                 )}
+                {/* Messages & Notifications Section */}
+                <div className="px-2 mt-4 mb-2">
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 select-none">Messages & Notifications</p>
+                  {(() => {
+                    const filteredMessages = (selectedClaim.messages || []).filter((msg: any) => msg.recipient !== "Agent");
+                    if (filteredMessages.length > 0) {
+                      return (
+                        <div className="flex flex-col gap-2.5 max-h-[140px] overflow-y-auto pr-1">
+                          {filteredMessages.map((msg: any, index: number) => (
+                            <div key={index} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 flex flex-col gap-1 shadow-sm">
+                              <div className="flex justify-between items-center text-[11px] select-none">
+                                <span className="font-extrabold text-[#0f2d3a]">{msg.sender}</span>
+                                <span className="text-slate-400 font-semibold">{formatDateString(msg.sentAt)}</span>
+                              </div>
+                              <p className="text-slate-700 text-xs font-semibold leading-relaxed m-0">
+                                {msg.message}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <p className="text-slate-500 text-xs italic font-medium bg-slate-50 border border-slate-100 rounded-xl p-3 m-0 select-none">
+                          No notifications or messages have been sent for this claim.
+                        </p>
+                      );
+                    }
+                  })()}
+                </div>
 
                 {/* Warning Alert Box matching mockup */}
-                {selectedClaim.documentsRequested && (
-                  <div className="bg-[#ffeaea]/80 border border-[#ffd1d1] rounded-[20px] p-6 mb-2">
+                {selectedClaim.documentsRequested && getUserRequestedDocs(selectedClaim).length > 0 && (
+                  <div className="bg-[#ffeaea]/80 border border-[#ffd1d1] rounded-[20px] p-6 mb-2 mt-4">
                     <h4 className="text-[#9c3535] font-extrabold text-sm mb-1.5">Documents Requested</h4>
                     <p className="text-[#aa4f4f] text-[13px] font-semibold leading-relaxed mb-3">
                       The following documents have been requested by staff to process your claim. Please upload them via the Documents section:
                     </p>
                     <ul className="list-none flex flex-col gap-2 mb-4 pl-1">
-                      {(selectedClaim.requestedDocuments && selectedClaim.requestedDocuments.length > 0
-                        ? selectedClaim.requestedDocuments
-                        : ["Police Report", "Repair Estimate"]
-                      ).map((doc) => (
+                      {getUserRequestedDocs(selectedClaim).map((doc) => (
                         <li key={doc} className="flex items-center gap-2 text-[#aa4f4f] font-bold text-xs">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#df3d3d] flex-shrink-0" />
                           <span>{doc}</span>
@@ -483,30 +527,6 @@ export default function MyClaims() {
                     </Link>
                   </div>
                 )}
-
-                {/* Messages & Notifications Section */}
-                <div className="px-2 mt-4 mb-2">
-                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 select-none">Messages & Notifications</p>
-                  {selectedClaim.messages && selectedClaim.messages.length > 0 ? (
-                    <div className="flex flex-col gap-2.5 max-h-[140px] overflow-y-auto pr-1">
-                      {selectedClaim.messages.map((msg: any, index: number) => (
-                        <div key={index} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 flex flex-col gap-1 shadow-sm">
-                          <div className="flex justify-between items-center text-[11px] select-none">
-                            <span className="font-extrabold text-[#0f2d3a]">{msg.sender}</span>
-                            <span className="text-slate-400 font-semibold">{formatDateString(msg.sentAt)}</span>
-                          </div>
-                          <p className="text-slate-700 text-xs font-semibold leading-relaxed m-0">
-                            {msg.message}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-slate-500 text-xs italic font-medium bg-slate-50 border border-slate-100 rounded-xl p-3 m-0 select-none">
-                      No notifications or messages have been sent for this claim.
-                    </p>
-                  )}
-                </div>
               </div>
 
               {/* Modal Footer */}
