@@ -232,7 +232,7 @@ export default function AgentDocuments() {
         })
       );
 
-      const res = await fetch(`${API_URL}/update-claim/${uploadTargetClaim.claimNumber}`, {
+      const res = await fetch(`${API_URL}/policy-holder/update-claim/${uploadTargetClaim.claimNumber}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ uploadedDocuments: uploadedDocumentsPayload, uploadedBy: "Agent" })
