@@ -454,7 +454,7 @@ export default function AgentDashboard() {
           
           {/* Pending Document Requests Section */}
           {claimsWithPendingAgentRequests.length > 0 && (
-            <div className="flex flex-col gap-4 bg-gradient-to-br from-white/80 to-slate-50/40 backdrop-blur-md border border-red-200/40 rounded-3xl p-6 shadow-[0_8px_32px_rgba(239,68,68,0.01)] relative overflow-hidden">
+            <div className="flex flex-col gap-4 bg-gradient-to-br from-white/90 to-slate-50/50 backdrop-blur-md border border-red-200/40 rounded-3xl p-6 shadow-lg shadow-red-500/[0.005] relative overflow-hidden">
               <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200/60 pb-3 mb-2">
                 <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5 select-none">
                   <svg className="w-5 h-5 text-red-500 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -462,15 +462,12 @@ export default function AgentDashboard() {
                   </svg>
                   Action Required: Pending Agent Document Requests
                   {/* Total Pending Count Badge */}
-                  <span className="bg-red-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1 select-none">
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+                  <span className="bg-gradient-to-r from-red-500 to-rose-600 text-white text-xs font-black px-2.5 py-0.5 rounded-full flex items-center gap-1 select-none shadow-[0_2px_8px_rgba(239,68,68,0.25)] animate-pulse">
                     {claimsWithPendingAgentRequests.length}
                   </span>
                 </h2>
                 {claimsWithPendingAgentRequests.length > 3 && (
-                  <Link href="/Agent/Documents" className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 select-none">
+                  <Link href="/Agent/Documents" className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 select-none shadow-sm">
                     View All
                     <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
@@ -487,7 +484,13 @@ export default function AgentDashboard() {
                   const uploadedDocsCount = totalDocs.length - pendingDocs.length;
 
                   return (
-                    <div key={claim._id} className="bg-white/70 backdrop-blur-sm border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-red-200/60 hover:bg-white transition-all duration-300">
+                    <div
+                      key={claim._id}
+                      className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-slate-100/80 rounded-2xl p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-[0_8px_24px_rgba(239,68,68,0.03)] hover:border-red-200/50 hover:bg-white hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300 group"
+                    >
+                      {/* Vertical Red Accent Strip */}
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-red-500 to-rose-600 group-hover:w-1.5 transition-all duration-300" />
+                      
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
                         <span className="text-sm font-bold text-slate-800">{claim.claimNumber} · {claim.vehiclePlate}</span>
@@ -504,7 +507,7 @@ export default function AgentDashboard() {
 
                         <div className="flex flex-wrap gap-2 mt-2">
                           {pendingDocs.map((docName, idx) => (
-                            <span key={idx} className="text-[9px] font-bold bg-red-50/60 text-red-600 border border-red-100 px-2.5 py-0.5 rounded-full select-none tracking-wide uppercase">
+                            <span key={idx} className="text-[9px] font-black bg-red-50/70 text-red-600 border border-red-150 px-2.5 py-0.5 rounded-full select-none tracking-wide uppercase transition-colors hover:bg-red-100/50">
                               {docName}
                             </span>
                           ))}
@@ -512,7 +515,7 @@ export default function AgentDashboard() {
                       </div>
                       <button
                         onClick={() => setSelectedClaim(claim)}
-                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black text-xs font-bold py-2.5 px-5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center"
+                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black hover:shadow-[0_4px_14px_rgba(0,221,255,0.3)] text-xs font-black py-2.5 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center"
                       >
                         Upload Documents
                       </button>
@@ -524,7 +527,7 @@ export default function AgentDashboard() {
           )}
 
           {/* New Claims Section */}
-          <div className="flex flex-col gap-4 bg-gradient-to-br from-white/80 to-slate-50/40 backdrop-blur-md border border-slate-200/40 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+          <div className="flex flex-col gap-4 bg-gradient-to-br from-white/90 to-slate-50/50 backdrop-blur-md border border-slate-200/40 rounded-3xl p-6 shadow-lg shadow-slate-500/[0.005] relative overflow-hidden">
             <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200/60 pb-3 mb-2">
               <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5 select-none">
                 <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -532,7 +535,7 @@ export default function AgentDashboard() {
                 </svg>
                 New Claims
                 {/* Total Count Badge */}
-                <span className="bg-slate-750 text-slate-800 bg-slate-100 text-xs font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1 select-none border border-slate-200">
+                <span className="bg-gradient-to-r from-slate-700 to-slate-800 text-white text-xs font-black px-2.5 py-0.5 rounded-full flex items-center justify-center select-none shadow-[0_2px_8px_rgba(15,23,42,0.12)] border border-slate-700/30">
                   {activeClaims.length}
                 </span>
               </h2>
@@ -555,8 +558,11 @@ export default function AgentDashboard() {
                   return (
                     <div
                       key={claim._id}
-                      className="bg-white/70 backdrop-blur-sm border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-slate-200/60 hover:bg-white transition-all duration-300"
+                      className="relative overflow-hidden bg-white/70 backdrop-blur-sm border border-slate-100/80 rounded-2xl p-4 pl-5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:shadow-[0_8px_24px_rgba(0,0,0,0.03)] hover:border-slate-200 hover:bg-white hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300 group"
                     >
+                      {/* Decorative vertical color bar that glows/width-increases on card hover */}
+                      <div className={`absolute left-0 top-0 bottom-0 w-1 group-hover:w-1.5 transition-all duration-300 ${isUrgent ? 'bg-gradient-to-b from-red-500 to-rose-600' : 'bg-gradient-to-b from-cyan-400 to-cyan-500'}`} />
+                      
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
@@ -596,7 +602,7 @@ export default function AgentDashboard() {
                       
                       <button
                         onClick={() => setSelectedClaim(claim)}
-                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black text-xs font-bold py-2.5 px-5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center"
+                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black hover:shadow-[0_4px_14px_rgba(0,221,255,0.3)] text-xs font-black py-2.5 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center"
                       >
                         Details
                       </button>
