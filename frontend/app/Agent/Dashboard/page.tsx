@@ -455,21 +455,54 @@ export default function AgentDashboard() {
           {/* Pending Document Requests Section */}
           {claimsWithPendingAgentRequests.length > 0 && (
             <div className="flex flex-col gap-4 bg-gradient-to-br from-white/80 to-slate-50/40 backdrop-blur-md border border-red-200/40 rounded-3xl p-6 shadow-[0_8px_32px_rgba(239,68,68,0.01)] relative overflow-hidden">
-              <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2 select-none">
-                <svg className="w-5 h-5 text-red-500 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                Action Required: Pending Agent Document Requests
-              </h2>
+              <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200/60 pb-3 mb-2">
+                <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5 select-none">
+                  <svg className="w-5 h-5 text-red-500 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  Action Required: Pending Agent Document Requests
+                  {/* Total Pending Count Badge */}
+                  <span className="bg-red-500 text-white text-xs font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1 select-none">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    {claimsWithPendingAgentRequests.length}
+                  </span>
+                </h2>
+                {claimsWithPendingAgentRequests.length > 3 && (
+                  <Link href="/Agent/Documents" className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-1.5 rounded-full text-xs font-extrabold transition-all duration-200 hover:scale-105 active:scale-95 flex items-center gap-1 select-none">
+                    View All
+                    <svg className="w-3.5 h-3.5 text-red-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </Link>
+                )}
+              </div>
               <div className="flex flex-col gap-3">
-                {claimsWithPendingAgentRequests.map((claim) => {
+                {claimsWithPendingAgentRequests.slice(0, 3).map((claim) => {
                   const pendingDocs = getAgentPendingRequests(claim);
+                  const totalDocs = (claim.requestedDocuments || []).filter(
+                    name => getRecipientForDoc(claim, name) === "Agent"
+                  );
+                  const uploadedDocsCount = totalDocs.length - pendingDocs.length;
+
                   return (
                     <div key={claim._id} className="bg-white/70 backdrop-blur-sm border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-red-200/60 hover:bg-white transition-all duration-300">
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
                         <span className="text-sm font-bold text-slate-800">{claim.claimNumber} · {claim.vehiclePlate}</span>
-                        <div className="flex flex-wrap gap-2 mt-1.5">
+                        
+                        {/* Received / Requested documents count with Clipboard icon */}
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <svg className="w-4 h-4 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                          </svg>
+                          <span className="text-xs font-bold text-slate-500 select-none">
+                            Received: <span className="text-emerald-600 font-extrabold">{uploadedDocsCount}</span> / <span className="text-slate-800 font-extrabold">{totalDocs.length}</span>
+                          </span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 mt-2">
                           {pendingDocs.map((docName, idx) => (
                             <span key={idx} className="text-[9px] font-bold bg-red-50/60 text-red-600 border border-red-100 px-2.5 py-0.5 rounded-full select-none tracking-wide uppercase">
                               {docName}
@@ -479,7 +512,7 @@ export default function AgentDashboard() {
                       </div>
                       <button
                         onClick={() => setSelectedClaim(claim)}
-                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black text-xs font-bold py-2.5 px-5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none"
+                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black text-xs font-bold py-2.5 px-5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center"
                       >
                         Upload Documents
                       </button>
@@ -583,196 +616,6 @@ export default function AgentDashboard() {
         {/* Right Column: Notifications, My Activity & Support Details */}
         <div className="flex flex-col gap-8">
           
-          {/* Notifications Card Section */}
-          <div className="flex flex-col gap-4">
-            <Link href="/Agent/Notifications" className="flex items-center gap-2 no-underline text-inherit group select-none cursor-pointer">
-              <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
-                Notifications & Reminders
-              </h2>
-              <svg
-                className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </Link>
-
-            <div className="flex flex-col gap-4">
-              {(() => {
-                // Compile top 2 dashboard notifications dynamically
-                const dashboardNotifs: any[] = [];
-                claims.forEach((claim) => {
-                  const dateFormatted = formatDate(claim.createdAt);
-                  const severity = getSeverity(claim.damageType);
-                  const isUrgent = severity === "Urgent";
-
-                  // 1. Pending Assignment Acceptance (currentStep = 2)
-                  if (claim.status !== "Approved" && claim.status !== "Rejected" && claim.currentStep === 2) {
-                    dashboardNotifs.push({
-                      id: `${claim._id}-accept`,
-                      type: "action",
-                      title: `New Claim Assigned`,
-                      description: `Claim ${claim.claimNumber} requires acceptance.`,
-                      isUrgent: true,
-                      date: dateFormatted,
-                      claim
-                    });
-                  }
-
-                  // 2. Scheduled Inspection (currentStep = 3 and inspectionSubmitted = false)
-                  if (claim.status !== "Approved" && claim.status !== "Rejected" && claim.currentStep === 3 && !claim.inspectionSubmitted) {
-                    dashboardNotifs.push({
-                      id: `${claim._id}-inspection`,
-                      type: "action",
-                      title: `Inspection Pending`,
-                      description: `Perform inspection for ${claim.claimNumber}.`,
-                      isUrgent: isUrgent,
-                      date: dateFormatted,
-                      claim
-                    });
-                  }
-
-                  // 3. Pending Document Upload for Agent
-                  const pendingAgentDocs = getAgentPendingRequests(claim);
-                  if (claim.status !== "Approved" && claim.status !== "Rejected" && pendingAgentDocs.length > 0) {
-                    dashboardNotifs.push({
-                      id: `${claim._id}-doc-request`,
-                      type: "urgent",
-                      title: `Document Upload Required`,
-                      description: `Upload ${pendingAgentDocs.join(" & ")} for ${claim.claimNumber}.`,
-                      isUrgent: true,
-                      date: dateFormatted,
-                      claim
-                    });
-                  }
-
-                  // 4. Message-based Document Upload Request
-                  const userMessages = (claim.messages || []).filter(m => m.sender !== "Agent" && m.sender !== "Agent (You)");
-                  if (claim.status !== "Approved" && claim.status !== "Rejected" && userMessages.length > 0) {
-                    const lastMsg = userMessages[userMessages.length - 1];
-                    const isDocRequest = lastMsg.message && typeof lastMsg.message === "string" && lastMsg.message.includes("[Document Request to Agent]");
-                    if (isDocRequest) {
-                      let docName = "requested specifications";
-                      const match = lastMsg.message.match(/Requested:\s*([^.]+)/);
-                      if (match && match[1]) {
-                        docName = match[1].trim();
-                      }
-                      dashboardNotifs.push({
-                        id: `${claim._id}-doc-request-msg-${lastMsg.sentAt}`,
-                        type: "urgent",
-                        title: `Document Upload Required`,
-                        description: `Upload ${docName} for ${claim.claimNumber}.`,
-                        isUrgent: true,
-                        date: formatDate(lastMsg.sentAt),
-                        claim
-                      });
-                    }
-                  }
-                });
-
-                // Sort: Urgent first
-                dashboardNotifs.sort((a, b) => (a.isUrgent === b.isUrgent ? 0 : a.isUrgent ? -1 : 1));
-
-                if (loading) {
-                  return (
-                    <div className="text-slate-400 text-center text-xs py-4 animate-pulse">
-                      Loading notifications...
-                    </div>
-                  );
-                }
-
-                if (dashboardNotifs.length === 0) {
-                  return (
-                    <div className="bg-white border border-slate-100 rounded-3xl p-6 text-center shadow-sm text-slate-500 font-semibold text-xs">
-                      No notifications or reminders.
-                    </div>
-                  );
-                }
-
-                 return dashboardNotifs.slice(0, 2).map((notif) => {
-                  const urgent = notif.isUrgent;
-                  
-                  // Compact premium card design
-                  let indicatorClass = urgent ? "bg-red-500" : "bg-cyan-500";
-                  let iconClass = urgent 
-                    ? "p-2 bg-red-50 text-red-500 rounded-xl flex-shrink-0 mt-0.5" 
-                    : "p-2 bg-cyan-50 text-cyan-500 rounded-xl flex-shrink-0 mt-0.5";
-                  let actionClass = urgent ? "text-red-500 font-bold" : "text-cyan-600 font-bold";
-                  let cardClass = "relative overflow-hidden pl-5 bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200";
-                  let iconSvg = null;
-
-                  // Pick custom icon based on the notification type
-                  if (notif.id.includes("-doc-request")) {
-                    iconSvg = (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                      </svg>
-                    );
-                  } else if (notif.id.includes("-inspection")) {
-                    iconSvg = (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
-                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
-                        <path d="M9 12h6" />
-                        <path d="M9 16h6" />
-                      </svg>
-                    );
-                  } else if (notif.id.includes("-accept")) {
-                    iconSvg = (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="12" y1="18" x2="12" y2="12" />
-                        <line x1="9" y1="15" x2="15" y2="15" />
-                      </svg>
-                    );
-                  } else {
-                    iconSvg = (
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
-                        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9z" />
-                        <path d="M13.73 21a2 2 0 01-3.46 0" />
-                      </svg>
-                    );
-                  }
-
-                  return (
-                    <div
-                      key={notif.id}
-                      onClick={() => setSelectedClaim(notif.claim)}
-                      className={cardClass}
-                    >
-                      {/* Visual Left Indicator Strip */}
-                      <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${indicatorClass}`} />
-
-                      <div className="flex items-start gap-3">
-                        <div className={iconClass}>
-                          {iconSvg}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-slate-800 font-extrabold text-sm leading-tight">
-                            {notif.title}
-                          </h4>
-                          <p className="text-slate-500 text-xs font-semibold mt-1 truncate">
-                            {notif.description}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex justify-between items-center mt-3.5 pt-2.5 border-t border-slate-100">
-                        <span className="text-[10px] text-slate-400 font-bold">{notif.date}</span>
-                        <span className={`text-[10px] ${actionClass} hover:underline`}>View details &gt;</span>
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          </div>
 
           {/* My Activity Card Section */}
           <div className="flex flex-col gap-4">
