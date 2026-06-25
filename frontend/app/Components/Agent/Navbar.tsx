@@ -81,17 +81,16 @@ export default function Navbar() {
             <Link href="/Agent/Dashboard" className={getNavLinkClass("/Agent/Contact")}>
               Contact
             </Link>
+            <Link
+              href="/Agent/Dashboard"
+              className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold px-6 py-2 rounded-full shadow-md transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] no-underline"
+            >
+              My Claims
+            </Link>
           </div>
 
           {/* Action Items (Right) */}
           <div className="hidden md:flex items-center gap-6">
-            {/* My Claims Button */}
-            <Link href="/Agent/Dashboard">
-              <button className="bg-[#ff9800] hover:bg-[#ff8f00] active:bg-[#f57c00] text-white font-bold py-2.5 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform active:scale-95 cursor-pointer">
-                My Claims
-              </button>
-            </Link>
-
             {/* Notification Bell */}
             <Link href="/Agent/Notifications" className="text-black hover:text-[#00ddff] transition-colors p-1" aria-label="Notifications">
               <svg
@@ -185,13 +184,15 @@ export default function Navbar() {
             >
               Contact
             </Link>
+            <Link
+              href="/Agent/Dashboard"
+              onClick={() => setIsOpen(false)}
+              className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold py-3 px-5 rounded-2xl shadow-md transition-all duration-150 text-center mx-5 cursor-pointer no-underline"
+            >
+              My Claims
+            </Link>
             <div className="h-px bg-gray-100 my-2" />
             <div className="flex items-center justify-between px-5 py-2">
-              <Link href="/Agent/Dashboard" onClick={() => setIsOpen(false)}>
-                <button className="bg-[#ff9800] hover:bg-[#ff8f00] text-white font-bold py-2 px-5 rounded-lg text-sm shadow-md cursor-pointer">
-                  My Claims
-                </button>
-              </Link>
               <div className="flex gap-4">
                 <Link href="/Agent/Notifications" onClick={() => setIsOpen(false)} className="text-black hover:text-[#00ddff] p-1">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
