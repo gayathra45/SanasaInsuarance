@@ -544,128 +544,73 @@ export default function AgentDashboard() {
                 const severity = getSeverity(claim.damageType);
                 const isUrgent = severity === "Urgent";
                 
-                // Frosted glass styling with borders based on severity
-                const borderStyles = isUrgent 
-                  ? "border-red-200 hover:border-red-300 bg-white/80 shadow-[0_12px_32px_rgba(239,68,68,0.02)] hover:shadow-[0_20px_48px_rgba(239,68,68,0.06)]" 
-                  : "border-slate-100 hover:border-cyan-200 bg-white/80 shadow-[0_12px_32px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_48px_rgba(15,45,58,0.05)]";
+                let cardClass = isUrgent
+                  ? "bg-red-50/15 border-2 border-red-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px] hover:shadow-md transition-shadow relative"
+                  : "bg-cyan-50/15 border-2 border-cyan-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px] hover:shadow-md transition-shadow relative";
+                  
+                let iconClass = isUrgent
+                  ? "p-2 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5"
+                  : "p-2 bg-cyan-100 rounded-xl text-cyan-500 flex-shrink-0 mt-0.5";
+                  
+                let iconSvg = isUrgent ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.522a.75.75 0 01-.297 1.228 35.754 35.754 0 01-16.142 0 .75.75 0 01-.297-1.228A9.013 9.013 0 005.25 9.75V9zm4.5 8.25a3.75 3.75 0 007.5 0H9.75z" clipRule="evenodd" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
+                  </svg>
+                );
                 
-                const badgeStyles = isUrgent
-                  ? "border-red-100 bg-red-50 text-red-600"
-                  : severity === "Medium"
-                  ? "border-amber-100 bg-amber-50 text-amber-600"
-                  : "border-cyan-100 bg-cyan-50 text-cyan-600";
-
-                const sideStrip = isUrgent ? "bg-red-500" : "bg-cyan-500";
+                let titleClass = isUrgent
+                  ? "text-red-600 font-extrabold text-base leading-none"
+                  : "text-cyan-600 font-extrabold text-base leading-none";
 
                 return (
                   <div
                     key={claim._id}
-                    className={`w-full border rounded-[2rem] p-6 hover:-translate-y-0.5 hover:scale-[1.01] transition-all duration-300 relative overflow-hidden flex flex-col gap-6 ${borderStyles}`}
+                    className={cardClass}
                   >
-                    {/* Visual Left Indicator Strip */}
-                    <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${sideStrip}`} />
-
-                    {/* Header Row */}
-                    <div className="flex flex-row justify-between items-start gap-4 relative z-10 pl-2">
-                      <div className="flex flex-col gap-1.5">
-                        <div className="flex items-center gap-2 select-none">
-                          <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded tracking-wide uppercase">
-                            CLAIM ID
-                          </span>
-                          <span className="text-slate-400 text-xs font-bold">·</span>
-                          <span className="text-slate-500 text-xs font-semibold">Step {claim.currentStep} of 4</span>
-                        </div>
-                        <h3 className="font-extrabold text-xl text-slate-800 tracking-tight">
-                          {claim.claimNumber}
-                        </h3>
+                    <div className="flex items-start gap-4">
+                      <div className={iconClass}>
+                        {iconSvg}
                       </div>
-
-                      {/* Severity Badge */}
-                      <span className={`border px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase flex items-center gap-1.5 select-none ${badgeStyles}`}>
-                        {isUrgent && (
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                          </span>
-                        )}
-                        {severity}
-                      </span>
-                    </div>
-
-                    {/* Grid Information Block */}
-                    <div className="pl-2 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm relative z-10">
-                      {/* Vehicle Plate */}
-                      <div className="flex items-start gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
-                        <div className="p-2 bg-white text-slate-550 rounded-xl shadow-sm flex-shrink-0">
-                          <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1-1.42l1.107-3.875A3.375 3.375 0 016.711 11.25h10.578a3.375 3.375 0 013.23 2.205l1.107 3.875a1.125 1.125 0 01-1 1.42H18.75m-3-1.5a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125m-11.25 0h1.125M21 11.25c0-2.485-4.03-4.5-9-4.5s-9 2.015-9 4.5" />
-                          </svg>
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Vehicle Plate</span>
-                          <span className="text-slate-800 font-extrabold text-[15px] leading-tight truncate">
-                            {claim.vehiclePlate}
-                          </span>
-                          {claim.vehicleModel && (
-                            <span className="text-[11px] font-semibold text-slate-500 mt-0.5 truncate">
-                              {claim.vehicleModel}
+                      <div className="flex-1 min-w-0">
+                        <h4 className={titleClass}>
+                          {claim.claimNumber} <span className="text-slate-400 font-medium text-xs ml-1 select-none">· Severity: {severity}</span>
+                        </h4>
+                        
+                        {/* 3-column Typographic Grid Details */}
+                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-6 text-xs font-semibold text-slate-600 leading-relaxed">
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Vehicle Plate</span>
+                            <span className="text-slate-800 font-extrabold text-[13px] truncate block">
+                              {claim.vehiclePlate} {claim.vehicleModel && <span className="font-semibold text-slate-500">({claim.vehicleModel})</span>}
                             </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Damage Type */}
-                      <div className="flex items-start gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
-                        <div className="p-2 bg-white text-slate-550 rounded-xl shadow-sm flex-shrink-0">
-                          <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                          </svg>
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Damage Type</span>
-                          <span className="text-slate-800 font-extrabold text-[15px] leading-tight truncate">
-                            {claim.damageType}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Location */}
-                      <div className="flex items-start gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
-                        <div className="p-2 bg-white text-slate-550 rounded-xl shadow-sm flex-shrink-0">
-                          <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
-                          </svg>
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Location</span>
-                          <span className="text-slate-800 font-extrabold text-[15px] leading-tight truncate" title={claim.location}>
-                            {claim.location}
-                          </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Damage Type</span>
+                            <span className="text-slate-800 font-extrabold text-[13px] truncate block">{claim.damageType}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Location</span>
+                            <span className="text-slate-800 font-extrabold text-[13px] truncate block" title={claim.location}>{claim.location}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Bottom Row */}
-                    <div className="flex flex-row justify-between items-center border-t border-slate-100/80 pt-4 mt-2 pl-2 relative z-10">
-                      {/* Incident Date/Time */}
-                      <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold select-none">
-                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <span>Today, {claim.incidentTime}</span>
-                      </div>
-
-                      {/* Action Button */}
+                    {/* Bottom Row Actions */}
+                    <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-slate-100/50">
                       <button
                         onClick={() => setSelectedClaim(claim)}
-                        className="bg-slate-900 hover:bg-[#00ddff] hover:text-slate-950 text-white text-xs font-black py-2.5 px-6 rounded-full transition-all duration-200 active:scale-95 flex items-center gap-1 select-none shadow-md hover:shadow-cyan-300/20 border-none cursor-pointer"
+                        className="bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-6 py-2 rounded-full transition-all duration-150 border-none cursor-pointer"
                       >
-                        <span>View Details</span>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                        </svg>
+                        Details
                       </button>
+                      <span className="text-slate-400 text-[11px] font-bold">
+                        Step {claim.currentStep} of 4 · Today, {claim.incidentTime}
+                      </span>
                     </div>
                   </div>
                 );
