@@ -18,7 +18,7 @@ import {
   Linking,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import PolicyHolderNavbar from "../Components/policy holder/page";
@@ -53,6 +53,7 @@ interface Notification {
   isUrgent: boolean;
   actions?: { label: string; route: string; primary?: boolean }[];
   createdAt?: string;
+  claim: any;
 }
 
 function formatPlate(plate: string) {
@@ -101,12 +102,14 @@ export default function PolicyHolderDashboard() {
   const [userNic, setUserNic]         = useState("");
   const [vehicles, setVehicles]       = useState<Vehicle[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
   const [totalClaims, setTotalClaims] = useState(0);
   const [inProgress, setInProgress]   = useState(0);
   const [approved, setApproved]       = useState(0);
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
   const [hasDocRequest, setHasDocRequest] = useState(false);
+  const [readIds, setReadIds]         = useState<string[]>([]);
   const [customAlert, setCustomAlert] = useState<{
     title: string;
     message: string;
@@ -114,48 +117,24 @@ export default function PolicyHolderDashboard() {
     onClose?: () => void;
   } | null>(null);
 
-  const showCustomAlert = (title: string, message: string, type: "success" | "warning" | "info" = "info", onClose?: () => void) => {
-    setCustomAlert({ title, message, type, onClose });
+  const navigation = useNavigation();
+
+  const loadReadStatus = async () => {
+    const saved = await AsyncStorage.getItem("read_notification_ids");
+    if (saved) {
+      try {
+        setReadIds(JSON.parse(saved));
+      } catch {}
+    }
   };
 
-  const contentFadeAnim  = useRef(new Animated.Value(0)).current;
-  const headerSlideAnim  = useRef(new Animated.Value(-20)).current;
-  const heroPulse        = useRef(new Animated.Value(1)).current;
-  const bellScale        = useRef(new Animated.Value(1)).current;
-
-  useEffect(() => {
-    (async () => {
-      const userStr = await AsyncStorage.getItem("logged_in_user");
-      if (!userStr) { router.replace("/login/page"); return; }
-      try {
-        const user = JSON.parse(userStr);
-        setUserName(user.firstName || "User");
-        setUserNic(user.nic || "");
-        if (user.vehicles && Array.isArray(user.vehicles)) setVehicles(user.vehicles);
-        if (user.nic) fetchClaims(user.nic);
-      } catch { router.replace("/login/page"); }
-    })();
-  }, []);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(contentFadeAnim, {
-        toValue: 1, duration: 600,
-        easing: Easing.out(Easing.cubic), useNativeDriver: true,
-      }),
-      Animated.timing(headerSlideAnim, {
-        toValue: 0, duration: 500,
-        easing: Easing.out(Easing.back(1)), useNativeDriver: true,
-      }),
-    ]).start();
-
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(heroPulse, { toValue: 1.02, duration: 2500, useNativeDriver: true }),
-        Animated.timing(heroPulse, { toValue: 1,    duration: 2500, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
+  const markAsRead = async (id: string) => {
+    if (!readIds.includes(id)) {
+      const updated = [...readIds, id];
+      setReadIds(updated);
+      await AsyncStorage.setItem("read_notification_ids", JSON.stringify(updated));
+    }
+  };
 
   const fetchClaims = useCallback(async (nic: string) => {
     try {
@@ -178,6 +157,7 @@ export default function PolicyHolderDashboard() {
 
       const notifs: Notification[] = [];
       all.forEach((claim) => {
+        const dateFormatted = formatDate(claim.createdAt);
         if (claim.documentsRequested) {
           notifs.push({
             id: claim.claimNumber + "-doc",
@@ -189,13 +169,14 @@ export default function PolicyHolderDashboard() {
                 : "Police Report & Repair Estimate"
             } for claim ${claim.claimNumber}.`,
             subText: "Please upload within 3 days...",
-            date: formatDate(claim.createdAt),
+            date: dateFormatted,
             isUrgent: true,
             createdAt: claim.createdAt,
             actions: [
               { label: "Upload", route: "/Policy Holder/MyDocs", primary: true },
-              { label: "View",   route: "/Policy Holder/MyDocs" },
+              { label: "View",   route: "/Policy Holder/TrackClaims" },
             ],
+            claim: claim
           });
         }
         const s = (claim.status || "").toLowerCase();
@@ -205,10 +186,11 @@ export default function PolicyHolderDashboard() {
             type: "approved",
             title: `Claim ${claim.claimNumber} Approved!`,
             description: `Your claim for LKR ${claim.amount ? Number(claim.amount).toLocaleString() : "85,000"} has been approved. Payment processed within 5 days.`,
-            date: formatDate(claim.createdAt),
+            date: dateFormatted,
             isUrgent: false,
             createdAt: claim.createdAt,
-            actions: [{ label: "View", route: "/Policy Holder/My_claims" }],
+            actions: [{ label: "View", route: "/Policy Holder/TrackClaims" }],
+            claim: claim
           });
         } else if (!claim.documentsRequested) {
           notifs.push({
@@ -216,10 +198,11 @@ export default function PolicyHolderDashboard() {
             type: "status",
             title: `Claim ${claim.claimNumber} Status: ${claim.status || "Pending"}`,
             description: `Your claim is currently in ${claim.status || "Pending"} stage. Agent is reviewing details.`,
-            date: formatDate(claim.createdAt),
+            date: dateFormatted,
             isUrgent: false,
             createdAt: claim.createdAt,
-            actions: [{ label: "View", route: "/Policy Holder/My_claims" }],
+            actions: [{ label: "View", route: "/Policy Holder/TrackClaims" }],
+            claim: claim
           });
         }
       });
@@ -236,7 +219,7 @@ export default function PolicyHolderDashboard() {
       setInProgress(pending.length);
       setApproved(approvedList.length);
       setHasDocRequest(docReq);
-      setNotifications(notifs.slice(0, 3));
+      setNotifications(notifs);
     } catch (e) {
       console.error(e);
     } finally {
@@ -244,6 +227,157 @@ export default function PolicyHolderDashboard() {
       setRefreshing(false);
     }
   }, []);
+
+  const showCustomAlert = (title: string, message: string, type: "success" | "warning" | "info" = "info", onClose?: () => void) => {
+    setCustomAlert({ title, message, type, onClose });
+  };
+
+  const contentFadeAnim  = useRef(new Animated.Value(0)).current;
+  const headerSlideAnim  = useRef(new Animated.Value(-20)).current;
+  const heroPulse        = useRef(new Animated.Value(1)).current;
+  const bellScale        = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    (async () => {
+      await loadReadStatus();
+      const userStr = await AsyncStorage.getItem("logged_in_user");
+      if (!userStr) { router.replace("/login/page"); return; }
+      try {
+        const user = JSON.parse(userStr);
+        setUserName(user.firstName || "User");
+        setUserNic(user.nic || "");
+        if (user.vehicles && Array.isArray(user.vehicles)) setVehicles(user.vehicles);
+        if (user.nic) fetchClaims(user.nic);
+      } catch { router.replace("/login/page"); }
+    })();
+  }, []);
+
+  // Reload read status and claims when screen is focused
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      loadReadStatus();
+      if (userNic) fetchClaims(userNic);
+    });
+    return unsubscribe;
+  }, [navigation, userNic, fetchClaims]);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(contentFadeAnim, {
+        toValue: 1, duration: 600,
+        easing: Easing.out(Easing.cubic), useNativeDriver: true,
+      }),
+      Animated.timing(headerSlideAnim, {
+        toValue: 0, duration: 500,
+        easing: Easing.out(Easing.back(1)), useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(heroPulse, { toValue: 1.02, duration: 2500, useNativeDriver: true }),
+        Animated.timing(heroPulse, { toValue: 1,    duration: 2500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const formatDateString = (dateStr?: string) => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${date.getDate().toString().padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  const formatNumberPlate = (plate?: string): string => {
+    if (!plate) return "";
+    const cleaned = plate.trim();
+    if (cleaned.includes("-")) return cleaned.toUpperCase();
+    const lastNumbersMatch = cleaned.match(/^(.*[A-Za-z]+)(\d+)$/);
+    if (lastNumbersMatch) {
+      return `${lastNumbersMatch[1].trim().toUpperCase()}-${lastNumbersMatch[2]}`;
+    }
+    return cleaned.toUpperCase();
+  };
+
+  const getUserRequestedDocs = (claim: any): string[] => {
+    const getRecipientForDoc = (name: string) => {
+      const msg = [...(claim.messages || [])]
+        .reverse()
+        .find((m: any) => m.message.includes(`Requested: ${name}`));
+      if (msg) {
+        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+        if (msg.message.includes("[Document Request to User]")) return "User";
+      }
+      return claim.documentRequestTo || "User";
+    };
+    return (claim.requestedDocuments || []).filter((name: string) => getRecipientForDoc(name) === "User");
+  };
+
+  const renderClaimProgress = (status: string, dbStep?: number) => {
+    let currentStep = dbStep || 1;
+    if (!dbStep) {
+      const s = status.toLowerCase();
+      if (s.includes("pending") || s.includes("progress")) currentStep = 3;
+      else if (s.includes("review")) currentStep = 4;
+      else if (s.includes("approved") || s.includes("done")) currentStep = 6;
+    }
+
+    const isRejected = status.toLowerCase() === "rejected";
+
+    const steps = [
+      { num: "01", label: "Submitted" },
+      { num: "02", label: "Assigned" },
+      { num: "03", label: "Inspection" },
+      { num: "04", label: "Review" },
+      { num: "05", label: "Decision" },
+      { num: "06", label: "Payment" }
+    ];
+
+    return (
+      <View style={styles.wizardContainer}>
+        <View style={styles.wizardBgLine} />
+        <View
+          style={[
+            styles.wizardProgressLine,
+            isRejected && { backgroundColor: "#ef4444" },
+            { width: `${((currentStep - 1) / 5) * 82}%` }
+          ]}
+        />
+        <View style={styles.wizardStepsRow}>
+          {steps.map((step, idx) => {
+            const stepNum = idx + 1;
+            const isCompleted = stepNum < currentStep;
+            const isActive = stepNum === currentStep;
+
+            let circleStyle: any = styles.stepCircleInactive;
+            let textStyle: any = styles.stepTextInactive;
+
+            if (isCompleted) {
+              circleStyle = isRejected ? { borderColor: "#ef4444" } : styles.stepCircleCompleted;
+              textStyle = isRejected ? { color: "#ef4444" } : styles.stepTextCompleted;
+            } else if (isActive) {
+              circleStyle = isRejected ? { borderColor: "#ef4444", backgroundColor: "#fef2f2" } : styles.stepCircleActive;
+              textStyle = isRejected ? { color: "#ef4444", fontWeight: "800" } : styles.stepTextActive;
+            }
+
+            return (
+              <View key={step.num} style={styles.stepItem}>
+                <View style={[styles.stepCircle, circleStyle]}>
+                  <Text style={styles.stepNumber}>{step.num}</Text>
+                </View>
+                <Text style={[styles.stepLabel, textStyle]}>{step.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -295,7 +429,7 @@ export default function PolicyHolderDashboard() {
   }
 
   const hasAlerts  = inProgress > 0 || hasDocRequest;
-  const unreadCount = notifications.length;
+  const unreadCount = notifications.filter((n) => !readIds.includes(n.id)).length;
 
   return (
     <View style={styles.root}>
@@ -482,9 +616,10 @@ export default function PolicyHolderDashboard() {
 
             {notifications.length > 0 ? (
               <View style={styles.notificationList}>
-                {notifications.map((n) => {
+                {notifications.slice(0, 3).map((n) => {
                   const isUrgent   = n.type === "urgent";
                   const isApproved = n.type === "approved";
+                  const isRead     = readIds.includes(n.id);
 
                   let leftBorderColor = "#2563eb";
                   let iconBgColor     = "#eff6ff";
@@ -503,18 +638,33 @@ export default function PolicyHolderDashboard() {
                     iconName        = "checkmark-circle" as const;
                   }
 
+                  if (isRead) {
+                    leftBorderColor = "#cbd5e1";
+                  }
+
                   return (
-                    <View key={n.id} style={[styles.notifCard, { borderLeftColor: leftBorderColor }]}>
+                    <TouchableOpacity
+                      key={n.id}
+                      activeOpacity={0.9}
+                      onPress={() => {
+                        setSelectedClaim(n.claim);
+                        markAsRead(n.id);
+                      }}
+                      style={[styles.notifCard, { borderLeftColor: leftBorderColor }]}
+                    >
                       <View style={styles.notifCardBody}>
                         <View style={styles.notifHeader}>
                           <View style={[styles.iconCircle, { backgroundColor: iconBgColor }]}>
                             <Ionicons name={iconName} size={16} color={iconColor} />
                           </View>
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.notifTitle}>{n.title}</Text>
+                          <View style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6 }}>
+                            <Text style={[styles.notifTitle, isRead && { opacity: 0.65 }]}>{n.title}</Text>
+                            {!isRead && (
+                              <View style={styles.unreadDot} />
+                            )}
                           </View>
                         </View>
-                        <Text style={styles.notifDesc}>{n.description}</Text>
+                        <Text style={[styles.notifDesc, isRead && { opacity: 0.7 }]}>{n.description}</Text>
                         {n.subText && <Text style={styles.notifSubtext}>{n.subText}</Text>}
                       </View>
 
@@ -527,7 +677,17 @@ export default function PolicyHolderDashboard() {
                                 styles.notifBtn,
                                 act.primary ? styles.notifBtnPrimary : styles.notifBtnSecondary,
                               ]}
-                              onPress={() => router.push(act.route as any)}
+                              onPress={() => {
+                                markAsRead(n.id);
+                                if (act.route.includes("TrackClaims")) {
+                                  router.push({
+                                    pathname: "/Policy Holder/TrackClaims",
+                                    params: { id: n.claim.claimNumber }
+                                  } as any);
+                                } else {
+                                  router.push(act.route as any);
+                                }
+                              }}
                             >
                               <Text
                                 style={[
@@ -542,7 +702,7 @@ export default function PolicyHolderDashboard() {
                         </View>
                         <Text style={styles.notifDate}>{n.date}</Text>
                       </View>
-                    </View>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
@@ -754,6 +914,160 @@ export default function PolicyHolderDashboard() {
           </View>
         </Modal>
       )}
+
+      {/* Claim Detail Modal */}
+      <Modal
+        visible={!!selectedClaim}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setSelectedClaim(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeaderTitleArea}>
+              <Text style={styles.modalHeaderTitle} numberOfLines={1}>
+                Claim Details – {selectedClaim?.claimNumber}
+              </Text>
+              <TouchableOpacity onPress={() => setSelectedClaim(null)} style={styles.closeBtn}>
+                <Ionicons name="close" size={24} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedClaim ? (
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}
+              >
+                {/* Progress tracker wizard */}
+                {renderClaimProgress(selectedClaim.status, selectedClaim.currentStep)}
+
+                {/* Details Table */}
+                <View style={styles.detailsCard}>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Vehicle Plate:</Text>
+                    <Text style={styles.detailsVal}>{formatNumberPlate(selectedClaim.vehiclePlate)}</Text>
+                  </View>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Damage Type:</Text>
+                    <Text style={styles.detailsVal}>{selectedClaim.damageType}</Text>
+                  </View>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Est. Amount:</Text>
+                    <Text style={styles.detailsVal}>
+                      {selectedClaim.amount
+                        ? (typeof selectedClaim.amount === "string"
+                          ? (selectedClaim.amount.startsWith("Rs.") ? "LKR " + selectedClaim.amount.substring(4) : selectedClaim.amount)
+                          : "LKR " + Number(selectedClaim.amount).toLocaleString())
+                        : "Pending"}
+                    </Text>
+                  </View>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Incident Date:</Text>
+                    <Text style={styles.detailsVal}>{formatDateString(selectedClaim.incidentDate)}</Text>
+                  </View>
+                  <View style={styles.detailsRow}>
+                    <Text style={styles.detailsLabel}>Officer Assigned:</Text>
+                    <Text style={styles.detailsVal}>{selectedClaim.officer || "Agent Saman"}</Text>
+                  </View>
+                  <View style={styles.detailsRowNoBorder}>
+                    <Text style={styles.detailsLabel}>Location:</Text>
+                    <Text style={styles.detailsVal}>{selectedClaim.location || "N/A"}</Text>
+                  </View>
+                </View>
+
+                {/* Incident Description */}
+                {selectedClaim.description ? (
+                  <View style={styles.descriptionContainer}>
+                    <Text style={styles.descriptionHeader}>Incident Description</Text>
+                    <Text style={styles.descriptionText}>"{selectedClaim.description}"</Text>
+                  </View>
+                ) : null}
+
+                {/* Messages & Logs */}
+                <View style={styles.messagesSection}>
+                  <Text style={styles.messagesHeader}>Messages & Notifications</Text>
+                  {(() => {
+                    const filteredMessages = (selectedClaim.messages || []).filter((msg: any) => msg.recipient !== "Agent");
+                    if (filteredMessages.length > 0) {
+                      return (
+                        <View style={styles.messagesList}>
+                          {filteredMessages.map((msg: any, index: number) => (
+                            <View key={index} style={styles.messageBox}>
+                              <View style={styles.messageSubHeader}>
+                                <Text style={styles.messageSender}>{msg.sender}</Text>
+                                <Text style={styles.messageTime}>{formatDateString(msg.sentAt)}</Text>
+                              </View>
+                              <Text style={styles.messageBody}>{msg.message}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    }
+                    return <Text style={styles.noMessagesText}>No messages or notifications for this claim.</Text>;
+                  })()}
+                </View>
+
+                {/* Warning Alert & Upload Docs Direct Link */}
+                {selectedClaim.documentsRequested && getUserRequestedDocs(selectedClaim).length > 0 && (
+                  <View style={styles.docRequestAlert}>
+                    <View style={styles.docAlertTitleRow}>
+                      <Ionicons name="warning" size={16} color="#dc2626" />
+                      <Text style={styles.docAlertTitle}>Documents Requested</Text>
+                    </View>
+                    <Text style={styles.docAlertDesc}>
+                      Please upload the following files via the Documents page:
+                    </Text>
+                    <View style={styles.docItems}>
+                      {getUserRequestedDocs(selectedClaim).map((doc: string) => (
+                        <View key={doc} style={styles.docDotItem}>
+                          <View style={styles.bulletDot} />
+                          <Text style={styles.docDotText}>{doc}</Text>
+                        </View>
+                      ))}
+                    </View>
+                    <TouchableOpacity
+                      style={styles.uploadDocBtn}
+                      onPress={() => {
+                        setSelectedClaim(null);
+                        router.push("/Policy Holder/MyDocs" as any);
+                      }}
+                    >
+                      <Text style={styles.uploadDocBtnText}>Go to Documents</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </ScrollView>
+            ) : null}
+
+            {/* Modal Footer */}
+            <View style={styles.modalFooterRow}>
+              <TouchableOpacity
+                style={styles.modalTrackBtn}
+                onPress={() => {
+                  const claimNum = selectedClaim?.claimNumber;
+                  setSelectedClaim(null);
+                  if (claimNum) {
+                    router.push({
+                      pathname: "/Policy Holder/TrackClaims",
+                      params: { id: claimNum }
+                    } as any);
+                  }
+                }}
+              >
+                <Text style={styles.modalTrackBtnText}>Track Claim</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={styles.modalCloseFooterBtn}
+                onPress={() => setSelectedClaim(null)}
+              >
+                <Text style={styles.modalCloseFooterBtnText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -981,6 +1295,13 @@ const styles = StyleSheet.create({
     color: "#94a3b8",
     fontWeight: "600",
   },
+  unreadDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "#3b82f6",
+    alignSelf: "center",
+  },
 
   /* Vehicles */
   vehiclesList: { gap: 10 },
@@ -1166,5 +1487,225 @@ const styles = StyleSheet.create({
     color: "#64748b",
     marginTop: 2,
     fontWeight: "500",
+  },
+
+  /* Modal Styles */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: "85%",
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  modalHeaderTitleArea: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e2e8f0",
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0f172a",
+    flex: 1,
+    marginRight: 10,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#f1f5f9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  /* Wizard progress tracker */
+  wizardContainer: {
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
+    borderRadius: 20,
+    paddingTop: 16,
+    paddingBottom: 14,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    position: "relative",
+  },
+  wizardBgLine: {
+    position: "absolute",
+    top: 30,
+    left: 28,
+    right: 28,
+    height: 3,
+    backgroundColor: "#e2e8f0",
+  },
+  wizardProgressLine: {
+    position: "absolute",
+    top: 30,
+    left: 28,
+    height: 3,
+    backgroundColor: "#00b050",
+  },
+  wizardStepsRow: { flexDirection: "row", justifyContent: "space-between" },
+  stepItem: { flex: 1, alignItems: "center" },
+  stepCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ffffff",
+  },
+  stepCircleInactive: { borderColor: "#cbd5e1" },
+  stepCircleCompleted: { borderColor: "#00b050" },
+  stepCircleActive: { borderColor: "#2563eb", backgroundColor: "#eff6ff" },
+  stepNumber: { fontSize: 10.5, fontWeight: "800", color: "#64748b" },
+  stepLabel: { fontSize: 9.5, fontWeight: "700", marginTop: 6 },
+  stepTextInactive: { color: "#94a3b8" },
+  stepTextCompleted: { color: "#475569" },
+  stepTextActive: { color: "#2563eb", fontWeight: "800" },
+
+  /* Details Table Card */
+  detailsCard: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    marginBottom: 16,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.01,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  detailsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderColor: "#f1f5f9",
+  },
+  detailsRowNoBorder: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+  },
+  detailsLabel: { fontSize: 13, color: "#64748b", fontWeight: "600" },
+  detailsVal: { fontSize: 13, color: "#0f172a", fontWeight: "800", maxWidth: "65%", textAlign: "right" },
+
+  /* Description Card */
+  descriptionContainer: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.01,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  descriptionHeader: { fontSize: 11, color: "#64748b", fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 6 },
+  descriptionText: { fontSize: 13, color: "#475569", fontWeight: "600", fontStyle: "italic", lineHeight: 18 },
+
+  /* Requested Docs alert */
+  docRequestAlert: {
+    backgroundColor: "rgba(254, 242, 242, 0.8)",
+    borderWidth: 1.5,
+    borderColor: "#fecaca",
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 20,
+  },
+  docAlertTitleRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 8 },
+  docAlertTitle: { fontSize: 13.5, fontWeight: "800", color: "#991b1b" },
+  docAlertDesc: { fontSize: 12.5, color: "#b91c1c", fontWeight: "600", lineHeight: 17, marginBottom: 10 },
+  docItems: { gap: 6, marginBottom: 12 },
+  docDotItem: { flexDirection: "row", alignItems: "center", gap: 8 },
+  bulletDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: "#dc2626" },
+  docDotText: { fontSize: 12, color: "#b91c1c", fontWeight: "800" },
+  uploadDocBtn: {
+    backgroundColor: "#dc2626",
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadDocBtnText: { fontSize: 12, color: "#ffffff", fontWeight: "800" },
+
+  /* Messages updates list */
+  messagesSection: { marginBottom: 20 },
+  messagesHeader: { fontSize: 11, color: "#64748b", fontWeight: "800", textTransform: "uppercase", letterSpacing: 0.3, marginBottom: 10 },
+  messagesList: { gap: 8 },
+  messageBox: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 14,
+    padding: 12,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.01,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  messageSubHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 4 },
+  messageSender: { fontSize: 11.5, fontWeight: "800", color: "#0f172a" },
+  messageTime: { fontSize: 10, color: "#94a3b8", fontWeight: "600" },
+  messageBody: { fontSize: 12, color: "#475569", fontWeight: "600", lineHeight: 17 },
+  noMessagesText: { fontSize: 12, color: "#94a3b8", fontWeight: "600", fontStyle: "italic" },
+
+  /* Modal Bottom Action Row */
+  modalFooterRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "#e2e8f0",
+  },
+  modalTrackBtn: {
+    flex: 1,
+    backgroundColor: "#0d2a3a",
+    borderRadius: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTrackBtnText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  modalCloseFooterBtn: {
+    flex: 1,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCloseFooterBtnText: {
+    color: "#475569",
+    fontSize: 13,
+    fontWeight: "800",
   },
 });

@@ -136,6 +136,7 @@ export default function PolicyHolderHome() {
   const [approvedClaimsCount, setApprovedClaimsCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [selectedVehicleForModal, setSelectedVehicleForModal] = useState<any | null>(null);
+  const [selectedClaim, setSelectedClaim] = useState<any | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const triggerToast = (msg: string) => {
@@ -173,7 +174,7 @@ export default function PolicyHolderHome() {
   };
 
   useEffect(() => {
-    if (selectedVehicleForModal) {
+    if (selectedVehicleForModal || selectedClaim) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -181,7 +182,7 @@ export default function PolicyHolderHome() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [selectedVehicleForModal]);
+  }, [selectedVehicleForModal, selectedClaim]);
 
   const formatDateString = (dateStr: string) => {
     if (!dateStr) return "";
@@ -193,6 +194,20 @@ export default function PolicyHolderHome() {
     } catch (e) {
       return dateStr;
     }
+  };
+
+  const getUserRequestedDocs = (claim: any): string[] => {
+    const getRecipientForDoc = (name: string) => {
+      const msg = [...(claim.messages || [])]
+        .reverse()
+        .find((m: any) => m.message.includes(`Requested: ${name}`));
+      if (msg) {
+        if (msg.message.includes("[Document Request to Agent]")) return "Agent";
+        if (msg.message.includes("[Document Request to User]")) return "User";
+      }
+      return claim.documentRequestTo || "User";
+    };
+    return (claim.requestedDocuments || []).filter((name: string) => getRecipientForDoc(name) === "User");
   };
 
   useEffect(() => {
@@ -259,9 +274,10 @@ export default function PolicyHolderHome() {
                       date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
                       actions: [
                         { label: "Upload", href: "/Policy_Holder/Documents", primary: true },
-                        { label: "View", href: "/Policy_Holder/My_claims" }
+                        { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
                       ],
-                      isUrgent: true
+                      isUrgent: true,
+                      claim: claim
                     });
                   }
 
@@ -274,9 +290,10 @@ export default function PolicyHolderHome() {
                       description: `Your claim for LKR ${claim.amount ? Number(claim.amount).toLocaleString() : '85,000'} has been approved. Payment processed within 5 days.`,
                       date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
                       actions: [
-                        { label: "View", href: "/Policy_Holder/My_claims" }
+                        { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
                       ],
-                      isUrgent: false
+                      isUrgent: false,
+                      claim: claim
                     });
                   } else if (!claim.documentsRequested) {
                     compiledNotifications.push({
@@ -286,9 +303,10 @@ export default function PolicyHolderHome() {
                       description: `Your claim is currently in ${claim.status || "Pending"} stage. Agent is reviewing details.`,
                       date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
                       actions: [
-                        { label: "View", href: "/Policy_Holder/My_claims" }
+                        { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
                       ],
-                      isUrgent: false
+                      isUrgent: false,
+                      claim: claim
                     });
                   }
                 });
@@ -511,7 +529,11 @@ export default function PolicyHolderHome() {
                   }
 
                   return (
-                    <div key={notif.id} className={`${cardClass} animate-fade-in`}>
+                    <div
+                      key={notif.id}
+                      onClick={() => notif.claim && setSelectedClaim(notif.claim)}
+                      className={`${cardClass} animate-fade-in cursor-pointer hover:shadow-md transition-shadow`}
+                    >
                       <div className="flex items-start gap-4">
                         <div className={iconClass}>
                           {iconSvg}
@@ -531,7 +553,10 @@ export default function PolicyHolderHome() {
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100/50">
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100/50"
+                      >
                         <div className="flex gap-2">
                           {notif.actions.map((act: any, idx: number) => {
                             const isPrimary = act.primary;
@@ -729,6 +754,208 @@ export default function PolicyHolderHome() {
           </div>
         </div>
       )}
+
+      {/* Claim Detail Modal Popup */}
+      {selectedClaim && (() => {
+        const renderClaimProgress = (status: string, dbStep?: number) => {
+          let currentStep = dbStep || 1;
+          if (!dbStep) {
+            const s = status.toLowerCase();
+            if (s.includes("pending") || s.includes("progress")) {
+              currentStep = 3;
+            } else if (s.includes("review")) {
+              currentStep = 4;
+            } else if (s.includes("approved") || s.includes("active") || s.includes("done")) {
+              currentStep = 6;
+            }
+          }
+
+          const steps = [
+            { num: "01", label: "Submitted" },
+            { num: "02", label: "Assigned" },
+            { num: "03", label: "Inspection" },
+            { num: "04", label: "Review" },
+            { num: "05", label: "Decision" },
+            { num: "06", label: "Payment" }
+          ];
+
+          return (
+            <div className="bg-[#f8fafc] border border-slate-100 rounded-[24px] pt-6 pb-5 px-8 mb-8 flex justify-between items-center relative select-none w-full max-w-[540px] mx-auto shadow-sm">
+              {/* Background Grey Line */}
+              <div className="absolute top-[40px] left-[52px] right-[52px] h-[3px] bg-slate-200 z-0" />
+              
+              {/* Active Green Line */}
+              <div
+                className="absolute top-[40px] left-[52px] h-[3px] bg-[#00b050] z-0 transition-all duration-300"
+                style={{ width: `calc((100% - 104px) * ${currentStep - 1} / 5)` }}
+              />
+
+              {steps.map((step, idx) => {
+                const stepNum = idx + 1;
+                const isCompleted = stepNum < currentStep;
+                const isActive = stepNum === currentStep;
+
+                let circleClass = "";
+                if (isCompleted) {
+                  circleClass = "border-[#00b050] text-[#00b050] bg-white";
+                } else if (isActive) {
+                  circleClass = "border-blue-500 text-blue-500 bg-[#e8f0fe]";
+                } else {
+                  circleClass = "border-slate-300 text-slate-400 bg-white";
+                }
+
+                return (
+                  <div key={step.num} className="flex flex-col items-center z-10 flex-1">
+                    <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center text-[14px] font-extrabold ${circleClass}`}>
+                      {step.num}
+                    </div>
+                    <span className={`text-[11px] font-bold mt-2 leading-none ${isActive ? "text-blue-600 font-extrabold" : isCompleted ? "text-slate-800" : "text-slate-400"}`}>
+                      {step.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        };
+
+        return (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300">
+            <div className="bg-white border border-slate-200 rounded-[24px] w-full max-w-[720px] max-h-[90vh] shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col relative animate-fade-in overflow-hidden">
+              
+              {/* Modal Header Title */}
+              <div className="flex justify-between items-center px-8 pt-6 pb-4 border-b border-slate-200 flex-shrink-0">
+                <h2 className="text-[22px] font-extrabold text-[#0f2d3a] tracking-tight leading-none text-slate-800">
+                  Claim Details – {selectedClaim.claimNumber}
+                </h2>
+                <button
+                  onClick={() => setSelectedClaim(null)}
+                  className="text-slate-400 hover:text-slate-600 text-2xl font-bold border-none bg-transparent cursor-pointer"
+                >
+                  &times;
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-8 flex-1 overflow-y-auto">
+                
+                {/* Dynamic Tracker Wizard */}
+                {renderClaimProgress(selectedClaim.status, selectedClaim.currentStep)}
+
+                {/* 2-Column Grid matching mockup inline labels */}
+                <div className="grid grid-cols-2 gap-x-12 gap-y-5 text-[15px] font-semibold text-slate-700 mb-6 px-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Vehicle:</span>
+                    <span className="font-extrabold text-slate-800">{formatNumberPlate(selectedClaim.vehiclePlate || "")}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Type:</span>
+                    <span className="font-extrabold text-slate-800">{selectedClaim.damageType}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Est. Amount:</span>
+                    <span className="font-extrabold text-slate-800">
+                      {selectedClaim.amount
+                        ? (typeof selectedClaim.amount === "string"
+                          ? (selectedClaim.amount.startsWith("Rs.") ? "LKR " + selectedClaim.amount.substring(4) : selectedClaim.amount)
+                          : "LKR " + Number(selectedClaim.amount).toLocaleString())
+                        : "Pending"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Date:</span>
+                    <span className="font-extrabold text-slate-800">{formatDateString(selectedClaim.incidentDate)}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Officer:</span>
+                    <span className="font-extrabold text-slate-800">{selectedClaim.officer || "Agent Saman"}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 font-bold w-28 shrink-0">Location:</span>
+                    <span className="font-extrabold text-slate-800">{selectedClaim.location || "N/A"}</span>
+                  </div>
+                </div>
+
+                {/* Description Text (If available) */}
+                {selectedClaim.description && (
+                  <div className="px-2 mb-6">
+                    <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Incident Description</p>
+                    <p className="text-slate-600 text-sm font-medium leading-relaxed italic bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                      "{selectedClaim.description}"
+                    </p>
+                  </div>
+                )}
+
+                {/* Messages & Notifications Section */}
+                <div className="px-2 mt-4 mb-2">
+                  <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-2 select-none">Messages & Notifications</p>
+                  {(() => {
+                    const filteredMessages = (selectedClaim.messages || []).filter((msg: any) => msg.recipient !== "Agent");
+                    if (filteredMessages.length > 0) {
+                      return (
+                        <div className="flex flex-col gap-2.5 max-h-[140px] overflow-y-auto pr-1">
+                          {filteredMessages.map((msg: any, index: number) => (
+                            <div key={index} className="bg-slate-50 border border-slate-200/60 rounded-2xl p-3.5 flex flex-col gap-1 shadow-sm">
+                              <div className="flex justify-between items-center text-[11px] select-none">
+                                <span className="font-extrabold text-[#0f2d3a]">{msg.sender}</span>
+                                <span className="text-slate-400 font-semibold">{formatDateString(msg.sentAt)}</span>
+                              </div>
+                              <p className="text-slate-700 text-xs font-semibold leading-relaxed m-0">
+                                {msg.message}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } else {
+                      return (
+                        <p className="text-slate-500 text-xs italic font-medium bg-slate-50 border border-slate-100 rounded-xl p-3 m-0 select-none">
+                          No notifications or messages have been sent for this claim.
+                        </p>
+                      );
+                    }
+                  })()}
+                </div>
+
+                {/* Warning Alert Box matching mockup */}
+                {selectedClaim.documentsRequested && getUserRequestedDocs(selectedClaim).length > 0 && (
+                  <div className="bg-[#ffeaea]/80 border border-[#ffd1d1] rounded-[20px] p-6 mb-2 mt-4">
+                    <h4 className="text-[#9c3535] font-extrabold text-sm mb-1.5">Documents Requested</h4>
+                    <p className="text-[#aa4f4f] text-[13px] font-semibold leading-relaxed mb-3">
+                      The following documents have been requested by staff to process your claim. Please upload them via the Documents section:
+                    </p>
+                    <ul className="list-none flex flex-col gap-2 mb-4 pl-1">
+                      {getUserRequestedDocs(selectedClaim).map((doc) => (
+                        <li key={doc} className="flex items-center gap-2 text-[#aa4f4f] font-bold text-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#df3d3d] flex-shrink-0" />
+                          <span>{doc}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Link
+                      href="/Policy_Holder/Documents"
+                      className="inline-block bg-[#df3d3d] hover:bg-[#c53030] text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all duration-150 no-underline shadow-sm cursor-pointer border-none text-center"
+                    >
+                      Go to Documents
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-8 py-4 bg-slate-50 border-t border-slate-200 flex justify-end flex-shrink-0">
+                <button
+                  onClick={() => setSelectedClaim(null)}
+                  className="bg-[#1a365d] hover:bg-[#0f223f] text-white font-extrabold text-[14px] px-8 py-2.5 rounded-full transition-all border-none cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Floating Chat Bubble Button */}
       <button

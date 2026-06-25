@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/app/Components/Agent/Navbar";
 import Footer from "@/app/Components/Agent/Footer";
+import Link from "next/link";
 import { API_URL } from "@/app/config";
 
 // Interface representing a MongoDB Claim document
@@ -89,6 +90,17 @@ export default function AgentDashboard() {
       if (!res.ok) throw new Error("Failed to fetch claims");
       const data = await res.json();
       setClaims(data);
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const claimIdParam = params.get("claimId");
+        if (claimIdParam) {
+          const found = data.find((c: Claim) => c.claimNumber === claimIdParam || c._id === claimIdParam);
+          if (found) {
+            setSelectedClaim(found);
+          }
+        }
+      }
     } catch (e) {
       console.error("Fetch claims error:", e);
     } finally {
@@ -568,9 +580,204 @@ export default function AgentDashboard() {
           </div>
         </div>
 
-        {/* Right Column: My Activity & Support Details */}
+        {/* Right Column: Notifications, My Activity & Support Details */}
         <div className="flex flex-col gap-8">
           
+          {/* Notifications Card Section */}
+          <div className="flex flex-col gap-4">
+            <Link href="/Agent/Notifications" className="flex items-center gap-2 no-underline text-inherit group select-none cursor-pointer">
+              <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight">
+                Notifications & Reminders
+              </h2>
+              <svg
+                className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </Link>
+
+            <div className="flex flex-col gap-4">
+              {(() => {
+                // Compile top 2 dashboard notifications dynamically
+                const dashboardNotifs: any[] = [];
+                claims.forEach((claim) => {
+                  const dateFormatted = formatDate(claim.createdAt);
+                  const severity = getSeverity(claim.damageType);
+                  const isUrgent = severity === "Urgent";
+
+                  // 1. Pending Assignment Acceptance (currentStep = 2)
+                  if (claim.status !== "Approved" && claim.status !== "Rejected" && claim.currentStep === 2) {
+                    dashboardNotifs.push({
+                      id: `${claim._id}-accept`,
+                      type: "action",
+                      title: `New Claim Assigned`,
+                      description: `Claim ${claim.claimNumber} requires acceptance.`,
+                      isUrgent: true,
+                      date: dateFormatted,
+                      claim
+                    });
+                  }
+
+                  // 2. Scheduled Inspection (currentStep = 3 and inspectionSubmitted = false)
+                  if (claim.status !== "Approved" && claim.status !== "Rejected" && claim.currentStep === 3 && !claim.inspectionSubmitted) {
+                    dashboardNotifs.push({
+                      id: `${claim._id}-inspection`,
+                      type: "action",
+                      title: `Inspection Pending`,
+                      description: `Perform inspection for ${claim.claimNumber}.`,
+                      isUrgent: isUrgent,
+                      date: dateFormatted,
+                      claim
+                    });
+                  }
+
+                  // 3. Pending Document Upload for Agent
+                  const pendingAgentDocs = getAgentPendingRequests(claim);
+                  if (claim.status !== "Approved" && claim.status !== "Rejected" && pendingAgentDocs.length > 0) {
+                    dashboardNotifs.push({
+                      id: `${claim._id}-doc-request`,
+                      type: "urgent",
+                      title: `Document Upload Required`,
+                      description: `Upload ${pendingAgentDocs.join(" & ")} for ${claim.claimNumber}.`,
+                      isUrgent: true,
+                      date: dateFormatted,
+                      claim
+                    });
+                  }
+
+                  // 4. Message-based Document Upload Request
+                  const userMessages = (claim.messages || []).filter(m => m.sender !== "Agent" && m.sender !== "Agent (You)");
+                  if (claim.status !== "Approved" && claim.status !== "Rejected" && userMessages.length > 0) {
+                    const lastMsg = userMessages[userMessages.length - 1];
+                    const isDocRequest = lastMsg.message && typeof lastMsg.message === "string" && lastMsg.message.includes("[Document Request to Agent]");
+                    if (isDocRequest) {
+                      let docName = "requested specifications";
+                      const match = lastMsg.message.match(/Requested:\s*([^.]+)/);
+                      if (match && match[1]) {
+                        docName = match[1].trim();
+                      }
+                      dashboardNotifs.push({
+                        id: `${claim._id}-doc-request-msg-${lastMsg.sentAt}`,
+                        type: "urgent",
+                        title: `Document Upload Required`,
+                        description: `Upload ${docName} for ${claim.claimNumber}.`,
+                        isUrgent: true,
+                        date: formatDate(lastMsg.sentAt),
+                        claim
+                      });
+                    }
+                  }
+                });
+
+                // Sort: Urgent first
+                dashboardNotifs.sort((a, b) => (a.isUrgent === b.isUrgent ? 0 : a.isUrgent ? -1 : 1));
+
+                if (loading) {
+                  return (
+                    <div className="text-slate-400 text-center text-xs py-4 animate-pulse">
+                      Loading notifications...
+                    </div>
+                  );
+                }
+
+                if (dashboardNotifs.length === 0) {
+                  return (
+                    <div className="bg-white border border-slate-100 rounded-3xl p-6 text-center shadow-sm text-slate-500 font-semibold text-xs">
+                      No notifications or reminders.
+                    </div>
+                  );
+                }
+
+                 return dashboardNotifs.slice(0, 2).map((notif) => {
+                  const urgent = notif.isUrgent;
+                  
+                  // Compact premium card design
+                  let cardClass = "";
+                  let iconClass = "";
+                  let iconSvg = null;
+                  let titleClass = "";
+
+                  if (urgent) {
+                    cardClass = "bg-red-50/15 border border-red-100 rounded-[20px] p-4 shadow-[0_4px_15px_rgba(0,0,0,0.01)] flex flex-col justify-between cursor-pointer hover:shadow-md transition-shadow duration-150";
+                    iconClass = "p-1.5 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5";
+                    titleClass = "text-red-600 font-extrabold text-sm leading-tight";
+                  } else {
+                    cardClass = "bg-cyan-50/15 border border-cyan-100 rounded-[20px] p-4 shadow-[0_4px_15px_rgba(0,0,0,0.01)] flex flex-col justify-between cursor-pointer hover:shadow-md transition-shadow duration-150";
+                    iconClass = "p-1.5 bg-cyan-100 rounded-xl text-cyan-500 flex-shrink-0 mt-0.5";
+                    titleClass = "text-cyan-600 font-extrabold text-sm leading-tight";
+                  }
+
+                  // Pick custom icon based on the notification type
+                  if (notif.id.includes("-doc-request")) {
+                    iconSvg = (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                      </svg>
+                    );
+                  } else if (notif.id.includes("-inspection")) {
+                    iconSvg = (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+                        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+                        <path d="M9 12h6" />
+                        <path d="M9 16h6" />
+                      </svg>
+                    );
+                  } else if (notif.id.includes("-accept")) {
+                    iconSvg = (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <line x1="9" y1="15" x2="15" y2="15" />
+                      </svg>
+                    );
+                  } else {
+                    iconSvg = (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                        <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9z" />
+                        <path d="M13.73 21a2 2 0 01-3.46 0" />
+                      </svg>
+                    );
+                  }
+
+                  return (
+                    <div
+                      key={notif.id}
+                      onClick={() => setSelectedClaim(notif.claim)}
+                      className={cardClass}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={iconClass}>
+                          {iconSvg}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className={titleClass}>
+                            {notif.title}
+                          </h4>
+                          <p className="text-slate-600 text-xs font-semibold mt-1 truncate">
+                            {notif.description}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-slate-100/50">
+                        <span className="text-[10px] text-slate-400 font-bold">{notif.date}</span>
+                        <span className="text-[10px] font-black text-cyan-600 hover:text-cyan-700">View details →</span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+
           {/* My Activity Card Section */}
           <div className="flex flex-col gap-4">
             <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">

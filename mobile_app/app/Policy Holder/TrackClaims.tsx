@@ -17,6 +17,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
+import { useLocalSearchParams } from "expo-router";
 import PolicyHolderNavbar from "../Components/policy holder/page";
 import { API_BASE_URL } from "../config";
 
@@ -41,6 +42,7 @@ interface Claim {
 }
 
 export default function TrackClaims() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const [claimId, setClaimId] = useState("");
   const [trackedClaim, setTrackedClaim] = useState<Claim | null>(null);
 
@@ -60,6 +62,48 @@ export default function TrackClaims() {
   const [searchAttempted, setSearchAttempted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [claimsList, setClaimsList] = useState<Claim[]>([]);
+
+  useEffect(() => {
+    if (id) {
+      setClaimId(id);
+      (async () => {
+        setIsLoading(true);
+        setSearchAttempted(true);
+        try {
+          const res = await fetch(`${API_BASE_URL}/api/policy-holder/track-claim?claimNumber=${encodeURIComponent(id.trim().toUpperCase())}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.claim) {
+              setTrackedClaim({
+                claimNumber: data.claim.claimNumber,
+                vehiclePlate: data.claim.vehiclePlate,
+                incidentDate: formatDateString(data.claim.incidentDate),
+                incidentTime: data.claim.incidentTime,
+                damageType: data.claim.damageType,
+                amount: data.claim.amount ? `Rs. ${Number(data.claim.amount).toLocaleString()}` : "Pending",
+                status: data.claim.status || "Pending",
+                description: data.claim.description,
+                location: data.claim.location,
+                officer: data.claim.officer || "Not Assigned",
+                documentsRequested: data.claim.documentsRequested || false,
+                requestedDocuments: data.claim.requestedDocuments || [],
+                currentStep: data.claim.currentStep || 1,
+                messages: data.claim.messages || []
+              });
+              setIsLoading(false);
+              return;
+            }
+          }
+        } catch (err) {}
+        
+        if (claimsList.length > 0) {
+          const found = claimsList.find((c) => c.claimNumber.toUpperCase() === id.trim().toUpperCase());
+          setTrackedClaim(found || null);
+        }
+        setIsLoading(false);
+      })();
+    }
+  }, [id, claimsList.length]);
 
   // Load user's claims to build a local tracking list for fallback
   useEffect(() => {

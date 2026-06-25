@@ -33,7 +33,7 @@ export default function Navbar() {
   // Check if link is active
   const isActive = (href: string) => {
     if (href === "/Agent/Home") {
-      return pathname === "/Agent/Home" || pathname === "/Agent" || pathname === "/Agent/";
+      return pathname === "/Agent/Dashboard" || pathname === "/Agent" || pathname === "/Agent/";
     }
     return pathname === href || pathname.startsWith(href + "/");
   };
@@ -55,7 +55,7 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/Agent/Home">
+            <Link href="/Agent/Dashboard">
               <Image
                 src="/logo.png"
                 alt="Sanasa General Insurance"
@@ -69,13 +69,16 @@ export default function Navbar() {
 
           {/* Desktop Navigation Links */}
           <div className="hidden md:flex items-center gap-8 text-base font-semibold">
-            <Link href="/Agent/Home" className={getNavLinkClass("/Agent/Home")}>
+            <Link href="/Agent/Dashboard" className={getNavLinkClass("/Agent/Home")}>
               Home
             </Link>
-            <Link href="/Agent/MyActivity" className={getNavLinkClass("/Agent/MyActivity")}>
+            <Link href="/Agent/Documents" className={getNavLinkClass("/Agent/Documents")}>
+              Documents
+            </Link>
+            <Link href="/Agent/Dashboard" className={getNavLinkClass("/Agent/MyActivity")}>
               My Activity
             </Link>
-            <Link href="/Agent/Contact" className={getNavLinkClass("/Agent/Contact")}>
+            <Link href="/Agent/Dashboard" className={getNavLinkClass("/Agent/Contact")}>
               Contact
             </Link>
           </div>
@@ -83,7 +86,7 @@ export default function Navbar() {
           {/* Action Items (Right) */}
           <div className="hidden md:flex items-center gap-6">
             {/* My Claims Button */}
-            <Link href="/Agent/MyClaims">
+            <Link href="/Agent/Dashboard">
               <button className="bg-[#ff9800] hover:bg-[#ff8f00] active:bg-[#f57c00] text-white font-bold py-2.5 px-6 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform active:scale-95 cursor-pointer">
                 My Claims
               </button>
@@ -147,7 +150,7 @@ export default function Navbar() {
         {isOpen && (
           <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-gray-200 py-4 px-6 flex flex-col gap-4 shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-200">
             <Link
-              href="/Agent/Home"
+              href="/Agent/Dashboard"
               onClick={() => setIsOpen(false)}
               className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
                 isActive("/Agent/Home") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
@@ -156,7 +159,16 @@ export default function Navbar() {
               Home
             </Link>
             <Link
-              href="/Agent/MyActivity"
+              href="/Agent/Documents"
+              onClick={() => setIsOpen(false)}
+              className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
+                isActive("/Agent/Documents") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
+              }`}
+            >
+              Documents
+            </Link>
+            <Link
+              href="/Agent/Dashboard"
               onClick={() => setIsOpen(false)}
               className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
                 isActive("/Agent/MyActivity") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
@@ -165,7 +177,7 @@ export default function Navbar() {
               My Activity
             </Link>
             <Link
-              href="/Agent/Contact"
+              href="/Agent/Dashboard"
               onClick={() => setIsOpen(false)}
               className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
                 isActive("/Agent/Contact") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
@@ -175,7 +187,7 @@ export default function Navbar() {
             </Link>
             <div className="h-px bg-gray-100 my-2" />
             <div className="flex items-center justify-between px-5 py-2">
-              <Link href="/Agent/MyClaims" onClick={() => setIsOpen(false)}>
+              <Link href="/Agent/Dashboard" onClick={() => setIsOpen(false)}>
                 <button className="bg-[#ff9800] hover:bg-[#ff8f00] text-white font-bold py-2 px-5 rounded-lg text-sm shadow-md cursor-pointer">
                   My Claims
                 </button>
