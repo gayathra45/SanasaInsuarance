@@ -166,6 +166,8 @@ router.patch("/update-claim/:claimNumber", async (req, res) => {
       }
     }
 
+    claim.markModified("requestedDocuments");
+    claim.markModified("additionalDocuments");
     await claim.save();
     res.json({ message: "Claim updated successfully", claim });
   } catch (err) {

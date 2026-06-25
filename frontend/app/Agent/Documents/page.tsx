@@ -129,7 +129,7 @@ export default function AgentDocuments() {
   const fetchClaims = async (email: string) => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${API_URL}/agent/claims?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`${API_URL}/agent/claims?email=${encodeURIComponent(email)}&_=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         setClaims(data);
@@ -596,7 +596,14 @@ export default function AgentDocuments() {
                 </p>
 
                 <button
-                  onClick={() => setUploadModalOpen(false)}
+                  onClick={() => {
+                    setUploadModalOpen(false);
+                    setUploadTargetClaim(null);
+                    setUploadSuccess(false);
+                    if (agent && agent.email) {
+                      fetchClaims(agent.email);
+                    }
+                  }}
                   className="mt-8 bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-extrabold text-[14px] px-10 py-3.5 rounded-full transition-all duration-150 shadow-md border-none cursor-pointer"
                 >
                   Done

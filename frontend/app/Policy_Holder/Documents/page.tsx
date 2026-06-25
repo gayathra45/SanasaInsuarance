@@ -116,7 +116,7 @@ export default function PolicyHolderDocuments() {
   const fetchClaims = async (nic: string) => {
     try {
       setIsLoading(true);
-      const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(nic)}&includeDocs=true`, {
+      const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(nic)}&includeDocs=true&_=${Date.now()}`, {
         cache: "no-store"
       });
       let databaseClaims: Claim[] = [];
@@ -616,7 +616,14 @@ export default function PolicyHolderDocuments() {
                 </p>
 
                 <button
-                  onClick={() => setUploadModalOpen(false)}
+                  onClick={() => {
+                    setUploadModalOpen(false);
+                    setUploadTargetClaim(null);
+                    setUploadSuccess(false);
+                    if (user && user.nic) {
+                      fetchClaims(user.nic);
+                    }
+                  }}
                   className="mt-8 bg-[#0f2d3a] hover:bg-[#0b222c] active:scale-[0.97] text-white font-extrabold text-[14px] px-10 py-3.5 rounded-full transition-all duration-150 shadow-md border-none cursor-pointer"
                 >
                   Done
