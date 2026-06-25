@@ -454,27 +454,24 @@ export default function AgentDashboard() {
           
           {/* Pending Document Requests Section */}
           {claimsWithPendingAgentRequests.length > 0 && (
-            <div className="flex flex-col gap-4 bg-white border border-orange-200 rounded-3xl p-6 shadow-[0_4px_25px_rgba(255,152,0,0.03)] relative overflow-hidden">
-              {/* Left Orange Indicator strip */}
-              <div className="absolute top-0 left-0 bottom-0 w-1.5 bg-orange-500" />
-              
-              <h2 className="text-xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5 select-none pl-2">
-                <svg className="w-5.5 h-5.5 text-orange-500 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <div className="flex flex-col gap-4 bg-gradient-to-br from-white/80 to-slate-50/40 backdrop-blur-md border border-slate-200/60 rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.02)] relative overflow-hidden">
+              <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2 select-none">
+                <svg className="w-5 h-5 text-orange-500 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 Action Required: Pending Agent Document Requests
               </h2>
-              <div className="flex flex-col gap-4 pl-2">
+              <div className="flex flex-col gap-3">
                 {claimsWithPendingAgentRequests.map((claim) => {
                   const pendingDocs = getAgentPendingRequests(claim);
                   return (
-                    <div key={claim._id} className="bg-slate-50/50 border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-orange-100 hover:bg-white transition-all duration-300">
+                    <div key={claim._id} className="bg-white/70 backdrop-blur-sm border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-orange-200/60 hover:bg-white transition-all duration-300">
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
                         <span className="text-sm font-bold text-slate-800">{claim.claimNumber} · {claim.vehiclePlate}</span>
                         <div className="flex flex-wrap gap-2 mt-1.5">
                           {pendingDocs.map((docName, idx) => (
-                            <span key={idx} className="text-[9px] font-extrabold bg-orange-50/80 text-orange-700 border border-orange-200/50 px-2.5 py-0.5 rounded-full uppercase tracking-wider select-none">
+                            <span key={idx} className="text-[9px] font-bold bg-orange-50/60 text-orange-600 border border-orange-100 px-2.5 py-0.5 rounded-full select-none tracking-wide uppercase">
                               {docName}
                             </span>
                           ))}
@@ -482,7 +479,7 @@ export default function AgentDashboard() {
                       </div>
                       <button
                         onClick={() => setSelectedClaim(claim)}
-                        className="bg-[#0f2d3a] hover:bg-[#ff9800] text-white text-xs font-bold py-2 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm self-start md:self-center border-none"
+                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black text-xs font-bold py-2.5 px-5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none"
                       >
                         Upload Documents
                       </button>
