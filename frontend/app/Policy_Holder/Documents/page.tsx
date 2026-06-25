@@ -10,6 +10,7 @@ interface AdditionalDoc {
   name: string;
   url: string;
   uploadedAt: string;
+  uploadedBy?: string;
   _id?: string;
 }
 
@@ -323,10 +324,10 @@ export default function PolicyHolderDocuments() {
       });
     }
 
-    // 3. Additional Documents (Police Report, Repair Estimate, etc.)
+    // 3. Additional Documents (Police Report, Repair Estimate, etc. - only show User uploaded ones)
     if (claim.additionalDocuments && claim.additionalDocuments.length > 0) {
       claim.additionalDocuments.forEach(doc => {
-        if (doc.url) {
+        if (doc.url && doc.uploadedBy !== "Agent") {
           docs.push({
             name: doc.name,
             files: [doc.url]

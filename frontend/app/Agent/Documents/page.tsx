@@ -290,35 +290,12 @@ export default function AgentDocuments() {
   const groupedClaimsList = claims.map(claim => {
     const docs: { name: string; files: string[] }[] = [];
 
-    // 1. Driving License
-    const licFront = claim.drivingLicense?.front || [];
-    const licRear = claim.drivingLicense?.rear || [];
-    const allLicPhotos = [...licFront, ...licRear].filter(Boolean);
-    if (allLicPhotos.length > 0) {
-      docs.push({
-        name: "Driving License",
-        files: allLicPhotos
-      });
-    }
-
-    // 2. Accident Photos
-    const frontPhotos = claim.accidentPhotos?.front || [];
-    const rearPhotos = claim.accidentPhotos?.rear || [];
-    const sidePhotos = claim.accidentPhotos?.side || [];
-    const allAccidentPhotos = [...frontPhotos, ...rearPhotos, ...sidePhotos].filter(Boolean);
-    if (allAccidentPhotos.length > 0) {
-      docs.push({
-        name: "Rear , Front , Side Photos",
-        files: allAccidentPhotos
-      });
-    }
-
-    // 3. Additional Documents
+    // Show only Agent uploaded documents in the repository list
     if (claim.additionalDocuments && claim.additionalDocuments.length > 0) {
       claim.additionalDocuments.forEach(doc => {
-        if (doc.url) {
+        if (doc.url && doc.uploadedBy === "Agent") {
           docs.push({
-            name: `${doc.name} (${doc.uploadedBy || "Policy Holder"})`,
+            name: doc.name,
             files: [doc.url]
           });
         }
