@@ -523,101 +523,88 @@ export default function AgentDashboard() {
             </div>
           )}
 
-          <div className="flex items-center justify-between border-b border-slate-200 pb-3">
-            <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
-              New Claims
-              <span className="text-slate-400 font-normal text-xl">&gt;</span>
-            </h2>
-          </div>
+          {/* New Claims Section */}
+          <div className="flex flex-col gap-4 bg-gradient-to-br from-white/80 to-slate-50/40 backdrop-blur-md border border-slate-200/40 rounded-3xl p-6 shadow-sm relative overflow-hidden">
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-200/60 pb-3 mb-2">
+              <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2.5 select-none">
+                <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                New Claims
+                {/* Total Count Badge */}
+                <span className="bg-slate-750 text-slate-800 bg-slate-100 text-xs font-extrabold px-2.5 py-0.5 rounded-full flex items-center gap-1 select-none border border-slate-200">
+                  {activeClaims.length}
+                </span>
+              </h2>
+            </div>
 
-          <div className="flex flex-col gap-6">
-            {loading ? (
-              <div className="text-slate-400 font-bold py-10 text-center text-sm animate-pulse">
-                Fetching claims from database...
-              </div>
-            ) : activeClaims.length === 0 ? (
-              <div className="bg-white border border-slate-100 rounded-3xl p-10 text-center shadow-sm text-slate-500 font-semibold text-sm">
-                No new claims assigned to you.
-              </div>
-            ) : (
-              activeClaims.map((claim) => {
-                const severity = getSeverity(claim.damageType);
-                const isUrgent = severity === "Urgent";
-                
-                let cardClass = isUrgent
-                  ? "bg-red-50/60 border-2 border-red-200 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(239,68,68,0.04)] flex flex-col justify-between min-h-[160px] hover:shadow-[0_12px_36px_rgba(239,68,68,0.1)] hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden"
-                  : "bg-cyan-50/50 border-2 border-cyan-200 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(6,182,212,0.03)] flex flex-col justify-between min-h-[160px] hover:shadow-[0_12px_36px_rgba(6,182,212,0.08)] hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden";
+            <div className="flex flex-col gap-3">
+              {loading ? (
+                <div className="text-slate-400 font-bold py-10 text-center text-sm animate-pulse">
+                  Fetching claims from database...
+                </div>
+              ) : activeClaims.length === 0 ? (
+                <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center text-slate-500 font-semibold text-sm">
+                  No new claims assigned to you.
+                </div>
+              ) : (
+                activeClaims.map((claim) => {
+                  const severity = getSeverity(claim.damageType);
+                  const isUrgent = severity === "Urgent";
                   
-                let iconClass = isUrgent
-                  ? "p-2 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5"
-                  : "p-2 bg-cyan-100 rounded-xl text-cyan-500 flex-shrink-0 mt-0.5";
-                  
-                let iconSvg = isUrgent ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                    <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.522a.75.75 0 01-.297 1.228 35.754 35.754 0 01-16.142 0 .75.75 0 01-.297-1.228A9.013 9.013 0 005.25 9.75V9zm4.5 8.25a3.75 3.75 0 007.5 0H9.75z" clipRule="evenodd" />
-                  </svg>
-                ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                    <path fillRule="evenodd" d="M12 2.25c-5.385 0-9.75 4.365-9.75 9.75s4.365 9.75 9.75 9.75 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25zM12.75 6a.75.75 0 00-1.5 0v6c0 .414.336.75.75.75h4.5a.75.75 0 000-1.5h-3.75V6z" clipRule="evenodd" />
-                  </svg>
-                );
-                
-                let titleClass = isUrgent
-                  ? "text-red-600 font-extrabold text-base leading-none"
-                  : "text-cyan-600 font-extrabold text-base leading-none";
-
-                return (
-                  <div
-                    key={claim._id}
-                    className={cardClass}
-                  >
-                    {/* Visual Left Indicator Strip for clear highlighting */}
-                    <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${isUrgent ? 'bg-red-500' : 'bg-cyan-500'}`} />
-
-                    <div className="flex items-start gap-4 pl-1.5">
-                      <div className={iconClass}>
-                        {iconSvg}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h4 className={titleClass}>
-                          {claim.claimNumber} <span className="text-slate-400 font-medium text-xs ml-1 select-none">· Severity: {severity}</span>
-                        </h4>
-                        
-                        {/* 3-column Typographic Grid Details */}
-                        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-y-3 gap-x-6 text-xs font-semibold text-slate-600 leading-relaxed">
-                          <div>
-                            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Vehicle Plate</span>
-                            <span className="text-slate-800 font-extrabold text-[13px] truncate block">
-                              {claim.vehiclePlate} {claim.vehicleModel && <span className="font-semibold text-slate-500">({claim.vehicleModel})</span>}
+                  return (
+                    <div
+                      key={claim._id}
+                      className="bg-white/70 backdrop-blur-sm border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-slate-200/60 hover:bg-white transition-all duration-300"
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
+                          {isUrgent ? (
+                            <span className="text-[9px] font-black uppercase bg-red-50 text-red-600 border border-red-200 px-2.5 py-0.5 rounded-full select-none tracking-wide">
+                              Urgent
                             </span>
+                          ) : (
+                            <span className="text-[9px] font-black uppercase bg-cyan-50 text-cyan-700 border border-cyan-200 px-2.5 py-0.5 rounded-full select-none tracking-wide">
+                              {severity}
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-bold text-slate-800">
+                          {claim.claimNumber} · {claim.vehiclePlate} {claim.vehicleModel && <span className="font-semibold text-slate-500">({claim.vehicleModel})</span>}
+                        </span>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[11px] font-bold text-slate-500 select-none">
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400 font-extrabold uppercase text-[9px] tracking-wider">Damage:</span>
+                            <span className="text-slate-700 font-extrabold">{claim.damageType}</span>
                           </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Damage Type</span>
-                            <span className="text-slate-800 font-extrabold text-[13px] truncate block">{claim.damageType}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400 font-extrabold uppercase text-[9px] tracking-wider">Location:</span>
+                            <span className="text-slate-700 font-extrabold" title={claim.location}>{claim.location}</span>
                           </div>
-                          <div>
-                            <span className="text-slate-400 block text-[10px] uppercase font-bold tracking-wider mb-0.5">Location</span>
-                            <span className="text-slate-800 font-extrabold text-[13px] truncate block" title={claim.location}>{claim.location}</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400 font-extrabold uppercase text-[9px] tracking-wider">Progress:</span>
+                            <span className="text-slate-700 font-extrabold">Step {claim.currentStep} of 4</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-slate-400 font-extrabold uppercase text-[9px] tracking-wider">Time:</span>
+                            <span className="text-slate-700 font-extrabold">Today, {claim.incidentTime}</span>
                           </div>
                         </div>
                       </div>
-                    </div>
-
-                    {/* Bottom Row Actions */}
-                    <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-slate-100/50 pl-1.5">
+                      
                       <button
                         onClick={() => setSelectedClaim(claim)}
-                        className="bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-6 py-2 rounded-full transition-all duration-150 border-none cursor-pointer"
+                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black text-xs font-bold py-2.5 px-5 rounded-full transition-all duration-200 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center"
                       >
                         Details
                       </button>
-                      <span className="text-slate-400 text-[11px] font-bold">
-                        Step {claim.currentStep} of 4 · Today, {claim.incidentTime}
-                      </span>
                     </div>
-                  </div>
-                );
-              }))}
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
 
