@@ -213,6 +213,7 @@ router.patch("/claims/:claimNumber", async (req, res) => {
       currentStep,
       assignedAgent,
       messageText,
+      messageTexts,
       messageSender,
       messageRecipient,
       priority,
@@ -289,6 +290,17 @@ router.patch("/claims/:claimNumber", async (req, res) => {
         message: messageText,
         sentAt: new Date(),
         recipient: messageRecipient || "Policy Holder"
+      });
+    }
+
+    if (Array.isArray(messageTexts)) {
+      messageTexts.forEach((msg) => {
+        claim.messages.push({
+          sender: messageSender || "Office Staff",
+          message: msg.message || msg,
+          sentAt: new Date(),
+          recipient: msg.recipient || messageRecipient || "Policy Holder"
+        });
       });
     }
 

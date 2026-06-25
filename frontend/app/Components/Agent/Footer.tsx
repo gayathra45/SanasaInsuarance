@@ -29,10 +29,10 @@ export default function Footer() {
           <Link href="/Agent/Dashboard" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
             My Claims
           </Link>
-          <Link href="/Agent/Dashboard" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
+          <Link href="/Agent/MyActivity" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
             My Activity
           </Link>
-          <Link href="/Agent/Dashboard" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
+          <Link href="/Agent/Contact" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
             Contact
           </Link>
         </div>

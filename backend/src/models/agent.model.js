@@ -27,6 +27,7 @@ const agentSchema = new mongoose.Schema({
   resetSessionToken: { type: String },
   resetSessionExpires: { type: Date },
   status: { type: String, default: "inactive" },
+  availability: { type: String, default: "Active" },
   activationToken: { type: String },
   activationExpires: { type: Date },
   createdAt: { type: Date, default: Date.now }

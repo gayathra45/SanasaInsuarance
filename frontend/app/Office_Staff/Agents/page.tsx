@@ -41,6 +41,7 @@ interface Agent {
   nicBack?: string;
   birthCertificate?: string;
   policeReport?: string;
+  availability?: string;
 }
 
 export default function AgentsPage() {
@@ -82,6 +83,10 @@ export default function AgentsPage() {
   const [loadingClaims, setLoadingClaims] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  const activeAgent = selectedAgentForView 
+    ? (agents.find(a => a._id === selectedAgentForView._id) || selectedAgentForView) 
+    : null;
+
   // Edit agent states
   const [editFormData, setEditFormData] = useState({
     firstName: "",
@@ -119,7 +124,10 @@ export default function AgentsPage() {
   const [messageSuccess, setMessageSuccess] = useState("");
   const [messageError, setMessageError] = useState("");
 
-  const loadAgents = async (currentBranch: string) => {
+  const loadAgents = async (currentBranch: string, showLoader: boolean = true) => {
+    if (showLoader) {
+      setLoading(true);
+    }
     try {
       const res = await fetch(`${API_URL}/office-staff/agents?branch=${currentBranch}`);
       if (!res.ok) {
@@ -131,7 +139,9 @@ export default function AgentsPage() {
       console.error("Load agents error:", err);
       setError(err.message || "Failed to load branch agents.");
     } finally {
-      setLoading(false);
+      if (showLoader) {
+        setLoading(false);
+      }
     }
   };
 
@@ -160,7 +170,11 @@ export default function AgentsPage() {
     }
 
     if (currentBranch) {
-      loadAgents(currentBranch);
+      loadAgents(currentBranch, true);
+      const interval = setInterval(() => {
+        loadAgents(currentBranch, false);
+      }, 5000);
+      return () => clearInterval(interval);
     }
   }, [router]);
 
@@ -717,8 +731,8 @@ export default function AgentsPage() {
                               <span>: {agent.nic}</span>
                             </div>
                             <div className="flex">
-                              <span className="w-20 flex-shrink-0 text-slate-400">DOB</span>
-                              <span>: {agent.dob}</span>
+                              <span className="w-20 flex-shrink-0 text-slate-400">Phone</span>
+                              <span>: {agent.phone || "N/A"}</span>
                             </div>
                             <div className="flex">
                               <span className="w-20 flex-shrink-0 text-slate-400">Address</span>
@@ -731,7 +745,7 @@ export default function AgentsPage() {
                         <div className="mt-5 flex gap-2">
                           <button
                             onClick={() => handleOpenMessageModal(agent)}
-                            className="flex-1 py-2 px-3 bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold rounded-xl border border-amber-200 flex items-center justify-center gap-1.5 transition-all outline-none cursor-pointer"
+                            className="flex-1 py-2 px-3 bg-[#0f2d4a] hover:bg-[#1a3d5e] active:scale-95 text-white text-xs font-bold rounded-xl border-none outline-none flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.75.75 0 01-1.074-.765 6.003 6.003 0 011.085-3.11 8.261 8.261 0 01-1.672-4.82c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
@@ -740,7 +754,7 @@ export default function AgentsPage() {
                           </button>
                           <button
                             onClick={() => handleOpenViewModal(agent)}
-                            className="flex-1 py-2 px-3 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 flex items-center justify-center gap-1.5 transition-all outline-none cursor-pointer"
+                            className="flex-1 py-2 px-3 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 flex items-center justify-center gap-1.5 transition-all outline-none cursor-pointer"
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-3.5 h-3.5">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
@@ -753,9 +767,19 @@ export default function AgentsPage() {
                         {/* Card Footer */}
                         <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-[10px] text-slate-400 font-bold select-none">
                           <span>Assign Area: {agent.branch}</span>
-                          <span className="text-emerald-500 font-extrabold flex items-center gap-0.5">
-                            ● Active
-                          </span>
+                          {agent.availability === "Offline" ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-500 text-white select-none">
+                              Offline
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-emerald-500 text-white select-none">
+                              <span className="relative flex h-1.5 w-1.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                              </span>
+                              Active
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1036,7 +1060,7 @@ export default function AgentsPage() {
       )}
 
       {/* View Agent Details Modal */}
-      {showViewModal && selectedAgentForView && (
+      {showViewModal && activeAgent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
           {isEditing ? (
             /* EDIT MODAL DESIGN */
@@ -1044,7 +1068,7 @@ export default function AgentsPage() {
               {/* Modal Header */}
               <div className="px-8 pt-6 pb-4 flex justify-between items-center bg-white select-none">
                 <h2 className="font-extrabold text-xl text-slate-800">
-                  Edit - {selectedAgentForView.agentId} - {selectedAgentForView.name}
+                  Edit - {activeAgent.agentId} - {activeAgent.name}
                 </h2>
                 <button
                   type="button"
@@ -1061,7 +1085,7 @@ export default function AgentsPage() {
               </div>
 
               {/* Modal Content / Form */}
-              <form onSubmit={(e) => handleSaveEdit(e, selectedAgentForView._id)} className="p-8 flex flex-col gap-6">
+              <form onSubmit={(e) => handleSaveEdit(e, activeAgent._id)} className="p-8 flex flex-col gap-6">
                 {editError && (
                   <div className="bg-red-50 text-red-600 text-xs font-bold px-4 py-2.5 rounded-xl border border-red-100">
                     {editError}
@@ -1331,11 +1355,21 @@ export default function AgentsPage() {
               {/* Modal Header */}
               <div className="px-8 pt-6 pb-4 flex justify-between items-center bg-white select-none">
                 <h2 className="font-extrabold text-xl text-slate-800">
-                  Agent - {selectedAgentForView.name}
+                  Agent - {activeAgent.name}
                 </h2>
-                <span className="text-emerald-500 font-extrabold text-sm tracking-wide">
-                  Active
-                </span>
+                {activeAgent.availability === "Offline" ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase bg-[#ef4444] text-white select-none shadow-sm">
+                    Offline
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase bg-[#10b981] text-white select-none shadow-sm">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                    </span>
+                    Active
+                  </span>
+                )}
               </div>
               <div className="px-8">
                 <hr className="border-t border-slate-300" />
@@ -1352,23 +1386,23 @@ export default function AgentsPage() {
                     <div className="flex flex-col gap-3.5 font-semibold text-slate-700">
                       <div className="flex items-center">
                         <span className="w-36 text-slate-800 font-extrabold text-base">Agent Number :</span>
-                        <span className="text-slate-600 text-base">{selectedAgentForView.agentId}</span>
+                        <span className="text-slate-600 text-base">{activeAgent.agentId}</span>
                       </div>
                       <div className="flex items-center">
                         <span className="w-36 text-slate-800 font-extrabold text-base">Contact No. :</span>
-                        <span className="text-slate-600 text-base">{selectedAgentForView.phone || "0771974163"}</span>
+                        <span className="text-slate-600 text-base">{activeAgent.phone || "0771974163"}</span>
                       </div>
                       <div className="flex items-center">
                         <span className="w-36 text-slate-800 font-extrabold text-base">NIC :</span>
-                        <span className="text-slate-600 text-base">{selectedAgentForView.nic}</span>
+                        <span className="text-slate-600 text-base">{activeAgent.nic}</span>
                       </div>
                       <div className="flex items-center">
                         <span className="w-36 text-slate-800 font-extrabold text-base">Address :</span>
-                        <span className="text-slate-600 text-base truncate">{selectedAgentForView.address}</span>
+                        <span className="text-slate-600 text-base truncate">{activeAgent.address}</span>
                       </div>
                       <div className="flex items-center">
                         <span className="w-36 text-slate-800 font-extrabold text-base">Email :</span>
-                        <span className="text-slate-600 text-base truncate">{selectedAgentForView.email}</span>
+                        <span className="text-slate-600 text-base truncate">{activeAgent.email}</span>
                       </div>
                     </div>
                   </div>
@@ -1376,7 +1410,7 @@ export default function AgentsPage() {
                   {/* Actions Stack Column */}
                   <div className="flex flex-col justify-start gap-3">
                     <button
-                      onClick={() => handleRemoveAgent(selectedAgentForView._id)}
+                      onClick={() => handleRemoveAgent(activeAgent._id)}
                       className="w-full py-2.5 bg-[#ff0000] hover:bg-red-700 active:scale-[0.98] text-white font-extrabold text-sm rounded-xl transition-all cursor-pointer border-none outline-none"
                     >
                       Remove
@@ -1384,14 +1418,14 @@ export default function AgentsPage() {
                     <button
                       onClick={() => {
                         setShowViewModal(false);
-                        handleOpenMessageModal(selectedAgentForView);
+                        handleOpenMessageModal(activeAgent);
                       }}
                       className="w-full py-2.5 bg-[#0f2d4a] hover:bg-[#1a3d5e] active:scale-[0.98] text-white font-extrabold text-sm rounded-xl transition-all cursor-pointer border-none outline-none"
                     >
                       Message
                     </button>
                     <button
-                      onClick={() => handleStartEdit(selectedAgentForView)}
+                      onClick={() => handleStartEdit(activeAgent)}
                       className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-extrabold text-sm rounded-xl transition-all cursor-pointer border-none outline-none"
                     >
                       Edit
@@ -1400,24 +1434,24 @@ export default function AgentsPage() {
 
                 </div>
 
-                {/* Middle row: 2x2 grid of gray verification documents buttons */}
-                <div className="grid grid-cols-2 gap-4 mt-2">
+                {/* Middle row: Grid of verification documents buttons */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                   {[
                     { label: "NIC Front", key: "nicFront" },
                     { label: "NIC Back", key: "nicBack" },
                     { label: "Birth Certificate", key: "birthCertificate" },
                     { label: "Police report", key: "policeReport" }
                   ].map(({ label, key }) => {
-                    const hasDoc = !!(selectedAgentForView as any)[key];
+                    const hasDoc = !!(activeAgent as any)[key];
                     return (
                       <button
                         key={label}
                         type="button"
                         onClick={() => setPreviewDocName(label)}
-                        className={`py-4 px-6 font-extrabold text-sm rounded-2xl transition-all border-none outline-none cursor-pointer text-center ${
+                        className={`py-4 px-6 font-extrabold text-sm rounded-[20px] transition-all border outline-none cursor-pointer text-center ${
                           hasDoc
-                            ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/50 shadow-sm"
-                            : "bg-slate-200 hover:bg-slate-300 text-slate-800"
+                            ? "bg-[#f0fbf7] hover:bg-[#e6f7ef] text-[#0a5c36] border-[#d3ecd8] shadow-sm"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-400 border border-slate-200/60 shadow-sm"
                         }`}
                       >
                         {label} {hasDoc ? "✓" : ""}
@@ -1500,7 +1534,7 @@ export default function AgentsPage() {
                 const key = keyMap[previewDocName];
                 const docUrl = isEditing 
                   ? (editFormData as any)[key] 
-                  : (selectedAgentForView as any)[key];
+                  : activeAgent ? (activeAgent as any)[key] : null;
 
                 if (docUrl) {
                   return (

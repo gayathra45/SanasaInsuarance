@@ -123,10 +123,50 @@ export default function OfficeStaffClaimsPage() {
 
   // Sub-modal overlay states
   const [activeSubModal, setActiveSubModal] = useState<"documents" | "contact" | "request_docs" | "add_note" | "update_tracking" | null>(null);
-  const [documentRequestTo, setDocumentRequestTo] = useState<"User" | "Agent">("User");
-  const [selectedRequestDocType, setSelectedRequestDocType] = useState("NIC Front Page");
-  const [documentRequestMessage, setDocumentRequestMessage] = useState("");
+  interface RequestDocItem {
+    recipient: "User" | "Agent";
+    docType: string;
+    customName: string;
+    note: string;
+  }
+  const [requestItems, setRequestItems] = useState<RequestDocItem[]>([
+    { recipient: "User", docType: "NIC Front Page", customName: "", note: "" }
+  ]);
   const [contactRecipient, setContactRecipient] = useState<"Policy Holder" | "Agent">("Policy Holder");
+
+  const handleAddRequestItem = () => {
+    setRequestItems(prev => [
+      ...prev,
+      { recipient: "User", docType: "NIC Front Page", customName: "", note: "" }
+    ]);
+  };
+
+  const handleRemoveRequestItem = (index: number) => {
+    setRequestItems(prev => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleRequestItemChange = (index: number, fields: Partial<RequestDocItem>) => {
+    setRequestItems(prev => prev.map((item, idx) => {
+      if (idx === index) {
+        const updated = { ...item, ...fields };
+        if (fields.recipient) {
+          if (fields.recipient === "Agent") {
+            const agentOptions = ["Repair Estimate", "Inspection Photos", "Damage Assessment", "Underwriting Report", "Custom / Other"];
+            if (!agentOptions.includes(updated.docType)) {
+              updated.docType = "Repair Estimate";
+            }
+          } else {
+            const userOptions = ["NIC Front Page", "NIC Back Page", "License Front", "License Rear", "Vehicle Registration", "Revenue License", "Accident Photos", "Repair Estimate", "Custom / Other"];
+            if (!userOptions.includes(updated.docType)) {
+              updated.docType = "NIC Front Page";
+            }
+          }
+        }
+        return updated;
+      }
+      return item;
+    }));
+  };
 
   // Load claims and agents
   const loadClaimsAndAgents = async (currentBranch: string) => {
@@ -267,7 +307,13 @@ export default function OfficeStaffClaimsPage() {
   // Handle general updates (status, amount, etc.)
   const handleUpdateClaim = async (
     claimNumber: string,
-    updates: Partial<Claim> & { messageText?: string; messageRecipient?: string; noteText?: string; documentRequestTo?: string }
+    updates: Partial<Claim> & { 
+      messageText?: string; 
+      messageTexts?: { message: string; recipient: string }[];
+      messageRecipient?: string; 
+      noteText?: string; 
+      documentRequestTo?: string; 
+    }
   ) => {
     try {
       setUpdatingClaim(true);
@@ -276,7 +322,7 @@ export default function OfficeStaffClaimsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...updates,
-          messageSender: "Office Staff"
+          messageSender: branch ? `${branch} Branch Staff` : "Office Staff"
         })
       });
       if (!res.ok) throw new Error("Failed to update claim details.");
@@ -579,9 +625,9 @@ export default function OfficeStaffClaimsPage() {
                                 setSelectedClaim(claim);
                                 setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
                                 setActiveSubModal(null);
-                                setDocumentRequestTo("User");
-                                setSelectedRequestDocType("NIC Front Page");
-                                setDocumentRequestMessage("");
+                                setRequestItems([
+                                  { recipient: "User", docType: "NIC Front Page", customName: "", note: "" }
+                                ]);
                                 setContactRecipient("Policy Holder");
                               }}
                               className="border border-slate-300 hover:bg-slate-50 text-slate-600 font-extrabold text-[10px] px-3 py-1.5 rounded-lg transition-all cursor-pointer focus:outline-none shadow-sm bg-white whitespace-nowrap"
@@ -983,7 +1029,12 @@ export default function OfficeStaffClaimsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setActiveSubModal("request_docs")}
+                  onClick={() => {
+                    setRequestItems([
+                      { recipient: "User", docType: "NIC Front Page", customName: "", note: "" }
+                    ]);
+                    setActiveSubModal("request_docs");
+                  }}
                   className="bg-[#f97316] hover:bg-orange-600 text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
                 >
                   Request Document &gt;
@@ -1004,7 +1055,7 @@ export default function OfficeStaffClaimsPage() {
               <div className="border-b border-black mx-8 mb-6" />
 
               {/* Body */}
-              <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+              <div className="px-8 pb-4 flex-1 overflow-y-auto space-y-6">
                 {/* Claim Summary */}
                 <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed">
                   <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
@@ -1012,64 +1063,130 @@ export default function OfficeStaffClaimsPage() {
 
                 {/* Fields */}
                 <div className="space-y-4 pr-1">
-                  {/* Request From Selector */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider ml-1 select-none">Request From :</label>
-                    <div className="flex gap-4 p-2.5 bg-slate-100 border border-slate-200 rounded-xl">
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                        <input
-                          type="radio"
-                          name="reqRecipient"
-                          checked={documentRequestTo === "User"}
-                          onChange={() => setDocumentRequestTo("User")}
-                          className="w-3.5 h-3.5 accent-[#0f2d4a]"
+                  {requestItems.map((item, index) => (
+                    <div key={index} className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 relative space-y-4">
+                      {/* Remove Button on top right */}
+                      {requestItems.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveRequestItem(index)}
+                          className="absolute top-4 right-4 text-slate-400 hover:text-red-500 font-extrabold text-lg bg-transparent border-none cursor-pointer p-1 transition-colors"
+                          title="Remove this document request"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      )}
+
+                      <div className="flex items-center gap-2 select-none mb-1">
+                        <span className="w-6 h-6 rounded-full bg-[#0f2d4a] text-white flex items-center justify-center text-xs font-black">
+                          {String(index + 1).padStart(2, '0')}
+                        </span>
+                        <h4 className="text-slate-800 font-black text-xs uppercase tracking-wider">Document #{index + 1}</h4>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Request From Selector */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider ml-1 select-none">Request From :</label>
+                          <div className="flex gap-4 p-2.5 bg-white border border-slate-200 rounded-xl">
+                            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                              <input
+                                type="radio"
+                                name={`reqRecipient-${index}`}
+                                checked={item.recipient === "User"}
+                                onChange={() => handleRequestItemChange(index, { recipient: "User" })}
+                                className="w-3.5 h-3.5 accent-[#0f2d4a]"
+                              />
+                              <span className="text-xs font-bold text-slate-700">Policy Holder (User)</span>
+                            </label>
+                            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                              <input
+                                type="radio"
+                                name={`reqRecipient-${index}`}
+                                checked={item.recipient === "Agent"}
+                                onChange={() => handleRequestItemChange(index, { recipient: "Agent" })}
+                                className="w-3.5 h-3.5 accent-[#0f2d4a]"
+                              />
+                              <span className="text-xs font-bold text-slate-700">Assigned Agent</span>
+                            </label>
+                          </div>
+                        </div>
+
+                        {/* Document Type Dropdown */}
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider ml-1 select-none">Document Type :</label>
+                          <select
+                            value={item.docType}
+                            onChange={(e) => handleRequestItemChange(index, { docType: e.target.value })}
+                            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                          >
+                            {item.recipient === "Agent" ? (
+                              <>
+                                <option value="Repair Estimate">Repair Estimate</option>
+                                <option value="Inspection Photos">Inspection Photos</option>
+                                <option value="Damage Assessment">Damage Assessment</option>
+                                <option value="Underwriting Report">Underwriting Report</option>
+                                <option value="Custom / Other">Custom / Other</option>
+                              </>
+                            ) : (
+                              <>
+                                <option value="NIC Front Page">NIC Front Page</option>
+                                <option value="NIC Back Page">NIC Back Page</option>
+                                <option value="License Front">License Front</option>
+                                <option value="License Rear">License Rear</option>
+                                <option value="Vehicle Registration">Vehicle Registration</option>
+                                <option value="Revenue License">Revenue License</option>
+                                <option value="Accident Photos">Accident Photos</option>
+                                <option value="Repair Estimate">Repair Estimate</option>
+                                <option value="Custom / Other">Custom / Other</option>
+                              </>
+                            )}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Custom Document Name input field if Custom / Other is selected */}
+                      {(item.docType === "Custom / Other" || item.docType === "Other") && (
+                        <div className="flex flex-col gap-1.5 animate-fade-in">
+                          <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider ml-1 select-none">Custom Document Name :</label>
+                          <input
+                            type="text"
+                            required
+                            value={item.customName}
+                            onChange={(e) => handleRequestItemChange(index, { customName: e.target.value })}
+                            placeholder="E.g. Bank Book PDF, Towing Receipt..."
+                            className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                          />
+                        </div>
+                      )}
+
+                      {/* Add Note textarea */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[11px] text-slate-400 font-bold uppercase tracking-wider ml-1 select-none">Instructions / Note :</label>
+                        <textarea
+                          rows={2}
+                          value={item.note}
+                          onChange={(e) => handleRequestItemChange(index, { note: e.target.value })}
+                          placeholder="E.g. Please upload a clear photo of the document..."
+                          className="w-full p-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] resize-none"
                         />
-                        <span className="text-xs font-bold text-slate-700">Policy Holder (User)</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer select-none">
-                        <input
-                          type="radio"
-                          name="reqRecipient"
-                          checked={documentRequestTo === "Agent"}
-                          onChange={() => setDocumentRequestTo("Agent")}
-                          className="w-3.5 h-3.5 accent-[#0f2d4a]"
-                        />
-                        <span className="text-xs font-bold text-slate-700">Assigned Agent</span>
-                      </label>
+                      </div>
                     </div>
-                  </div>
+                  ))}
 
-                  {/* Document Type Dropdown */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Document Type :</label>
-                    <select
-                      value={selectedRequestDocType}
-                      onChange={(e) => setSelectedRequestDocType(e.target.value)}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
-                    >
-                      <option value="NIC Front Page">NIC Front Page</option>
-                      <option value="NIC Back Page">NIC Back Page</option>
-                      <option value="License Front">License Front</option>
-                      <option value="License Rear">License Rear</option>
-                      <option value="Vehicle Registration">Vehicle Registration</option>
-                      <option value="Revenue License">Revenue License</option>
-                      <option value="Accident Photos">Accident Photos</option>
-                      <option value="Repair Estimate">Repair Estimate</option>
-                      <option value="Other">Other / Custom</option>
-                    </select>
-                  </div>
-
-                  {/* Add Note textarea */}
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[13px] font-bold text-slate-800 ml-1 select-none">Add Note :</label>
-                    <textarea
-                      rows={3}
-                      value={documentRequestMessage}
-                      onChange={(e) => setDocumentRequestMessage(e.target.value)}
-                      placeholder="Enter instructions message..."
-                      className="w-full p-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 bg-[#e2e8f0] focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] resize-none"
-                    />
-                  </div>
+                  {/* Add Another Document Button */}
+                  <button
+                    type="button"
+                    onClick={handleAddRequestItem}
+                    className="w-full py-4 border-2 border-dashed border-slate-300 hover:border-[#0f2d4a] rounded-2xl flex items-center justify-center gap-2 bg-slate-50/50 hover:bg-slate-50 text-xs font-bold text-slate-500 hover:text-[#0f2d4a] cursor-pointer transition-all duration-200 group"
+                  >
+                    <svg className="w-4 h-4 text-slate-400 group-hover:text-[#0f2d4a] transition-colors" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Another Document Request
+                  </button>
                 </div>
               </div>
 
@@ -1079,7 +1196,6 @@ export default function OfficeStaffClaimsPage() {
                   type="button"
                   onClick={() => {
                     setActiveSubModal(null);
-                    setDocumentRequestMessage("");
                   }}
                   className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
                 >
@@ -1088,23 +1204,52 @@ export default function OfficeStaffClaimsPage() {
                 <button
                   type="button"
                   onClick={async () => {
-                    const customMsg = documentRequestMessage.trim() || `Please upload the requested document.`;
-                    const fullMsgText = `[Document Request to ${documentRequestTo}] Requested: ${selectedRequestDocType}. Message: ${customMsg}`;
-                    
+                    // Validation
+                    for (let i = 0; i < requestItems.length; i++) {
+                      const item = requestItems[i];
+                      const isCustom = item.docType === "Custom / Other" || item.docType === "Other";
+                      if (isCustom && !item.customName.trim()) {
+                        alert(`Please enter a custom document name for Document #${i + 1}.`);
+                        return;
+                      }
+                    }
+
                     const currentDocs = selectedClaim.requestedDocuments || [];
-                    const updatedDocs = currentDocs.includes(selectedRequestDocType)
-                      ? currentDocs
-                      : [...currentDocs, selectedRequestDocType];
+                    const newDocs = requestItems.map(item => {
+                      const isCustom = item.docType === "Custom / Other" || item.docType === "Other";
+                      return isCustom ? item.customName.trim() : item.docType;
+                    });
+
+                    // Merge new docs into current requested docs
+                    const updatedDocs = [...currentDocs];
+                    newDocs.forEach(docName => {
+                      if (!updatedDocs.includes(docName)) {
+                        updatedDocs.push(docName);
+                      }
+                    });
+
+                    // Prepare messages to append
+                    const messageTexts = requestItems.map(item => {
+                      const docName = item.docType === "Custom / Other" || item.docType === "Other" ? item.customName.trim() : item.docType;
+                      const customMsg = item.note.trim() || `Please upload the requested document.`;
+                      return {
+                        message: `[Document Request to ${item.recipient}] Requested: ${docName}. Message: ${customMsg}`,
+                        recipient: item.recipient === "Agent" ? "Agent" : "Policy Holder"
+                      };
+                    });
+
+                    // Make the single API update request
+                    const lastRecipient = requestItems[requestItems.length - 1].recipient;
 
                     await handleUpdateClaim(selectedClaim.claimNumber, {
                       documentsRequested: true,
                       requestedDocuments: updatedDocs,
-                      documentRequestTo: documentRequestTo,
-                      messageText: fullMsgText
+                      documentRequestTo: lastRecipient,
+                      messageTexts: messageTexts
                     });
+
                     setActiveSubModal(null);
-                    setDocumentRequestMessage("");
-                    alert("Document request sent successfully!");
+                    alert("Document requests sent successfully!");
                   }}
                   disabled={updatingClaim}
                   className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95 disabled:opacity-50"
@@ -1796,7 +1941,12 @@ export default function OfficeStaffClaimsPage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setActiveSubModal("request_docs")}
+                    onClick={() => {
+                      setRequestItems([
+                        { recipient: "User", docType: "NIC Front Page", customName: "", note: "" }
+                      ]);
+                      setActiveSubModal("request_docs");
+                    }}
                     className="bg-[#f97316] hover:bg-orange-600 text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all border-none cursor-pointer shadow-sm active:scale-95"
                   >
                     Request Documents

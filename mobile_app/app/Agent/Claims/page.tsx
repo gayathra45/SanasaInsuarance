@@ -16,6 +16,7 @@ import {
   KeyboardAvoidingView,
   Linking,
   ImageBackground,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -51,6 +52,15 @@ interface Claim {
   requestedDocuments?: string[];
   documentRequestTo?: string;
   messages?: { sender: string; message: string; sentAt: string }[];
+  accidentPhotos?: {
+    front: string[];
+    rear: string[];
+    side: string[];
+  };
+  drivingLicense?: {
+    front: string[];
+    rear: string[];
+  };
 }
 
 export default function AgentClaimsPage() {
@@ -382,6 +392,33 @@ export default function AgentClaimsPage() {
       }
     } catch (e) {
       Alert.alert("Error", "Failed to accept claim assignment. Please try again.");
+    } finally {
+      setIsAcceptingClaim(false);
+    }
+  };
+
+  const handleDeclineClaim = async () => {
+    if (!selectedClaim) return;
+    setIsAcceptingClaim(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/office-staff/claims/${selectedClaim.claimNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "Rejected",
+          currentStep: 5,
+          rejectionReason: "Rejected by Agent",
+          messageText: "Claim rejected by Agent.",
+          messageRecipient: "Office Staff",
+          messageSender: "Agent"
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to reject");
+      Alert.alert("Success", "Claim assignment rejected successfully!");
+      setSelectedClaim(null);
+      fetchClaims(agentEmail);
+    } catch (e) {
+      Alert.alert("Error", "Failed to decline claim assignment. Please try again.");
     } finally {
       setIsAcceptingClaim(false);
     }
@@ -768,22 +805,33 @@ export default function AgentClaimsPage() {
                         <Text style={styles.modalDescText}>{selectedClaim.description}</Text>
                       </View>
 
-                      {/* Accept Claim Assignment */}
+                      {/* Accept / Reject Claim Assignment */}
                       {isActive && selectedClaim.currentStep === 2 && (
                         <View style={styles.modalDescBox}>
-                          <Text style={styles.modalDescLabel}>Accept Claim Assignment</Text>
-                          <Text style={[styles.modalDescText, { fontSize: 11, color: '#64748b', marginBottom: 8 }]}>
-                            Accept assignment to start inspection logs.
+                          <Text style={styles.modalDescLabel}>Claim Assignment Request</Text>
+                          <Text style={[styles.modalDescText, { fontSize: 11, color: '#64748b', marginBottom: 12 }]}>
+                            Please accept or reject this claim dossier assignment.
                           </Text>
-                          <TouchableOpacity
-                            style={[styles.approveBtn, { backgroundColor: "#0ea5e9" }]}
-                            onPress={handleAcceptClaim}
-                            disabled={isAcceptingClaim}
-                          >
-                            <Text style={styles.approveBtnText}>
-                              {isAcceptingClaim ? "Accepting..." : "Accept Assignment"}
-                            </Text>
-                          </TouchableOpacity>
+                          <View style={{ flexDirection: "row", gap: 10 }}>
+                            <TouchableOpacity
+                              style={[styles.approveBtn, { backgroundColor: "#16a34a", flex: 1 }]}
+                              onPress={handleAcceptClaim}
+                              disabled={isAcceptingClaim}
+                            >
+                              <Text style={styles.approveBtnText}>
+                                {isAcceptingClaim ? "Accepting..." : "Accept"}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.approveBtn, { backgroundColor: "#dc2626", flex: 1 }]}
+                              onPress={handleDeclineClaim}
+                              disabled={isAcceptingClaim}
+                            >
+                              <Text style={styles.approveBtnText}>
+                                {isAcceptingClaim ? "Declining..." : "Reject"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       )}
 
@@ -902,6 +950,59 @@ export default function AgentClaimsPage() {
                                 );
                               }
                             })}
+                          </View>
+                        );
+                      })()}
+
+                      {/* Policy Holder Attachments / Photos Section */}
+                      {(() => {
+                        const attachments: { name: string; url: string }[] = [];
+                        const dlFront = selectedClaim.drivingLicense?.front?.[0];
+                        const dlRear = selectedClaim.drivingLicense?.rear?.[0];
+                        if (dlFront) attachments.push({ name: "License (Front)", url: dlFront });
+                        if (dlRear) attachments.push({ name: "License (Rear)", url: dlRear });
+                        
+                        let photoIdx = 1;
+                        const fPhotos = selectedClaim.accidentPhotos?.front || [];
+                        const rPhotos = selectedClaim.accidentPhotos?.rear || [];
+                        const sPhotos = selectedClaim.accidentPhotos?.side || [];
+                        
+                        fPhotos.forEach((url: string) => attachments.push({ name: `Accident Front #${photoIdx++}`, url }));
+                        rPhotos.forEach((url: string) => attachments.push({ name: `Accident Rear #${photoIdx++}`, url }));
+                        sPhotos.forEach((url: string) => attachments.push({ name: `Accident Side #${photoIdx++}`, url }));
+
+                        return (
+                          <View style={styles.modalDescBox}>
+                            <Text style={styles.modalDescLabel}>Policy Holder Attachments & Photos</Text>
+                            {attachments.length === 0 ? (
+                              <Text style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic", marginTop: 4 }}>
+                                No driving license or accident photos attached to this claim.
+                              </Text>
+                            ) : (
+                              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, marginTop: 10 }}>
+                                {attachments.map((item, idx) => {
+                                  let docUrl = item.url;
+                                  if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                                    docUrl = `${API_BASE_URL.replace("/api", "")}/uploads/${docUrl}`;
+                                  }
+                                  return (
+                                    <TouchableOpacity
+                                      key={idx}
+                                      onPress={() => handleViewDocument(docUrl)}
+                                      style={{ alignItems: "center", width: 90 }}
+                                      activeOpacity={0.7}
+                                    >
+                                      <View style={{ width: 90, height: 70, borderRadius: 10, overflow: "hidden", borderColor: "#e2e8f0", borderStyle: "solid", borderWidth: 1 }}>
+                                        <Image source={{ uri: docUrl }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                                      </View>
+                                      <Text style={{ fontSize: 9, color: "#64748b", fontWeight: "700", textAlign: "center", marginTop: 4, textTransform: "uppercase" }} numberOfLines={1}>
+                                        {item.name}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </ScrollView>
+                            )}
                           </View>
                         );
                       })()}

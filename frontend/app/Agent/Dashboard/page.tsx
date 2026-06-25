@@ -61,6 +61,37 @@ export default function AgentDashboard() {
   const [claims, setClaims] = useState<Claim[]>([]);
   const [agentEmail, setAgentEmail] = useState("");
   const [loading, setLoading] = useState(true);
+  const [availability, setAvailability] = useState<"Active" | "Offline">("Active");
+
+  const fetchAvailability = async (email: string) => {
+    try {
+      const res = await fetch(`${API_URL}/agent/availability?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.availability) {
+          setAvailability(data.availability);
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching availability:", e);
+    }
+  };
+
+  const toggleAvailability = async (status: "Active" | "Offline") => {
+    try {
+      setAvailability(status);
+      const res = await fetch(`${API_URL}/agent/availability`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: agentEmail, availability: status })
+      });
+      if (!res.ok) throw new Error("Failed to update availability");
+    } catch (e) {
+      console.error("Error updating availability:", e);
+      alert("Failed to update status. Please try again.");
+    }
+  };
+
   const [assessmentAmount, setAssessmentAmount] = useState<string>("");
   const [inspectionReportText, setInspectionReportText] = useState("");
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);
@@ -69,6 +100,7 @@ export default function AgentDashboard() {
   const [agentUploadDocName, setAgentUploadDocName] = useState<string>("Repair Estimate");
   const [isAgentUploading, setIsAgentUploading] = useState(false);
   const [isAcceptingClaim, setIsAcceptingClaim] = useState(false);
+  const [showMobileRedirect, setShowMobileRedirect] = useState(false);
   const agentFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileChange = (file: File | null) => {
@@ -120,6 +152,7 @@ export default function AgentDashboard() {
       if (parsed.email) {
         setAgentEmail(parsed.email);
         fetchClaims(parsed.email);
+        fetchAvailability(parsed.email);
       }
     } catch (e) {
       console.error(e);
@@ -175,7 +208,7 @@ export default function AgentDashboard() {
     });
   };
 
-  const formatDate = (dateStr?: string | Date) => {
+  const formatDate = (dateStr: string) => {
     if (!dateStr) return "";
     try {
       const d = new Date(dateStr);
@@ -185,17 +218,31 @@ export default function AgentDashboard() {
     } catch { return String(dateStr); }
   };
 
+  const formatDateTime = (dateStr: string) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return String(dateStr);
+      const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const hours = d.getHours().toString().padStart(2, '0');
+      const minutes = d.getMinutes().toString().padStart(2, '0');
+      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()} ${hours}:${minutes}`;
+    } catch { return String(dateStr); }
+  };
+
   const getDocDetails = (claim: Claim, name: string, status: "Pending" | "Submitted") => {
     let requestedAt = "";
     let submittedAt = "";
+    let sender = "Office Staff";
 
     const msg = [...(claim.messages || [])]
       .reverse()
       .find(m => m.message && typeof m.message === "string" && m.message.includes(`Requested: ${name}`));
     if (msg) {
-      requestedAt = formatDate(msg.sentAt);
+      requestedAt = formatDateTime(msg.sentAt);
+      sender = msg.sender || "Office Staff";
     } else {
-      requestedAt = formatDate(claim.createdAt);
+      requestedAt = formatDateTime(claim.createdAt);
     }
 
     if (status === "Submitted") {
@@ -203,11 +250,11 @@ export default function AgentDashboard() {
         d => d.name.trim().toLowerCase() === name.trim().toLowerCase()
       );
       if (doc && doc.uploadedAt) {
-        submittedAt = formatDate(doc.uploadedAt);
+        submittedAt = formatDateTime(doc.uploadedAt);
       }
     }
 
-    return { requestedAt, submittedAt };
+    return { requestedAt, submittedAt, sender };
   };
 
   // Derive columns from MongoDB collection
@@ -270,7 +317,7 @@ export default function AgentDashboard() {
         alert("Failed to accept claim.");
         return;
       }
-      alert("Claim accepted successfully! Proceed with vehicle inspection.");
+      setShowMobileRedirect(true);
       // Refresh claims list
       await fetchClaims(agentEmail);
       // Also refresh the selectedClaim state with the new data
@@ -283,6 +330,43 @@ export default function AgentDashboard() {
     } catch (e) {
       console.error(e);
       alert("Error accepting claim.");
+    } finally {
+      setIsAcceptingClaim(false);
+    }
+  };
+
+  const handleDeclineClaim = async (claimId: string, claimNumber: string) => {
+    try {
+      setIsAcceptingClaim(true);
+      const res = await fetch(`${API_URL}/office-staff/claims/${claimNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "Rejected",
+          currentStep: 5,
+          rejectionReason: "Rejected by Agent",
+          messageText: "Claim rejected by Agent.",
+          messageRecipient: "Office Staff",
+          messageSender: "Agent"
+        })
+      });
+      if (!res.ok) {
+        alert("Failed to decline claim.");
+        return;
+      }
+      alert("Claim rejected successfully!");
+      // Refresh claims list
+      await fetchClaims(agentEmail);
+      // Also refresh the selectedClaim state with the new data
+      const updatedRes = await fetch(`${API_URL}/agent/claims?email=${agentEmail}`);
+      if (updatedRes.ok) {
+        const data = await updatedRes.json();
+        const freshClaim = data.find((c: Claim) => c._id === claimId);
+        if (freshClaim) setSelectedClaim(freshClaim);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error declining claim.");
     } finally {
       setIsAcceptingClaim(false);
     }
@@ -405,9 +489,41 @@ export default function AgentDashboard() {
 
         <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col gap-8">
           <div className="space-y-3">
-            <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white drop-shadow-sm select-none">
-              Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-cyan-200">{agentName}</span>!
-            </h1>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white drop-shadow-sm select-none">
+                Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-cyan-200">{agentName}</span>!
+              </h1>
+              {/* Availability Status Selector */}
+              <div className={`flex items-center gap-2 bg-white text-slate-800 border-2 rounded-full px-4 py-1.5 self-start md:self-center select-none transition-all duration-300 ${
+                availability === "Active"
+                  ? "border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.35)]"
+                  : "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.35)]"
+              }`}>
+                <span className="text-xs text-slate-500 font-extrabold tracking-wider uppercase">Status:</span>
+                <button
+                  onClick={() => toggleAvailability("Active")}
+                  className={`px-3.5 py-1 rounded-full text-xs font-black cursor-pointer transition-all border-none flex items-center gap-1.5 ${
+                    availability === "Active"
+                      ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
+                      : "bg-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  {availability === "Active" && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                  Active
+                </button>
+                <button
+                  onClick={() => toggleAvailability("Offline")}
+                  className={`px-3.5 py-1 rounded-full text-xs font-black cursor-pointer transition-all border-none flex items-center gap-1.5 ${
+                    availability === "Offline"
+                      ? "bg-red-500 text-white shadow-md shadow-red-500/20"
+                      : "bg-transparent text-slate-400 hover:text-slate-600"
+                  }`}
+                >
+                  {availability === "Offline" && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                  Offline
+                </button>
+              </div>
+            </div>
             <p className="text-lg md:text-xl text-slate-300 max-w-3xl leading-relaxed font-medium">
               You have <span className="text-red-500 font-extrabold">{totalAssigned} assigned claims</span> today including{" "}
               <span className="text-red-500 font-extrabold">{urgentCount} urgent</span> case. Stay safe on the road!
@@ -545,12 +661,12 @@ export default function AgentDashboard() {
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => setSelectedClaim(claim)}
-                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black hover:shadow-[0_4px_14px_rgba(0,221,255,0.3)] text-xs font-black py-2.5 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center flex-shrink-0"
+                      <Link
+                        href={`/Agent/Documents?uploadClaim=${claim.claimNumber}`}
+                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black hover:shadow-[0_4px_14px_rgba(0,221,255,0.3)] text-xs font-black py-2.5 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center flex-shrink-0 text-center no-underline"
                       >
                         Upload Documents
-                      </button>
+                      </Link>
                     </div>
                   );
                 })}
@@ -861,21 +977,70 @@ export default function AgentDashboard() {
                 </p>
               </div>
 
-              {/* Accept Claim Assignment Section */}
-              {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && selectedClaim.currentStep === 2 && (
-                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2.5 animate-fade-in">
-                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b pb-2 border-slate-200">
-                    Accept Claim Assignment
-                  </h4>
-                  <p className="text-xs text-slate-500 font-semibold select-none leading-relaxed">
-                    This claim has been assigned to you. Accept the assignment to begin the vehicle inspection process.
-                  </p>
+              {/* Action Buttons: Accept / Reject */}
+              {selectedClaim.status.toLowerCase() === "pending" && (
+                <div className="flex items-center gap-4 mt-6">
                   <button
+                    type="button"
                     onClick={() => handleAcceptClaim(selectedClaim._id)}
                     disabled={isAcceptingClaim}
-                    className="bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold text-xs py-2.5 rounded-xl border-none cursor-pointer self-start px-5 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
+                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm py-3.5 rounded-full flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all disabled:opacity-50 border-none"
                   >
-                    {isAcceptingClaim ? "Accepting..." : "Accept Claim Assignment"}
+                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                    </svg>
+                    Accept
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeclineClaim(selectedClaim._id, selectedClaim.claimNumber)}
+                    disabled={isAcceptingClaim}
+                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black text-sm py-3.5 rounded-full flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all disabled:opacity-50 border-none"
+                  >
+                    <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Reject
+                  </button>
+                </div>
+              )}
+
+              {/* Status Banner for Accepted (In Progress / Approved) Claims */}
+              {(selectedClaim.status.toLowerCase() === "in progress" || selectedClaim.status.toLowerCase() === "approved") && (
+                <div className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mt-6 text-center select-none animate-fade-in">
+                  <p className="text-emerald-800 text-xs md:text-sm font-black flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                    </svg>
+                    Claim Assignment Accepted
+                  </p>
+                  <p className="text-emerald-600 text-xs font-semibold mt-2 leading-relaxed">
+                    Please open the <strong>Sanasa Agent Mobile App</strong> on your smartphone to complete the physical damage evaluation, snap accident scene/license photos, and submit inspection reports.
+                  </p>
+                </div>
+              )}
+
+              {/* Status Banner for Rejected Claims */}
+              {selectedClaim.status.toLowerCase() === "rejected" && (
+                <div className="w-full bg-red-50 border border-red-200 rounded-2xl p-4 mt-6 flex flex-col items-center text-center select-none gap-3 animate-fade-in">
+                  <p className="text-red-800 text-xs md:text-sm font-black flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Claim Assignment Declined
+                  </p>
+                  <p className="text-red-650 text-xs font-semibold leading-relaxed">
+                    This claim dossier assignment has been rejected. If this was a mistake or you need to re-verify details, please contact branch support.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedClaim(null);
+                      router.push("/Agent/Contact");
+                    }}
+                    className="bg-red-600 hover:bg-red-700 text-white font-black text-xs py-2.5 px-6 rounded-xl cursor-pointer shadow-sm active:scale-95 transition-all text-center border-none"
+                  >
+                    Contact Branch Support
                   </button>
                 </div>
               )}
@@ -957,7 +1122,7 @@ export default function AgentDashboard() {
                       {policyHolderDocs.length > 0 ? (
                         <div className="flex flex-col gap-2">
                           {policyHolderDocs.map((item, idx) => {
-                            const { requestedAt, submittedAt } = getDocDetails(selectedClaim, item.name, item.status);
+                            const { requestedAt, submittedAt, sender } = getDocDetails(selectedClaim, item.name, item.status);
                             return (
                               <div key={idx} className="flex items-center justify-between py-2 px-3 bg-white border border-slate-100 rounded-xl">
                                 <div className="flex items-center gap-2 min-w-0">
@@ -965,7 +1130,7 @@ export default function AgentDashboard() {
                                   <div className="flex flex-col min-w-0">
                                     <span className="text-xs font-bold text-slate-700 truncate">{item.name}</span>
                                     <span className="text-[9px] text-slate-400 font-bold">
-                                      {item.status === "Pending" ? `Requested: ${requestedAt}` : `Requested: ${requestedAt} · Uploaded: ${submittedAt || "Recent"}`}
+                                      {item.status === "Pending" ? `Requested: ${requestedAt} by ${sender}` : `Requested: ${requestedAt} by ${sender} · Uploaded: ${submittedAt || "Recent"}`}
                                     </span>
                                   </div>
                                 </div>
@@ -989,7 +1154,7 @@ export default function AgentDashboard() {
                       {agentDocs.length > 0 ? (
                         <div className="flex flex-col gap-2">
                           {agentDocs.map((item, idx) => {
-                            const { requestedAt, submittedAt } = getDocDetails(selectedClaim, item.name, item.status);
+                            const { requestedAt, submittedAt, sender } = getDocDetails(selectedClaim, item.name, item.status);
                             return (
                               <div key={idx} className="flex items-center justify-between py-2 px-3 bg-white border border-slate-100 rounded-xl">
                                 <div className="flex items-center gap-2 min-w-0">
@@ -997,7 +1162,7 @@ export default function AgentDashboard() {
                                   <div className="flex flex-col min-w-0">
                                     <span className="text-xs font-bold text-slate-700 truncate">{item.name}</span>
                                     <span className="text-[9px] text-slate-400 font-bold">
-                                      {item.status === "Pending" ? `Requested: ${requestedAt}` : `Requested: ${requestedAt} · Uploaded: ${submittedAt || "Recent"}`}
+                                      {item.status === "Pending" ? `Requested: ${requestedAt} by ${sender}` : `Requested: ${requestedAt} by ${sender} · Uploaded: ${submittedAt || "Recent"}`}
                                     </span>
                                   </div>
                                 </div>
@@ -1284,6 +1449,68 @@ export default function AgentDashboard() {
           </svg>
         </button>
       </div>
+
+      {/* Styled UI Redirect Modal Overlay */}
+      {showMobileRedirect && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="relative w-full max-w-md bg-white rounded-[32px] p-8 shadow-2xl flex flex-col items-center text-center">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowMobileRedirect(false)}
+              className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-all border-none bg-transparent cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+
+            {/* Glowing Mobile Icon */}
+            <div className="w-16 h-16 rounded-full bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 mb-5 relative">
+              <span className="animate-ping absolute inline-flex h-8 w-8 rounded-full bg-emerald-400 opacity-20"></span>
+              <svg className="w-8 h-8 relative z-10" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+              </svg>
+            </div>
+
+            {/* Content */}
+            <h3 className="text-slate-900 font-black text-xl tracking-tight leading-none">
+              Claim Accepted Successfully!
+            </h3>
+            <p className="text-slate-500 text-xs md:text-sm font-semibold mt-4 leading-relaxed">
+              To proceed with the vehicle physical damage inspection, snap photos, and submit reports, please open the **Sanasa Agent Mobile App** on your smartphone.
+            </p>
+
+            {/* Quick Steps */}
+            <div className="w-full bg-slate-50 border border-slate-200/60 rounded-2xl p-4 mt-5 text-left space-y-2.5">
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block select-none">Next Steps:</span>
+              <div className="flex gap-2.5 items-start text-xs font-semibold text-slate-700">
+                <span className="w-5 h-5 rounded-full bg-[#0f2d4a] text-white flex items-center justify-center font-bold shrink-0 text-[10px] mt-0.5">1</span>
+                <span className="leading-relaxed">Launch the Sanasa Agent app on your phone.</span>
+              </div>
+              <div className="flex gap-2.5 items-start text-xs font-semibold text-slate-700">
+                <span className="w-5 h-5 rounded-full bg-[#0f2d4a] text-white flex items-center justify-center font-bold shrink-0 text-[10px] mt-0.5">2</span>
+                <span className="leading-relaxed">Go to <strong>Active Claims</strong> tab or notifications.</span>
+              </div>
+              <div className="flex gap-2.5 items-start text-xs font-semibold text-slate-700">
+                <span className="w-5 h-5 rounded-full bg-[#0f2d4a] text-white flex items-center justify-center font-bold shrink-0 text-[10px] mt-0.5">3</span>
+                <span className="leading-relaxed">Tap on your newly accepted claim plate number.</span>
+              </div>
+              <div className="flex gap-2.5 items-start text-xs font-semibold text-slate-700">
+                <span className="w-5 h-5 rounded-full bg-[#0f2d4a] text-white flex items-center justify-center font-bold shrink-0 text-[10px] mt-0.5">4</span>
+                <span className="leading-relaxed">Submit the inspection details directly.</span>
+              </div>
+            </div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowMobileRedirect(false)}
+              className="w-full mt-6 bg-[#0f2d4a] hover:bg-[#193d61] text-white font-extrabold text-xs py-3.5 rounded-xl border-none cursor-pointer shadow-md hover:shadow-slate-900/10 active:scale-95 transition-all select-none"
+            >
+              Okay, Got It
+            </button>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

@@ -60,6 +60,8 @@ export default function AgentDocuments() {
   const [viewModalTitle, setViewModalTitle] = useState("");
   const [viewModalFiles, setViewModalFiles] = useState<string[]>([]);
   const [viewCurrentIndex, setViewCurrentIndex] = useState(0);
+  const [viewUploadedAt, setViewUploadedAt] = useState("");
+  const [viewUploadedBy, setViewUploadedBy] = useState("");
 
   // Uploaded Documents List Modal State
   const [uploadedListModalOpen, setUploadedListModalOpen] = useState(false);
@@ -130,6 +132,21 @@ export default function AgentDocuments() {
   }, []);
 
   useEffect(() => {
+    if (claims.length > 0 && typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const uploadClaimNum = params.get("uploadClaim");
+      if (uploadClaimNum) {
+        const found = claims.find(c => c.claimNumber === uploadClaimNum);
+        if (found) {
+          handleOpenUpload(found);
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        }
+      }
+    }
+  }, [claims]);
+
+  useEffect(() => {
     if (uploadModalOpen || uploadedListModalOpen || viewModalOpen) {
       document.body.style.overflow = "hidden";
     } else {
@@ -165,6 +182,39 @@ export default function AgentDocuments() {
     } catch (e) {
       return dateStr;
     }
+  };
+
+  const formatDateTimeString = (dateStr: string) => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${date.getDate().toString().padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()} ${hours}:${minutes}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const getDocRequestTime = (claim: Claim, docName: string): string => {
+    if (!claim.messages) return "";
+    const msg = [...claim.messages]
+      .reverse()
+      .find(m => m.message && m.message.includes(`Requested: ${docName}`));
+    if (msg && msg.sentAt) {
+      return formatDateTimeString(msg.sentAt);
+    }
+    return "";
+  };
+
+  const getDocRequestSender = (claim: Claim, docName: string): string => {
+    if (!claim.messages) return "Office Staff";
+    const msg = [...claim.messages]
+      .reverse()
+      .find(m => m.message && m.message.includes(`Requested: ${docName}`));
+    return msg ? (msg.sender || "Office Staff") : "Office Staff";
   };
 
   const handleOpenUpload = (claim: Claim) => {
@@ -272,11 +322,18 @@ export default function AgentDocuments() {
     }
   };
 
-  const handleOpenView = (title: string, urls: string[] | undefined) => {
+  const handleOpenView = (
+    title: string,
+    urls: string[] | undefined,
+    uploadedAt?: string,
+    uploadedBy?: string
+  ) => {
     if (!urls || urls.length === 0) return;
     setViewModalTitle(title);
     setViewModalFiles(urls);
     setViewCurrentIndex(0);
+    setViewUploadedAt(uploadedAt || "");
+    setViewUploadedBy(uploadedBy || "");
     setViewModalOpen(true);
   };
 
@@ -288,7 +345,7 @@ export default function AgentDocuments() {
 
   // Compile Grouped Uploaded Documents by Claim ID for display
   const groupedClaimsList = claims.map(claim => {
-    const docs: { name: string; files: string[] }[] = [];
+    const docs: { name: string; files: string[]; uploadedAt: string; uploadedBy: string }[] = [];
 
     // Show only Agent uploaded documents in the repository list
     if (claim.additionalDocuments && claim.additionalDocuments.length > 0) {
@@ -296,7 +353,9 @@ export default function AgentDocuments() {
         if (doc.url && doc.uploadedBy === "Agent") {
           docs.push({
             name: doc.name,
-            files: [doc.url]
+            files: [doc.url],
+            uploadedAt: doc.uploadedAt || claim.createdAt,
+            uploadedBy: doc.uploadedBy || "Agent"
           });
         }
       });
@@ -384,14 +443,20 @@ export default function AgentDocuments() {
                       <p className="text-slate-600 text-sm font-semibold mt-2.5 leading-relaxed">
                         Office staff has requested the following document(s) for claim <span className="text-slate-800 font-extrabold">{claim.claimNumber}</span> (Plate: {claim.vehiclePlate}):
                       </p>
-                      <div className="mt-2.5 space-y-1.5 pl-2.5 border-l-2 border-slate-200">
+                      <div className="mt-2.5 space-y-3 pl-2.5 border-l-2 border-slate-200">
                         {getAgentPendingRequests(claim).map((docName, idx) => {
                           const note = getDocRequestNote(claim, docName);
+                          const reqTime = getDocRequestTime(claim, docName);
                           return (
-                            <div key={idx} className="text-slate-600 text-xs font-semibold leading-relaxed">
-                              • <span className="text-slate-800 font-extrabold">{docName}</span>
+                            <div key={idx} className="text-slate-600 text-xs font-semibold leading-relaxed grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-x-2 gap-y-0.5 items-baseline">
+                              <span className="text-slate-800 font-extrabold">• {docName}</span>
+                              {reqTime && (
+                                <span className="text-red-500 font-bold">
+                                  (Requested: {reqTime} by {getDocRequestSender(claim, docName)})
+                                </span>
+                              )}
                               {note && (
-                                <span className="block text-slate-500 pl-3 font-medium italic mt-0.5">
+                                <span className="col-span-1 sm:col-span-2 block text-slate-500 pl-3 font-medium italic mt-0.5">
                                   Note: "{note}"
                                 </span>
                               )}
@@ -460,9 +525,16 @@ export default function AgentDocuments() {
                       <h4 className="text-cyan-800 font-extrabold text-base leading-none select-none truncate">
                         {claim.claimNumber}
                       </h4>
-                      <div className="text-slate-400 text-xs font-semibold mt-2.5 flex flex-col gap-1 leading-tight select-none">
+                      <div className="text-slate-400 text-xs font-semibold mt-2.5 flex flex-col gap-2.5 leading-tight select-none w-full">
                         {claim.docs.map((doc, dIdx) => (
-                          <span key={dIdx}>{doc.name}</span>
+                          <div key={dIdx} className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-x-2 gap-y-0.5 items-baseline">
+                            <span className="text-slate-700 font-extrabold">{doc.name}</span>
+                            {doc.uploadedAt && (
+                              <span className="text-[10px] text-slate-400 font-semibold">
+                                (Uploaded: {formatDateTimeString(doc.uploadedAt)})
+                              </span>
+                            )}
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -637,18 +709,25 @@ export default function AgentDocuments() {
 
             <hr className="border-t border-slate-200 mt-5 mb-5" />
 
-            <div className="flex flex-col gap-4.5 mt-2">
+            <div className="flex flex-col gap-4 mt-2">
               {uploadedListTargetClaim.docs.map((doc: any, dIdx: number) => (
                 <div 
                   key={dIdx} 
-                  className="w-full border border-slate-300 rounded-full py-4 px-8 flex items-center justify-between min-h-[62px] bg-white transition-all"
+                  className="w-full border border-slate-200 rounded-2xl py-4 px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-3 min-h-[62px] bg-white hover:bg-slate-50/30 transition-all shadow-sm"
                 >
-                  <span className="text-slate-800 text-[16px] font-bold select-none truncate max-w-[70%]">
-                    {doc.name}
-                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-slate-800 text-[16px] font-bold select-none truncate max-w-[280px] sm:max-w-[420px]">
+                      {doc.name}
+                    </span>
+                    {doc.uploadedAt && (
+                      <span className="text-slate-400 text-xs font-semibold mt-1">
+                        Uploaded on: {formatDateTimeString(doc.uploadedAt)}
+                      </span>
+                    )}
+                  </div>
 
                   <span
-                    onClick={() => handleOpenView(`${doc.name} – ${uploadedListTargetClaim.claimNumber}`, doc.files)}
+                    onClick={() => handleOpenView(`${doc.name} – ${uploadedListTargetClaim.claimNumber}`, doc.files, doc.uploadedAt, doc.uploadedBy)}
                     className="text-[#0891b2] hover:text-[#06738f] font-extrabold text-[15px] cursor-pointer hover:underline select-none"
                   >
                     View File
@@ -682,13 +761,29 @@ export default function AgentDocuments() {
                 ? viewModalTitle.split(" – ") 
                 : [viewModalTitle, ""];
               return (
-                <div className="select-none text-left">
-                  <h2 className="text-[26px] font-bold text-slate-950 tracking-tight leading-tight">
-                    {docName}
-                  </h2>
-                  <p className="text-slate-400 text-[14px] font-semibold mt-1">
-                    {claimNumber ? `Claim ${claimNumber}` : ""}
-                  </p>
+                <div className="select-none text-left flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+                  <div>
+                    <h2 className="text-[26px] font-bold text-slate-950 tracking-tight leading-tight">
+                      {docName}
+                    </h2>
+                    <p className="text-slate-400 text-[14px] font-semibold mt-1">
+                      {claimNumber ? `Claim ${claimNumber}` : ""}
+                    </p>
+                  </div>
+                  {(viewUploadedBy || viewUploadedAt) && (
+                    <div className="text-left sm:text-right select-none">
+                      {viewUploadedBy && (
+                        <p className="text-[#0891b2] font-black text-xs m-0">
+                          Uploaded By: {viewUploadedBy}
+                        </p>
+                      )}
+                      {viewUploadedAt && (
+                        <p className="text-slate-400 font-bold text-[11px] mt-0.5 m-0">
+                          Uploaded On: {formatDateTimeString(viewUploadedAt)}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })()}

@@ -75,10 +75,10 @@ export default function Navbar() {
             <Link href="/Agent/Documents" className={getNavLinkClass("/Agent/Documents")}>
               Documents
             </Link>
-            <Link href="/Agent/Dashboard" className={getNavLinkClass("/Agent/MyActivity")}>
+            <Link href="/Agent/MyActivity" className={getNavLinkClass("/Agent/MyActivity")}>
               My Activity
             </Link>
-            <Link href="/Agent/Dashboard" className={getNavLinkClass("/Agent/Contact")}>
+            <Link href="/Agent/Contact" className={getNavLinkClass("/Agent/Contact")}>
               Contact
             </Link>
             <Link
@@ -164,7 +164,7 @@ export default function Navbar() {
               Documents
             </Link>
             <Link
-              href="/Agent/Dashboard"
+              href="/Agent/MyActivity"
               onClick={() => setIsOpen(false)}
               className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
                 isActive("/Agent/MyActivity") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
@@ -173,7 +173,7 @@ export default function Navbar() {
               My Activity
             </Link>
             <Link
-              href="/Agent/Dashboard"
+              href="/Agent/Contact"
               onClick={() => setIsOpen(false)}
               className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
                 isActive("/Agent/Contact") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"

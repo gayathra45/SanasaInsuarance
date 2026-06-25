@@ -224,6 +224,39 @@ export default function PolicyHolderHome() {
     return "";
   };
 
+  const formatDateTimeString = (dateStr: string) => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${date.getDate().toString().padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()} ${hours}:${minutes}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const getDocRequestTime = (claim: any, docName: string): string => {
+    if (!claim.messages) return "";
+    const msg = [...claim.messages]
+      .reverse()
+      .find((m: any) => m.message && m.message.includes(`Requested: ${docName}`));
+    if (msg && msg.sentAt) {
+      return formatDateTimeString(msg.sentAt);
+    }
+    return "";
+  };
+
+  const getDocRequestSender = (claim: any, docName: string): string => {
+    if (!claim.messages) return "Office Staff";
+    const msg = [...claim.messages]
+      .reverse()
+      .find((m: any) => m.message && m.message.includes(`Requested: ${docName}`));
+    return msg ? (msg.sender || "Office Staff") : "Office Staff";
+  };
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const userStr = sessionStorage.getItem("logged_in_user");
@@ -289,7 +322,7 @@ export default function PolicyHolderHome() {
                       subText: "Please upload within 3 days...",
                       date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
                       actions: [
-                        { label: "Upload", href: "/Policy_Holder/Documents", primary: true },
+                        { label: "Upload", href: `/Policy_Holder/Documents?uploadClaim=${claim.claimNumber}`, primary: true },
                         { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
                       ],
                       isUrgent: true,
@@ -996,16 +1029,22 @@ export default function PolicyHolderHome() {
                     <p className="text-[#aa4f4f] text-[13px] font-semibold leading-relaxed mb-3">
                       The following documents have been requested by staff to process your claim. Please upload them via the Documents section:
                     </p>
-                    <ul className="list-none flex flex-col gap-3 mb-4 pl-1">
+                    <ul className="list-none flex flex-col gap-4.5 mb-4 pl-1">
                       {getUserRequestedDocs(selectedClaim).map((doc) => {
                         const note = getDocRequestNote(selectedClaim, doc);
+                        const reqTime = getDocRequestTime(selectedClaim, doc);
                         return (
-                          <li key={doc} className="flex items-start gap-2 text-[#aa4f4f] font-bold text-xs">
+                          <li key={doc} className="flex items-start gap-2 text-[#aa4f4f] font-bold text-xs w-full">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#df3d3d] flex-shrink-0 mt-1.5" />
-                            <div className="flex flex-col">
-                              <span>{doc}</span>
+                            <div className="flex-1 grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-x-2 gap-y-0.5 items-baseline">
+                              <span className="font-extrabold">{doc}</span>
+                              {reqTime && (
+                                <span className="text-red-600 font-extrabold">
+                                  (Requested: {reqTime} by {getDocRequestSender(selectedClaim, doc)})
+                                </span>
+                              )}
                               {note && (
-                                <span className="text-[11px] font-medium text-slate-500 italic mt-0.5">
+                                <span className="col-span-1 sm:col-span-2 text-[11px] font-medium text-slate-500 italic mt-0.5 pl-0.5">
                                   Note: "{note}"
                                 </span>
                               )}
@@ -1015,7 +1054,7 @@ export default function PolicyHolderHome() {
                       })}
                     </ul>
                     <Link
-                      href="/Policy_Holder/Documents"
+                      href={`/Policy_Holder/Documents?uploadClaim=${selectedClaim.claimNumber}`}
                       className="inline-block bg-[#df3d3d] hover:bg-[#c53030] text-white font-extrabold text-xs px-6 py-2.5 rounded-full transition-all duration-150 no-underline shadow-sm cursor-pointer border-none text-center"
                     >
                       Go to Documents

@@ -18,6 +18,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Linking,
+  Image,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -54,6 +55,15 @@ interface Claim {
   requestedDocuments?: string[];
   documentRequestTo?: string;
   messages?: { sender: string; message: string; sentAt: string }[];
+  accidentPhotos?: {
+    front: string[];
+    rear: string[];
+    side: string[];
+  };
+  drivingLicense?: {
+    front: string[];
+    rear: string[];
+  };
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -101,6 +111,36 @@ export default function AgentDashboard() {
 
   // Pending Requests Modal State
   const [showPendingRequestsModal, setShowPendingRequestsModal] = useState(false);
+  const [availability, setAvailability] = useState<"Active" | "Offline">("Active");
+
+  const fetchAvailability = async (email: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/agent/availability?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.availability) {
+          setAvailability(data.availability);
+        }
+      }
+    } catch (e) {
+      console.error("Error fetching availability:", e);
+    }
+  };
+
+  const toggleAvailability = async (status: "Active" | "Offline") => {
+    try {
+      setAvailability(status);
+      const res = await fetch(`${API_BASE_URL}/api/agent/availability`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: agentEmail, availability: status })
+      });
+      if (!res.ok) throw new Error("Failed to update availability");
+    } catch (e) {
+      console.error("Error updating availability:", e);
+      showAlert("Error", "Failed to update availability status. Please try again.");
+    }
+  };
 
   // Category popup states
   const [activePopupCategory, setActivePopupCategory] = useState<"urgent" | "assigned" | "completed" | null>(null);
@@ -334,6 +374,7 @@ export default function AgentDashboard() {
         if (agent.email) {
           setAgentEmail(agent.email);
           fetchClaims(agent.email);
+          fetchAvailability(agent.email);
         } else {
           setLoading(false);
         }
@@ -475,6 +516,33 @@ export default function AgentDashboard() {
     }
   };
 
+  const handleDeclineClaim = async () => {
+    if (!selectedClaim) return;
+    setIsAcceptingClaim(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/office-staff/claims/${selectedClaim.claimNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          status: "Rejected",
+          currentStep: 5,
+          rejectionReason: "Rejected by Agent",
+          messageText: "Claim rejected by Agent.",
+          messageRecipient: "Office Staff",
+          messageSender: "Agent"
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to reject");
+      showAlert("Success", "Claim assignment rejected successfully!");
+      setSelectedClaim(null);
+      fetchClaims(agentEmail);
+    } catch (e) {
+      showAlert("Error", "Failed to decline claim assignment. Please try again.");
+    } finally {
+      setIsAcceptingClaim(false);
+    }
+  };
+
   const handleSubmitInspectionReport = async () => {
     if (!selectedClaim) return;
     if (!inspectionReportText.trim()) {
@@ -598,6 +666,34 @@ export default function AgentDashboard() {
                   `${totalAssigned} claim${totalAssigned !== 1 ? "s" : ""} assigned. No urgent cases.`
                 )}
               </Text>
+            </View>
+
+            {/* Availability Picker Row */}
+            <View style={[
+              styles.availabilityRow,
+              availability === "Active"
+                ? { borderColor: "#10b981", shadowColor: "#10b981" }
+                : { borderColor: "#ef4444", shadowColor: "#ef4444" }
+            ]}>
+              <Text style={styles.availabilityLabel}>Live Status:</Text>
+              <View style={styles.availabilityButtons}>
+                <TouchableOpacity
+                  onPress={() => toggleAvailability("Active")}
+                  style={[styles.availBtn, availability === "Active" ? styles.availBtnActive : styles.availBtnInactive]}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.statusDot, { backgroundColor: availability === "Active" ? "#ffffff" : "#10b981" }]} />
+                  <Text style={[styles.availBtnText, availability === "Active" ? styles.availBtnTextActive : styles.availBtnTextInactive]}>Active</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => toggleAvailability("Offline")}
+                  style={[styles.availBtn, availability === "Offline" ? styles.availBtnOffline : styles.availBtnInactive]}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.statusDot, { backgroundColor: availability === "Offline" ? "#ffffff" : "#ef4444" }]} />
+                  <Text style={[styles.availBtnText, availability === "Offline" ? styles.availBtnTextOffline : styles.availBtnTextInactive]}>Offline</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             {/* Header Stats Row */}
@@ -1048,22 +1144,33 @@ export default function AgentDashboard() {
                         <Text style={styles.modalDescText}>{selectedClaim.description}</Text>
                       </View>
 
-                      {/* Accept Claim Assignment Section */}
+                      {/* Accept / Reject Claim Assignment */}
                       {isActive && selectedClaim.currentStep === 2 && (
                         <View style={styles.modalDescBox}>
-                          <Text style={styles.modalDescLabel}>Accept Claim Assignment</Text>
-                          <Text style={[styles.modalDescText, { fontSize: 11, color: '#64748b', marginBottom: 8 }]}>
-                            This claim has been assigned to you. Accept the assignment to begin the vehicle inspection process.
+                          <Text style={styles.modalDescLabel}>Claim Assignment Request</Text>
+                          <Text style={[styles.modalDescText, { fontSize: 11, color: '#64748b', marginBottom: 12 }]}>
+                            Please accept or reject this claim dossier assignment.
                           </Text>
-                          <TouchableOpacity
-                            style={[styles.approveBtn, { backgroundColor: "#0ea5e9", paddingHorizontal: 16, height: 36, alignSelf: 'flex-start' }]}
-                            onPress={handleAcceptClaim}
-                            disabled={isAcceptingClaim}
-                          >
-                            <Text style={styles.approveBtnText}>
-                              {isAcceptingClaim ? "Accepting..." : "Accept Claim Assignment"}
-                            </Text>
-                          </TouchableOpacity>
+                          <View style={{ flexDirection: "row", gap: 10 }}>
+                            <TouchableOpacity
+                              style={[styles.approveBtn, { backgroundColor: "#16a34a", flex: 1 }]}
+                              onPress={handleAcceptClaim}
+                              disabled={isAcceptingClaim}
+                            >
+                              <Text style={styles.approveBtnText}>
+                                {isAcceptingClaim ? "Accepting..." : "Accept"}
+                              </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={[styles.approveBtn, { backgroundColor: "#dc2626", flex: 1 }]}
+                              onPress={handleDeclineClaim}
+                              disabled={isAcceptingClaim}
+                            >
+                              <Text style={styles.approveBtnText}>
+                                {isAcceptingClaim ? "Declining..." : "Reject"}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
                         </View>
                       )}
 
@@ -1218,6 +1325,59 @@ export default function AgentDashboard() {
                                 </View>
                               );
                             })}
+                          </View>
+                        );
+                      })()}
+
+                      {/* Policy Holder Attachments / Photos Section */}
+                      {(() => {
+                        const attachments: { name: string; url: string }[] = [];
+                        const dlFront = selectedClaim.drivingLicense?.front?.[0];
+                        const dlRear = selectedClaim.drivingLicense?.rear?.[0];
+                        if (dlFront) attachments.push({ name: "License (Front)", url: dlFront });
+                        if (dlRear) attachments.push({ name: "License (Rear)", url: dlRear });
+                        
+                        let photoIdx = 1;
+                        const fPhotos = selectedClaim.accidentPhotos?.front || [];
+                        const rPhotos = selectedClaim.accidentPhotos?.rear || [];
+                        const sPhotos = selectedClaim.accidentPhotos?.side || [];
+                        
+                        fPhotos.forEach((url: string) => attachments.push({ name: `Accident Front #${photoIdx++}`, url }));
+                        rPhotos.forEach((url: string) => attachments.push({ name: `Accident Rear #${photoIdx++}`, url }));
+                        sPhotos.forEach((url: string) => attachments.push({ name: `Accident Side #${photoIdx++}`, url }));
+
+                        return (
+                          <View style={styles.modalDescBox}>
+                            <Text style={styles.modalDescLabel}>Policy Holder Attachments & Photos</Text>
+                            {attachments.length === 0 ? (
+                              <Text style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic", marginTop: 4 }}>
+                                No driving license or accident photos attached to this claim.
+                              </Text>
+                            ) : (
+                              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, marginTop: 10 }}>
+                                {attachments.map((item, idx) => {
+                                  let docUrl = item.url;
+                                  if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                                    docUrl = `${API_BASE_URL.replace("/api", "")}/uploads/${docUrl}`;
+                                  }
+                                  return (
+                                    <TouchableOpacity
+                                      key={idx}
+                                      onPress={() => handleViewDocument(docUrl)}
+                                      style={{ alignItems: "center", width: 90 }}
+                                      activeOpacity={0.7}
+                                    >
+                                      <View style={{ width: 90, height: 70, borderRadius: 10, overflow: "hidden", borderColor: "#e2e8f0", borderStyle: "solid", borderWidth: 1 }}>
+                                        <Image source={{ uri: docUrl }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                                      </View>
+                                      <Text style={{ fontSize: 9, color: "#64748b", fontWeight: "700", textAlign: "center", marginTop: 4, textTransform: "uppercase" }} numberOfLines={1}>
+                                        {item.name}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </ScrollView>
+                            )}
                           </View>
                         );
                       })()}
@@ -1721,6 +1881,71 @@ const styles = StyleSheet.create({
   dotIndicator: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#22c55e", marginRight: 10 },
   subtitleText: { flex: 1, fontSize: 12, color: "#e2e8f0", fontWeight: "600", lineHeight: 18 },
   highlightOrange: { color: "#fb923c", fontWeight: "800" },
+  availabilityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    marginTop: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  availabilityLabel: {
+    fontSize: 13,
+    color: "#475569",
+    fontWeight: "800",
+  },
+  availabilityButtons: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  availBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "transparent",
+  },
+  availBtnActive: {
+    backgroundColor: "#10b981",
+  },
+  availBtnOffline: {
+    backgroundColor: "#ef4444",
+  },
+  availBtnInactive: {
+    backgroundColor: "#f1f5f9",
+    borderColor: "#e2e8f0",
+    borderWidth: 1,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  availBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  availBtnTextActive: {
+    color: "#ffffff",
+  },
+  availBtnTextOffline: {
+    color: "#ffffff",
+  },
+  availBtnTextInactive: {
+    color: "#64748b",
+  },
 
   /* Callout */
   compensationCallout: {

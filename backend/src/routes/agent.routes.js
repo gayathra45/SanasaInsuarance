@@ -53,8 +53,7 @@ router.get("/claims", async (req, res) => {
     const cleanEmail = email.trim().toLowerCase();
     // Fetch all claims assigned to this agent email from MongoDB (excluding heavy image/license fields)
     const claims = await Claim.find(
-      { assignedAgent: cleanEmail },
-      { accidentPhotos: 0, drivingLicense: 0 }
+      { assignedAgent: cleanEmail }
     ).sort({ createdAt: -1 });
     res.json(claims);
   } catch (err) {
@@ -159,6 +158,49 @@ router.post("/activate", async (req, res) => {
     res.json({ message: "Your agent account has been activated successfully! You can now log in." });
   } catch (err) {
     console.error("Activate agent error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET agent availability: /api/agent/availability?email=...
+router.get("/availability", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ error: "Agent email is required." });
+    }
+    const agent = await Agent.findOne({ email: email.trim().toLowerCase() });
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found." });
+    }
+    res.json({ availability: agent.availability || "Active" });
+  } catch (err) {
+    console.error("Get agent availability error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// POST update agent availability: /api/agent/availability
+router.post("/availability", async (req, res) => {
+  try {
+    const { email, availability } = req.body;
+    if (!email || !availability) {
+      return res.status(400).json({ error: "Email and Availability are required." });
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanAvail = availability.trim() === "Offline" ? "Offline" : "Active";
+    
+    const agent = await Agent.findOneAndUpdate(
+      { email: cleanEmail },
+      { availability: cleanAvail },
+      { new: true }
+    );
+    if (!agent) {
+      return res.status(404).json({ error: "Agent not found." });
+    }
+    res.json({ message: "Availability updated successfully.", availability: agent.availability });
+  } catch (err) {
+    console.error("Update agent availability error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });
