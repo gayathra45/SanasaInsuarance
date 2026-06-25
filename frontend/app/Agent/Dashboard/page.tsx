@@ -696,20 +696,13 @@ export default function AgentDashboard() {
                   const urgent = notif.isUrgent;
                   
                   // Compact premium card design
-                  let cardClass = "";
-                  let iconClass = "";
+                  let indicatorClass = urgent ? "bg-red-500" : "bg-cyan-500";
+                  let iconClass = urgent 
+                    ? "p-2 bg-red-50 text-red-500 rounded-xl flex-shrink-0 mt-0.5" 
+                    : "p-2 bg-cyan-50 text-cyan-500 rounded-xl flex-shrink-0 mt-0.5";
+                  let actionClass = urgent ? "text-red-500 font-bold" : "text-cyan-600 font-bold";
+                  let cardClass = "relative overflow-hidden pl-5 bg-white border border-slate-100 hover:border-slate-200 rounded-2xl p-4 flex flex-col justify-between cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200";
                   let iconSvg = null;
-                  let titleClass = "";
-
-                  if (urgent) {
-                    cardClass = "bg-red-50/15 border border-red-100 rounded-[20px] p-4 shadow-[0_4px_15px_rgba(0,0,0,0.01)] flex flex-col justify-between cursor-pointer hover:shadow-md transition-shadow duration-150";
-                    iconClass = "p-1.5 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5";
-                    titleClass = "text-red-600 font-extrabold text-sm leading-tight";
-                  } else {
-                    cardClass = "bg-cyan-50/15 border border-cyan-100 rounded-[20px] p-4 shadow-[0_4px_15px_rgba(0,0,0,0.01)] flex flex-col justify-between cursor-pointer hover:shadow-md transition-shadow duration-150";
-                    iconClass = "p-1.5 bg-cyan-100 rounded-xl text-cyan-500 flex-shrink-0 mt-0.5";
-                    titleClass = "text-cyan-600 font-extrabold text-sm leading-tight";
-                  }
 
                   // Pick custom icon based on the notification type
                   if (notif.id.includes("-doc-request")) {
@@ -754,22 +747,25 @@ export default function AgentDashboard() {
                       onClick={() => setSelectedClaim(notif.claim)}
                       className={cardClass}
                     >
+                      {/* Visual Left Indicator Strip */}
+                      <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${indicatorClass}`} />
+
                       <div className="flex items-start gap-3">
                         <div className={iconClass}>
                           {iconSvg}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h4 className={titleClass}>
+                          <h4 className="text-slate-800 font-extrabold text-sm leading-tight">
                             {notif.title}
                           </h4>
-                          <p className="text-slate-600 text-xs font-semibold mt-1 truncate">
+                          <p className="text-slate-500 text-xs font-semibold mt-1 truncate">
                             {notif.description}
                           </p>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center mt-3 pt-2.5 border-t border-slate-100/50">
+                      <div className="flex justify-between items-center mt-3.5 pt-2.5 border-t border-slate-100">
                         <span className="text-[10px] text-slate-400 font-bold">{notif.date}</span>
-                        <span className="text-[10px] font-black text-cyan-600 hover:text-cyan-700">View details →</span>
+                        <span className={`text-[10px] ${actionClass} hover:underline`}>View details &gt;</span>
                       </div>
                     </div>
                   );
