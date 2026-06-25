@@ -398,7 +398,7 @@ export default function AgentDashboard() {
 
         {/* Ambient Floating Glow Circles */}
         <div className="absolute top-[-20%] right-[-10%] w-[45%] h-[60%] rounded-full bg-cyan-400/10 blur-[130px] pointer-events-none animate-pulse duration-10000" />
-        <div className="absolute bottom-[-10%] left-[5%] w-[40%] h-[50%] rounded-full bg-orange-400/5 blur-[120px] pointer-events-none animate-pulse duration-8000" />
+        <div className="absolute bottom-[-10%] left-[5%] w-[40%] h-[50%] rounded-full bg-red-500/10 blur-[120px] pointer-events-none animate-pulse duration-8000" />
 
         <div className="relative z-10 max-w-7xl mx-auto w-full flex flex-col gap-8">
           <div className="space-y-3">
@@ -442,7 +442,23 @@ export default function AgentDashboard() {
               {/* Large count number on the right */}
               <span className="text-3xl font-black text-white ml-auto">{totalAssigned}</span>
             </div>
+
+            {/* Completed Card */}
+            <div className="bg-gradient-to-br from-[#065f46]/85 to-[#047857]/80 border border-emerald-500/40 rounded-2xl px-6 py-4 flex items-center gap-5 w-64 shadow-[0_10px_30px_rgba(16,185,129,0.15)] hover:bg-[#065f46]/90 hover:scale-[1.02] hover:border-emerald-400 transition-all duration-300">
+              {/* Checkmark Shield Icon on the left */}
+              <svg className="w-9 h-9 text-white flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+              </svg>
+              {/* Stacked Text in the middle */}
+              <div className="flex flex-col text-left">
+                <span className="text-xs text-emerald-200 opacity-90 font-bold uppercase tracking-wider">Completed</span>
+                <span className="text-base text-white font-extrabold tracking-wide -mt-0.5">Claims</span>
+              </div>
+              {/* Large count number on the right */}
+              <span className="text-3xl font-black text-white ml-auto">{completedClaims.length}</span>
+            </div>
           </div>
+
         </div>
       </div>
 
@@ -640,7 +656,6 @@ export default function AgentDashboard() {
         {/* Right Column: Notifications, My Activity & Support Details */}
         <div className="flex flex-col gap-8">
           
-
           {/* My Activity Card Section */}
           <div className="flex flex-col gap-4">
             <h2 className="text-2xl font-extrabold text-slate-800 tracking-tight flex items-center gap-2">
@@ -648,56 +663,93 @@ export default function AgentDashboard() {
               <span className="text-slate-400 font-normal text-xl">&gt;</span>
             </h2>
 
-            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_10px_35px_rgba(0,0,0,0.015)] flex flex-col gap-4">
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_10px_35px_rgba(0,0,0,0.015)] flex flex-col gap-4 relative">
               {loading ? (
                 <div className="text-slate-400 text-center text-xs py-4 animate-pulse">Loading activity...</div>
               ) : completedClaims.length === 0 ? (
                 <div className="text-slate-400 text-center text-xs py-4 font-semibold">No past activity.</div>
               ) : (
-                completedClaims.map((act) => {
-                  const isApproved = act.status === "Approved";
-                  const badgeBg = isApproved 
-                    ? "bg-emerald-50/80 text-emerald-700 border-emerald-200" 
-                    : "bg-rose-50/80 text-rose-700 border-rose-200";
+                <div className="relative border-l border-slate-100 ml-3 pl-6 space-y-6">
+                  {completedClaims.map((act) => {
+                    const isApproved = act.status === "Approved";
+                    const badgeBg = isApproved 
+                      ? "bg-emerald-50/80 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-500/[0.05]" 
+                      : "bg-rose-50/80 text-rose-700 border-rose-200 shadow-sm shadow-rose-500/[0.05]";
+                    const dotBg = isApproved ? "bg-emerald-500 ring-4 ring-emerald-100" : "bg-rose-500 ring-4 ring-rose-100";
 
-                  return (
-                    <div key={act._id} className="flex justify-between items-center py-3 border-b border-slate-100 last:border-0 last:pb-0">
-                      <div className="flex flex-col">
-                        <span className="font-bold text-base text-slate-800 tracking-tight">{act.claimNumber}</span>
-                        <span className="text-xs text-slate-400 font-extrabold tracking-wider uppercase mt-0.5">{act.vehiclePlate}</span>
+                    return (
+                      <div key={act._id} className="relative group transition-all duration-355 hover:translate-x-0.5">
+                        {/* Timeline Node Dot */}
+                        <div className={`absolute -left-[30px] top-1.5 w-3.5 h-3.5 rounded-full transition-transform duration-300 group-hover:scale-125 ${dotBg}`} />
+
+                        <div className="flex justify-between items-center flex-wrap gap-2">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-extrabold text-sm text-slate-800 tracking-tight transition-colors group-hover:text-cyan-600">{act.claimNumber}</span>
+                            <span className="text-[10px] text-slate-400 font-extrabold tracking-wider uppercase mt-0.5">{act.vehiclePlate}</span>
+                          </div>
+
+                          <span className={`px-3 py-0.5 rounded-full text-[10px] font-black border tracking-wide uppercase ${badgeBg}`}>
+                            {act.status}
+                          </span>
+                        </div>
                       </div>
-
-                      <span className={`px-4 py-1 rounded-full text-xs font-bold border tracking-wide uppercase ${badgeBg}`}>
-                        {act.status}
-                      </span>
-                    </div>
-                  );
-                })
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>
 
           {/* Contact Support Card Box */}
-          <div className="bg-gradient-to-br from-cyan-50/90 to-blue-50/40 border border-cyan-150 rounded-3xl p-6 shadow-[0_8px_30px_rgba(6,182,212,0.03)] flex flex-col gap-4 text-center hover:scale-[1.01] transition-transform duration-300">
-            <h3 className="text-cyan-800 font-extrabold text-xl tracking-tight flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-cyan-700" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+          <div className="bg-gradient-to-br from-cyan-50/90 via-sky-50/40 to-blue-50/20 border border-cyan-150/60 rounded-3xl p-6 shadow-md hover:shadow-lg hover:scale-[1.01] transition-all duration-300 relative overflow-hidden flex flex-col gap-4">
+            
+            {/* Pulsing online status indicator */}
+            <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/50 rounded-full px-2.5 py-0.5 select-none">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span className="text-[9px] font-bold text-emerald-700 tracking-wide uppercase">Live Support</span>
+            </div>
+
+            <h3 className="text-cyan-800 font-extrabold text-lg tracking-tight flex items-center gap-2 select-none">
+              <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
-              Support
+              Support Helpdesk
             </h3>
             
-            <div className="flex flex-col gap-3 font-bold text-[17px] text-cyan-950">
-              <a href="tel:+94112003000" className="hover:text-cyan-600 transition-colors flex items-center justify-center gap-2">
-                <svg className="w-4 h-4 text-cyan-500" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.47-5.112-3.758-6.58-6.58l1.293-.97c.362-.272.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                </svg>
-                +94 112 003 000
+            <p className="text-xs text-slate-500 font-semibold text-left leading-relaxed -mt-1 select-none">
+              Need assistance with an active inspection or claim payout details? Call our staff directly.
+            </p>
+
+            <div className="flex flex-col gap-2.5 mt-1">
+              <a href="tel:+94112003000" className="flex items-center justify-between bg-white border border-slate-100/60 p-3 rounded-2xl hover:border-cyan-200 hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 font-bold text-sm text-slate-800 group">
+                <div className="flex items-center gap-2.5">
+                  <span className="bg-cyan-50 p-2 rounded-xl text-cyan-600 transition-colors group-hover:bg-cyan-500 group-hover:text-white">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.47-5.112-3.758-6.58-6.58l1.293-.97c.362-.272.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                    </svg>
+                  </span>
+                  <span className="text-slate-700 tracking-tight font-extrabold">+94 112 003 000</span>
+                </div>
+                <span className="text-[10px] bg-slate-50 border border-slate-150 px-2.5 py-0.5 rounded-full text-slate-400 group-hover:bg-cyan-50 group-hover:text-cyan-600 group-hover:border-cyan-200">
+                  Line 1
+                </span>
               </a>
-              <a href="tel:+94112003001" className="hover:text-cyan-600 transition-colors flex items-center justify-center gap-2">
-                <svg className="w-4 h-4 text-cyan-500" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.47-5.112-3.758-6.58-6.58l1.293-.97c.362-.272.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
-                </svg>
-                +94 112 003 001
+
+              <a href="tel:+94112003001" className="flex items-center justify-between bg-white border border-slate-100/60 p-3 rounded-2xl hover:border-cyan-200 hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 font-bold text-sm text-slate-800 group">
+                <div className="flex items-center gap-2.5">
+                  <span className="bg-cyan-50 p-2 rounded-xl text-cyan-600 transition-colors group-hover:bg-cyan-500 group-hover:text-white">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.47-5.112-3.758-6.58-6.58l1.293-.97c.362-.272.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                    </svg>
+                  </span>
+                  <span className="text-slate-700 tracking-tight font-extrabold">+94 112 003 001</span>
+                </div>
+                <span className="text-[10px] bg-slate-50 border border-slate-150 px-2.5 py-0.5 rounded-full text-slate-400 group-hover:bg-cyan-50 group-hover:text-cyan-600 group-hover:border-cyan-200">
+                  Line 2
+                </span>
               </a>
             </div>
           </div>
