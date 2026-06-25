@@ -545,8 +545,8 @@ export default function AgentDashboard() {
                 const isUrgent = severity === "Urgent";
                 
                 let cardClass = isUrgent
-                  ? "bg-red-50/15 border-2 border-red-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px] hover:shadow-md transition-shadow relative"
-                  : "bg-cyan-50/15 border-2 border-cyan-100 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col justify-between min-h-[160px] hover:shadow-md transition-shadow relative";
+                  ? "bg-red-50/60 border-2 border-red-200 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(239,68,68,0.04)] flex flex-col justify-between min-h-[160px] hover:shadow-[0_12px_36px_rgba(239,68,68,0.1)] hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden"
+                  : "bg-cyan-50/50 border-2 border-cyan-200 rounded-[24px] p-6 shadow-[0_8px_30px_rgba(6,182,212,0.03)] flex flex-col justify-between min-h-[160px] hover:shadow-[0_12px_36px_rgba(6,182,212,0.08)] hover:-translate-y-0.5 transition-all duration-200 relative overflow-hidden";
                   
                 let iconClass = isUrgent
                   ? "p-2 bg-red-100 rounded-xl text-red-500 flex-shrink-0 mt-0.5"
@@ -571,7 +571,10 @@ export default function AgentDashboard() {
                     key={claim._id}
                     className={cardClass}
                   >
-                    <div className="flex items-start gap-4">
+                    {/* Visual Left Indicator Strip for clear highlighting */}
+                    <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${isUrgent ? 'bg-red-500' : 'bg-cyan-500'}`} />
+
+                    <div className="flex items-start gap-4 pl-1.5">
                       <div className={iconClass}>
                         {iconSvg}
                       </div>
@@ -601,7 +604,7 @@ export default function AgentDashboard() {
                     </div>
 
                     {/* Bottom Row Actions */}
-                    <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-slate-100/50">
+                    <div className="flex items-center justify-between mt-5 pt-3.5 border-t border-slate-100/50 pl-1.5">
                       <button
                         onClick={() => setSelectedClaim(claim)}
                         className="bg-[#2f3e46] hover:bg-[#1a2327] text-white font-extrabold text-[13px] px-6 py-2 rounded-full transition-all duration-150 border-none cursor-pointer"
