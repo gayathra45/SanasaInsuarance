@@ -221,6 +221,9 @@ export default function AgentDashboard() {
       return 0;
     });
   const completedClaims = claims.filter(c => c.status === "Approved" || c.status === "Rejected");
+  const latestActivities = [...claims]
+    .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime())
+    .slice(0, 4);
 
   const claimsWithPendingAgentRequests = activeClaims.filter(
     claim => getAgentPendingRequests(claim).length > 0
@@ -666,16 +669,27 @@ export default function AgentDashboard() {
             <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-[0_10px_35px_rgba(0,0,0,0.015)] flex flex-col gap-4 relative">
               {loading ? (
                 <div className="text-slate-400 text-center text-xs py-4 animate-pulse">Loading activity...</div>
-              ) : completedClaims.length === 0 ? (
-                <div className="text-slate-400 text-center text-xs py-4 font-semibold">No past activity.</div>
+              ) : latestActivities.length === 0 ? (
+                <div className="text-slate-400 text-center text-xs py-4 font-semibold">No recent activity.</div>
               ) : (
                 <div className="relative border-l border-slate-100 ml-3 pl-6 space-y-6">
-                  {completedClaims.map((act) => {
-                    const isApproved = act.status === "Approved";
-                    const badgeBg = isApproved 
-                      ? "bg-emerald-50/80 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-500/[0.05]" 
-                      : "bg-rose-50/80 text-rose-700 border-rose-200 shadow-sm shadow-rose-500/[0.05]";
-                    const dotBg = isApproved ? "bg-emerald-500 ring-4 ring-emerald-100" : "bg-rose-500 ring-4 ring-rose-100";
+                  {latestActivities.map((act) => {
+                    let badgeBg = "";
+                    let dotBg = "";
+                    
+                    if (act.status === "Approved") {
+                      badgeBg = "bg-emerald-50/80 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-500/[0.05]";
+                      dotBg = "bg-emerald-500 ring-4 ring-emerald-100";
+                    } else if (act.status === "Rejected") {
+                      badgeBg = "bg-rose-50/80 text-rose-700 border-rose-200 shadow-sm shadow-rose-500/[0.05]";
+                      dotBg = "bg-rose-500 ring-4 ring-rose-100";
+                    } else if (act.status === "In Progress") {
+                      badgeBg = "bg-cyan-50/80 text-cyan-700 border-cyan-200 shadow-sm shadow-cyan-500/[0.05]";
+                      dotBg = "bg-cyan-500 ring-4 ring-cyan-100";
+                    } else { // Pending
+                      badgeBg = "bg-amber-50/80 text-amber-700 border-amber-200 shadow-sm shadow-amber-500/[0.05]";
+                      dotBg = "bg-amber-500 ring-4 ring-amber-100";
+                    }
 
                     return (
                       <div key={act._id} className="relative group transition-all duration-355 hover:translate-x-0.5">
