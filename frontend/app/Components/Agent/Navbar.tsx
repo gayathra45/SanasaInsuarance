@@ -108,19 +108,22 @@ export default function Navbar() {
           {/* Action Items (Right) */}
           <div className="hidden md:flex items-center gap-6">
             {/* Notification Bell */}
-            <Link href="/Agent/Dashboard" className="text-black hover:text-[#00ddff] transition-colors p-1" aria-label="Notifications">
+            <Link href="/Agent/Dashboard" className="relative text-black hover:text-[#00ddff] transition-colors p-1" aria-label="Notifications">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
+                fill="none"
                 viewBox="0 0 24 24"
-                fill="currentColor"
-                className="w-7 h-7"
+                strokeWidth="2"
+                stroke="currentColor"
+                className="w-8 h-8"
               >
                 <path
-                  fillRule="evenodd"
-                  d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 1.823.508 3.527 1.392 4.978.077.127.112.274.103.42-.008.147-.063.287-.156.398a1.5 1.5 0 0 1-1.093.504H5a1.5 1.5 0 0 1-1.25-.668c-.147-.23-.198-.51-.139-.783A11.962 11.962 0 0 0 5.25 9.75V9Zm.75 9.75a3 3 0 0 0 6 0v-.75h-6v.75Z"
-                  clipRule="evenodd"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
                 />
               </svg>
+              <span className="absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border border-white animate-pulse" />
             </Link>
 
             {/* Profile Dropdown */}
@@ -238,10 +241,22 @@ export default function Navbar() {
             <div className="h-px bg-gray-100 my-2" />
             <div className="flex items-center justify-between px-5 py-2">
               <div className="flex gap-4">
-                <Link href="/Agent/Dashboard" onClick={() => setIsOpen(false)} className="text-black hover:text-[#00ddff] p-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
-                    <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 1.823.508 3.527 1.392 4.978.077.127.112.274.103.42-.008.147-.063.287-.156.398a1.5 1.5 0 0 1-1.093.504H5a1.5 1.5 0 0 1-1.25-.668c-.147-.23-.198-.51-.139-.783A11.962 11.962 0 0 0 5.25 9.75V9Zm.75 9.75a3 3 0 0 0 6 0v-.75h-6v.75Z" clipRule="evenodd" />
+                <Link href="/Agent/Dashboard" onClick={() => setIsOpen(false)} className="relative text-black hover:text-[#00ddff] p-1">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    strokeWidth="2.5"
+                    stroke="currentColor"
+                    className="w-7 h-7"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0"
+                    />
                   </svg>
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white" />
                 </Link>
                 {/* Mobile Logout button */}
                 <button
