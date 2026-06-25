@@ -406,7 +406,7 @@ export default function AgentDashboard() {
               Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-cyan-200">{agentName}</span>!
             </h1>
             <p className="text-lg md:text-xl text-slate-300 max-w-3xl leading-relaxed font-medium">
-              You have <span className="text-[#ffa500] font-extrabold">{totalAssigned} assigned claims</span> today including{" "}
+              You have <span className="text-red-500 font-extrabold">{totalAssigned} assigned claims</span> today including{" "}
               <span className="text-red-500 font-extrabold">{urgentCount} urgent</span> case. Stay safe on the road!
             </p>
           </div>
@@ -1003,7 +1003,7 @@ export default function AgentDashboard() {
                               onClick={() => setAgentUploadDocName(type)}
                               className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer select-none ${
                                 isSelected
-                                  ? "bg-[#ff9800] border-[#ff9800] text-white shadow-sm"
+                                  ? "bg-red-600 border-red-600 text-white shadow-sm"
                                   : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
                               }`}
                             >
@@ -1033,9 +1033,9 @@ export default function AgentDashboard() {
                       {!agentUploadFile ? (
                         <div
                           onClick={() => agentFileInputRef.current?.click()}
-                          className="w-full border-2 border-dashed border-slate-300 hover:border-orange-500 rounded-2xl py-6 px-4 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-orange-50/5 cursor-pointer transition-all duration-150 group"
+                          className="w-full border-2 border-dashed border-slate-300 hover:border-red-500 rounded-2xl py-6 px-4 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-red-50/5 cursor-pointer transition-all duration-150 group"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-8 h-8 text-slate-400 mb-2 group-hover:text-orange-500 transition-colors">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-8 h-8 text-slate-400 mb-2 group-hover:text-red-500 transition-colors">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
                           </svg>
                           <span className="text-slate-800 text-[13px] font-bold">Select document file</span>
@@ -1084,7 +1084,7 @@ export default function AgentDashboard() {
                       <button
                         onClick={handleAgentUpload}
                         disabled={isAgentUploading}
-                        className="w-full bg-[#ff9800] hover:bg-[#ff8f00] text-white font-extrabold text-xs py-3 px-4 rounded-xl border-none cursor-pointer active:scale-[0.98] transition-all disabled:opacity-50 mt-1 shadow-md hover:shadow-orange-500/25 flex items-center justify-center gap-2"
+                        className="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl border-none cursor-pointer active:scale-[0.98] transition-all disabled:opacity-50 mt-1 shadow-md hover:shadow-red-500/25 flex items-center justify-center gap-2"
                       >
                         {isAgentUploading ? (
                           <>
@@ -1113,7 +1113,7 @@ export default function AgentDashboard() {
                 {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && (
                   <button
                     onClick={() => handleApproveAssessment(selectedClaim._id)}
-                    className="bg-[#ff9800] hover:bg-[#ff8f00] text-white text-sm font-bold py-2.5 px-6 rounded-xl cursor-pointer hover:shadow-lg transition-all duration-300"
+                    className="bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-2.5 px-6 rounded-xl cursor-pointer hover:shadow-lg transition-all duration-300"
                   >
                     Approve Assessment
                   </button>
