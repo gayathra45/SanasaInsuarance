@@ -68,7 +68,9 @@ function TrackClaimsContent() {
         let databaseClaims: Claim[] = [];
         if (userNic) {
           try {
-            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`);
+            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`, {
+              cache: "no-store"
+            });
             if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data.claims)) {
@@ -165,7 +167,9 @@ function TrackClaimsContent() {
 
     try {
       // 1. Try fetching from Backend API first
-      const res = await fetch(`${API_URL}/policy-holder/track-claim?claimNumber=${encodeURIComponent(cleanId)}`);
+      const res = await fetch(`${API_URL}/policy-holder/track-claim?claimNumber=${encodeURIComponent(cleanId)}`, {
+        cache: "no-store"
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.claim) {

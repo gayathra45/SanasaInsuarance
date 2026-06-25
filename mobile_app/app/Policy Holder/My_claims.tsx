@@ -90,7 +90,7 @@ export default function MyClaims() {
   const fetchClaims = useCallback(async (nic: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/policy-holder/user-claims?nic=${encodeURIComponent(nic)}`);
+      const res = await fetch(`${API_BASE_URL}/api/policy-holder/user-claims?nic=${encodeURIComponent(nic)}&_=${Date.now()}`);
       let databaseClaims: Claim[] = [];
       if (res.ok) {
         const data = await res.json();

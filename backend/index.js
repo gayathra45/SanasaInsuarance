@@ -19,6 +19,15 @@ const app = express();
 const __dirname = path.resolve();
 
 app.use(cors());
+
+// Global no-cache middleware for API routes to prevent browser/runtime caching of GET responses
+app.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  next();
+});
+
 // Serve local uploads from Downloads directory
 app.use("/uploads", express.static("C:\\Users\\oshit\\Downloads\\ui"));
 

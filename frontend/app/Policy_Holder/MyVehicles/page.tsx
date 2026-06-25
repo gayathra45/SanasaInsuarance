@@ -272,7 +272,9 @@ export default function MyVehicles() {
           try {
             const user = JSON.parse(userStr);
             if (user.nic) {
-              const res = await fetch(`${API_URL}/policy-holder/vehicles?nic=${encodeURIComponent(user.nic)}`);
+              const res = await fetch(`${API_URL}/policy-holder/vehicles?nic=${encodeURIComponent(user.nic)}`, {
+                cache: "no-store"
+              });
               if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data.vehicles) && data.vehicles.length > 0) {

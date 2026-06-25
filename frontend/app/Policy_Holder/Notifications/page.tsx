@@ -99,7 +99,9 @@ export default function PolicyHolderNotifications() {
   const fetchNotifications = async (nic: string) => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(nic)}`);
+      const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(nic)}`, {
+        cache: "no-store"
+      });
       let dbClaims: Claim[] = [];
       if (res.ok) {
         const data = await res.json();

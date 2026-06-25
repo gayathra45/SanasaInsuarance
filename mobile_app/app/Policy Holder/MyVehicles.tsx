@@ -94,7 +94,7 @@ export default function MyVehicles() {
   const fetchVehicles = useCallback(async (nic: string) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/policy-holder/vehicles?nic=${encodeURIComponent(nic)}`);
+      const res = await fetch(`${API_BASE_URL}/api/policy-holder/vehicles?nic=${encodeURIComponent(nic)}&_=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data.vehicles) && data.vehicles.length > 0) {
