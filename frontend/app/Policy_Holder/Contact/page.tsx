@@ -1,11 +1,87 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import PolicyHolderNavbar from "@/app/Components/Policy_Holder/Navbar";
 import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 
 export default function PolicyHolderContact() {
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [modalFeedback, setModalFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // User details state (loaded from sessionStorage)
+  const [user, setUser] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    nic?: string;
+    mobile?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userStr = sessionStorage.getItem("logged_in_user");
+      if (userStr) {
+        try {
+          setUser(JSON.parse(userStr));
+        } catch (e) {
+          console.error("Failed to parse logged_in_user from sessionStorage", e);
+        }
+      }
+    }
+  }, []);
+
+  const handleSendEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!subject.trim() || !message.trim()) {
+      setModalFeedback({ type: "error", text: "Subject and Message are required." });
+      return;
+    }
+
+    setIsSending(true);
+    setModalFeedback(null);
+
+    const payload = {
+      name: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Web Portal Policy Holder",
+      email: user?.email || "",
+      nic: user?.nic || "",
+      phone: user?.mobile || "",
+      subject: subject.trim(),
+      message: message.trim(),
+    };
+
+    try {
+      const res = await fetch("http://localhost:5000/api/policy-holder/contact/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setModalFeedback({ type: "success", text: "Email sent successfully! The claims team will respond within 24 hours." });
+        setSubject("");
+        setMessage("");
+        // Close modal after a short delay
+        setTimeout(() => {
+          setShowEmailModal(false);
+          setModalFeedback(null);
+        }, 2500);
+      } else {
+        setModalFeedback({ type: "error", text: data.error || "Failed to send email." });
+      }
+    } catch (err) {
+      console.error("Send email error:", err);
+      setModalFeedback({ type: "error", text: "Unable to connect to the server." });
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
       <PolicyHolderNavbar />
@@ -56,9 +132,10 @@ export default function PolicyHolderContact() {
         </a>
 
         {/* Card 2: Email */}
-        <a 
-          href="mailto:claims@sanasainsurance.lk" 
-          className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-all duration-200 cursor-pointer no-underline text-inherit hover:bg-slate-50/50 group"
+        <button 
+          type="button"
+          onClick={() => setShowEmailModal(true)} 
+          className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-all duration-200 cursor-pointer no-underline text-inherit hover:bg-slate-50/50 group text-left w-full border-solid font-sans"
         >
           <div className="flex items-center gap-6">
             <div className="w-14 h-14 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 group-hover:text-[#00ddff] group-hover:border-[#00ddff] transition-colors shrink-0">
@@ -76,7 +153,7 @@ export default function PolicyHolderContact() {
           <div className="text-red-500 hover:text-red-600 transition-colors font-bold text-xs md:text-sm self-start md:self-center md:pl-0 pl-20 select-none">
             Response within 24 hours
           </div>
-        </a>
+        </button>
 
         {/* Card 3: Live Chat */}
         <div className="bg-white border border-slate-200 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-md transition-all duration-200">
@@ -173,6 +250,145 @@ export default function PolicyHolderContact() {
           <path fillRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.1 21.5l4.63-.827A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm-3.5 11a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" clipRule="evenodd" />
         </svg>
       </button>
+
+      <PolicyHolderFooter />
+
+      {/* Email Composer Modal */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-all duration-300">
+          <div className="bg-white rounded-[32px] w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col border border-slate-100 relative">
+            
+            {/* Ambient background glow inside modal */}
+            <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full bg-[#00ddff]/10 blur-3xl pointer-events-none" />
+            <div className="absolute -bottom-24 -left-24 w-48 h-48 rounded-full bg-[#004f6e]/10 blur-3xl pointer-events-none" />
+
+            {/* Header */}
+            <div className="px-12 py-7 border-b border-slate-100 flex justify-between items-center relative z-10 bg-white/80 backdrop-blur-md">
+              <div>
+                <h3 className="text-2xl font-bold text-[#0d2a3a]">Send Email to Claims</h3>
+                <p className="text-xs text-slate-500 font-semibold mt-1">Our support team replies within 24 hours</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEmailModal(false);
+                  setModalFeedback(null);
+                }}
+                className="text-slate-400 hover:text-slate-700 text-xl font-bold cursor-pointer border-none bg-transparent transition-colors p-2"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSendEmail} className="p-12 flex flex-col gap-6 relative z-10">
+              
+              {/* User info display block if logged in */}
+              {user && (
+                <div className="bg-[#f0f9ff]/80 border border-sky-100 rounded-[24px] p-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-700 font-semibold">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Sender Name</span>
+                    <span className="text-[#0d2a3a] text-base font-extrabold">{user.firstName} {user.lastName}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Email Address</span>
+                    <span className="text-slate-800 text-sm truncate">{user.email}</span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">NIC Number</span>
+                    <span className="text-slate-800 text-sm">{user.nic}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Multi-column grid for Recipient and Subject */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* To (Read-only) */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-[#0d2a3a] uppercase tracking-wider pl-1">Recipient</label>
+                  <input
+                    type="text"
+                    value="claims@sanasainsurance.lk"
+                    disabled
+                    className="bg-slate-100/70 text-slate-500 text-sm font-semibold px-5 py-4 rounded-2xl border border-slate-200 outline-none w-full cursor-not-allowed"
+                  />
+                </div>
+
+                {/* Subject */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-bold text-[#0d2a3a] uppercase tracking-wider pl-1">Subject</label>
+                  <input
+                    type="text"
+                    placeholder="Enter inquiry subject..."
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    required
+                    className="bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-800 text-sm font-semibold px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#0284c7] outline-none w-full transition-all focus:ring-4 focus:ring-sky-100"
+                  />
+                </div>
+              </div>
+
+              {/* Message */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-[#0d2a3a] uppercase tracking-wider pl-1">Message Body</label>
+                <textarea
+                  placeholder="Type your message details here..."
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  required
+                  rows={6}
+                  className="bg-slate-50 hover:bg-slate-100/50 focus:bg-white text-slate-800 text-sm font-semibold px-5 py-4 rounded-2xl border border-slate-200 focus:border-[#0284c7] outline-none w-full transition-all resize-none leading-relaxed focus:ring-4 focus:ring-sky-100"
+                />
+              </div>
+
+              {/* Modal Feedback banner */}
+              {modalFeedback && (
+                <div
+                  className={`rounded-2xl p-4 text-xs font-semibold border ${
+                    modalFeedback.type === "success"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                      : "bg-red-50 text-red-700 border-red-100"
+                  }`}
+                >
+                  {modalFeedback.text}
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex justify-end gap-3 mt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEmailModal(false);
+                    setModalFeedback(null);
+                  }}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm px-7 py-3.5 rounded-full transition-all duration-150 active:scale-[0.98] cursor-pointer border-none"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSending}
+                  className="bg-[#0d2a3a] hover:bg-[#0284c7] disabled:bg-slate-400 text-white font-bold text-sm px-9 py-3.5 rounded-full shadow-[0_4px_12px_rgba(13,42,58,0.25)] hover:shadow-[0_4px_16px_rgba(2,132,199,0.3)] transition-all duration-150 active:scale-[0.98] cursor-pointer border-none flex items-center justify-center gap-2 min-w-[130px]"
+                >
+                  {isSending ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Sending...
+                    </>
+                  ) : (
+                    "Send Email"
+                  )}
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
 
       <PolicyHolderFooter />
     </div>

@@ -10,9 +10,13 @@ import {
   StatusBar,
   ImageBackground,
   Modal,
+  TextInput,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import PolicyHolderNavbar from "../Components/policy holder/page";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL } from "../config";
 
 export default function PolicyHolderContact() {
   const [customAlert, setCustomAlert] = useState<{
@@ -20,6 +24,33 @@ export default function PolicyHolderContact() {
     message: string;
     type?: "success" | "warning" | "info";
   } | null>(null);
+
+  const [emailModalVisible, setEmailModalVisible] = useState(false);
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [isSending, setIsSending] = useState(false);
+  const [user, setUser] = useState<{
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    nic?: string;
+    mobile?: string;
+  } | null>(null);
+
+  // Fetch logged in user on mount
+  React.useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userStr = await AsyncStorage.getItem("logged_in_user");
+        if (userStr) {
+          setUser(JSON.parse(userStr));
+        }
+      } catch (err) {
+        console.error("Failed to load user info from AsyncStorage:", err);
+      }
+    };
+    fetchUser();
+  }, []);
 
   const handleHotlinePress = () => {
     Linking.openURL("tel:+94112003000").catch((err) => {
@@ -33,14 +64,64 @@ export default function PolicyHolderContact() {
   };
 
   const handleEmailPress = () => {
-    Linking.openURL("mailto:claims@sanasainsurance.lk").catch((err) => {
-      console.error("Failed to open mail app:", err);
+    setEmailModalVisible(true);
+  };
+
+  const handleSendEmail = async () => {
+    if (!subject.trim() || !message.trim()) {
       setCustomAlert({
-        title: "Error",
-        message: "Could not open mail app. Please email claims@sanasainsurance.lk manually.",
+        title: "Validation Error",
+        message: "Subject and message are required.",
         type: "warning",
       });
-    });
+      return;
+    }
+
+    setIsSending(true);
+    const payload = {
+      name: user ? `${user.firstName || ""} ${user.lastName || ""}`.trim() : "Mobile App Policy Holder",
+      email: user?.email || "",
+      nic: user?.nic || "",
+      phone: user?.mobile || "",
+      subject: subject.trim(),
+      message: message.trim(),
+    };
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/policy-holder/contact/email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setEmailModalVisible(false);
+        setSubject("");
+        setMessage("");
+        setCustomAlert({
+          title: "Email Sent! ✉️",
+          message: "Your contact request has been sent successfully. The claims team will review and reply within 24 hours.",
+          type: "success",
+        });
+      } else {
+        setCustomAlert({
+          title: "Error",
+          message: data.error || "Failed to send contact email. Please try again.",
+          type: "warning",
+        });
+      }
+    } catch (err) {
+      console.error("Failed to send contact email:", err);
+      setCustomAlert({
+        title: "Network Error",
+        message: "Unable to connect to the server. Please check your network connection.",
+        type: "warning",
+      });
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleChatPress = () => {
@@ -164,6 +245,114 @@ export default function PolicyHolderContact() {
       </TouchableOpacity>
 
       <PolicyHolderNavbar />
+
+      {/* Email Composer Modal */}
+      <Modal
+        visible={emailModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEmailModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>Send Email to Claims</Text>
+                <Text style={styles.modalSubtitle}>We usually respond within 24 hours</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setEmailModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color="#64748b" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalScrollContent} showsVerticalScrollIndicator={false}>
+              
+              {/* Logged in User info */}
+              {user && (
+                <View style={styles.userInfoBox}>
+                  <View style={styles.userInfoRow}>
+                    <Text style={styles.userInfoLabel}>From:</Text>
+                    <Text style={styles.userInfoValue}>{user.firstName} {user.lastName}</Text>
+                  </View>
+                  <View style={styles.userInfoRow}>
+                    <Text style={styles.userInfoLabel}>Email:</Text>
+                    <Text style={styles.userInfoValue}>{user.email}</Text>
+                  </View>
+                  <View style={styles.userInfoRow}>
+                    <Text style={styles.userInfoLabel}>NIC:</Text>
+                    <Text style={styles.userInfoValue}>{user.nic}</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Recipient info */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>To</Text>
+                <TextInput
+                  value="claims@sanasainsurance.lk"
+                  editable={false}
+                  style={[styles.inputField, styles.disabledInput]}
+                />
+              </View>
+
+              {/* Subject */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Subject</Text>
+                <TextInput
+                  placeholder="Enter inquiry subject..."
+                  placeholderTextColor="#94a3b8"
+                  value={subject}
+                  onChangeText={setSubject}
+                  style={styles.inputField}
+                />
+              </View>
+
+              {/* Message */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Message</Text>
+                <TextInput
+                  placeholder="Type your message details here..."
+                  placeholderTextColor="#94a3b8"
+                  value={message}
+                  onChangeText={setMessage}
+                  multiline
+                  numberOfLines={6}
+                  style={[styles.inputField, styles.multilineInput]}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {/* Actions */}
+              <View style={styles.modalActionRow}>
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={() => setEmailModalVisible(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
+                  onPress={handleSendEmail}
+                  disabled={isSending}
+                >
+                  {isSending ? (
+                    <ActivityIndicator size="small" color="#ffffff" />
+                  ) : (
+                    <Text style={styles.sendButtonText}>Send Email</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
 
       {/* Unified Custom Alert Overlay Modal */}
       {customAlert && (
@@ -379,5 +568,149 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 14,
     fontWeight: "bold",
+  },
+  /* Modal Styles for Email sending */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#ffffff",
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    paddingTop: 24,
+    paddingHorizontal: 20,
+    maxHeight: "85%",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 15,
+    elevation: 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f1f5f9",
+    paddingBottom: 16,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#0f172a",
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  closeButton: {
+    padding: 6,
+    backgroundColor: "#f8fafc",
+    borderRadius: 20,
+  },
+  modalScrollContent: {
+    paddingBottom: 40,
+  },
+  userInfoBox: {
+    backgroundColor: "#f0f9ff",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#e0f2fe",
+    padding: 14,
+    marginBottom: 18,
+    gap: 6,
+  },
+  userInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  userInfoLabel: {
+    fontSize: 12,
+    color: "#64748b",
+    fontWeight: "600",
+  },
+  userInfoValue: {
+    fontSize: 12,
+    color: "#0f172a",
+    fontWeight: "700",
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 12.5,
+    fontWeight: "700",
+    color: "#475569",
+    marginBottom: 6,
+    paddingLeft: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  inputField: {
+    backgroundColor: "#f8fafc",
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: "#0f172a",
+    fontWeight: "600",
+  },
+  disabledInput: {
+    backgroundColor: "#f1f5f9",
+    color: "#64748b",
+    borderColor: "#e2e8f0",
+  },
+  multilineInput: {
+    height: 120,
+    paddingTop: 12,
+  },
+  modalActionRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 12,
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: "#f1f5f9",
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButtonText: {
+    color: "#475569",
+    fontSize: 14.5,
+    fontWeight: "700",
+  },
+  sendButton: {
+    flex: 1.5,
+    backgroundColor: "#0ea5e9",
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0ea5e9",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  sendButtonDisabled: {
+    backgroundColor: "#94a3b8",
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  sendButtonText: {
+    color: "#ffffff",
+    fontSize: 14.5,
+    fontWeight: "700",
   },
 });

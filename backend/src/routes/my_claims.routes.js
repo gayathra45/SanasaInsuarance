@@ -3,6 +3,7 @@ import crypto from "crypto";
 import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
 import { uploadToCloudinary } from "../utils/upload.js";
+import { sendEmail } from "../utils/email.js";
 
 const router = express.Router();
 
@@ -169,6 +170,79 @@ router.patch("/update-claim/:claimNumber", async (req, res) => {
     res.json({ message: "Claim updated successfully", claim });
   } catch (err) {
     console.error("Update claim API error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// 5. Send an email from the policy holder contact page
+router.post("/contact/email", async (req, res) => {
+  try {
+    const { name, email, nic, phone, subject, message } = req.body;
+    if (!subject || !message) {
+      return res.status(400).json({ error: "Subject and message are required." });
+    }
+
+    const recipient = "claims@sanasainsurance.lk";
+    const emailSubject = `Contact Request: ${subject}`;
+    
+    // Construct rich email body
+    const htmlBody = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 16px;">
+        <h2 style="color: #004f6e; border-bottom: 2px solid #004f6e; padding-bottom: 10px;">Contact Inquiry from Policy Holder</h2>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px;">
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569; width: 120px;">Name:</td>
+            <td style="padding: 6px 0; color: #0f172a;">${name || "Anonymous Policy Holder"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569;">Email:</td>
+            <td style="padding: 6px 0; color: #0f172a;">${email || "Not Provided"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569;">NIC:</td>
+            <td style="padding: 6px 0; color: #0f172a;">${nic || "Not Provided"}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; font-weight: bold; color: #475569;">Phone:</td>
+            <td style="padding: 6px 0; color: #0f172a;">${phone || "Not Provided"}</td>
+          </tr>
+        </table>
+        
+        <div style="background-color: #f8fafc; border-left: 4px solid #004f6e; padding: 15px; border-radius: 4px;">
+          <h3 style="margin-top: 0; color: #0f172a;">Message:</h3>
+          <p style="white-space: pre-wrap; color: #334155; line-height: 1.6; margin-bottom: 0;">${message}</p>
+        </div>
+        
+        <p style="font-size: 12px; color: #94a3b8; margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 10px;">
+          Sent from Sanasa Insurance Portal Contact Form
+        </p>
+      </div>
+    `;
+
+    const textBody = `
+Contact Request: ${subject}
+
+Policy Holder Details:
+- Name: ${name || "Anonymous Policy Holder"}
+- Email: ${email || "Not Provided"}
+- NIC: ${nic || "Not Provided"}
+- Phone: ${phone || "Not Provided"}
+
+Message:
+${message}
+
+--
+Sent from Sanasa Insurance Portal Contact Form
+    `;
+
+    const emailRes = await sendEmail(recipient, emailSubject, htmlBody, textBody);
+    if (emailRes.sent) {
+      res.json({ message: "Email sent successfully!" });
+    } else {
+      res.status(500).json({ error: emailRes.error || "Failed to send email." });
+    }
+  } catch (err) {
+    console.error("Contact email sending API error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });
