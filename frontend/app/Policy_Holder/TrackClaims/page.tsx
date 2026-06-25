@@ -43,6 +43,20 @@ function TrackClaimsContent() {
     };
     return (claim.requestedDocuments || []).filter(name => getRecipientForDoc(name) === "User");
   };
+
+  const getDocRequestNote = (claim: Claim, docName: string): string => {
+    if (!claim.messages) return "";
+    const msg = [...claim.messages]
+      .reverse()
+      .find(m => m.message && m.message.includes(`Requested: ${docName}`));
+    if (msg && msg.message) {
+      const idx = msg.message.indexOf("Message:");
+      if (idx !== -1) {
+        return msg.message.substring(idx + 8).trim();
+      }
+    }
+    return "";
+  };
   const [searchAttempted, setSearchAttempted] = useState(false);
   const [claimsList, setClaimsList] = useState<Claim[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -417,13 +431,23 @@ function TrackClaimsContent() {
                   <p className="text-[#aa4f4f] text-[13px] font-semibold leading-relaxed mb-3">
                     The following documents have been requested by staff to process your claim. Please upload them via the Documents section:
                   </p>
-                  <ul className="list-none flex flex-col gap-2 mb-4 pl-1">
-                    {getUserRequestedDocs(trackedClaim).map((doc) => (
-                      <li key={doc} className="flex items-center gap-2 text-[#aa4f4f] font-bold text-xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#df3d3d] flex-shrink-0" />
-                        <span>{doc}</span>
-                      </li>
-                    ))}
+                  <ul className="list-none flex flex-col gap-3 mb-4 pl-1">
+                    {getUserRequestedDocs(trackedClaim).map((doc) => {
+                      const note = getDocRequestNote(trackedClaim, doc);
+                      return (
+                        <li key={doc} className="flex items-start gap-2 text-[#aa4f4f] font-bold text-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#df3d3d] flex-shrink-0 mt-1.5" />
+                          <div className="flex flex-col">
+                            <span>{doc}</span>
+                            {note && (
+                              <span className="text-[11px] font-medium text-slate-500 italic mt-0.5">
+                                Note: "{note}"
+                              </span>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
                   </ul>
                   <Link
                     href="/Policy_Holder/Documents"

@@ -60,6 +60,20 @@ export default function PolicyHolderDocuments() {
     };
     return (claim.requestedDocuments || []).filter(name => getRecipientForDoc(name) === "User");
   };
+
+  const getDocRequestNote = (claim: Claim, docName: string): string => {
+    if (!claim.messages) return "";
+    const msg = [...claim.messages]
+      .reverse()
+      .find(m => m.message && m.message.includes(`Requested: ${docName}`));
+    if (msg && msg.message) {
+      const idx = msg.message.indexOf("Message:");
+      if (idx !== -1) {
+        return msg.message.substring(idx + 8).trim();
+      }
+    }
+    return "";
+  };
   const [isLoading, setIsLoading] = useState(true);
 
   // Upload Modal State
@@ -401,9 +415,24 @@ export default function PolicyHolderDocuments() {
                         Documents Requested – Action Required
                       </h3>
                       <p className="text-slate-600 text-sm font-semibold mt-2.5 leading-relaxed">
-                        Staff has requested a <span className="text-slate-800 font-extrabold">{getUserRequestedDocs(claim).join(" & ")}</span> for <span className="text-slate-800 font-extrabold">{claim.claimNumber}</span>.
+                        Staff has requested the following document(s) for <span className="text-slate-800 font-extrabold">{claim.claimNumber}</span>:
                       </p>
-                      <p className="text-slate-400 text-xs font-bold mt-2">
+                      <div className="mt-2.5 space-y-1.5 pl-2.5 border-l-2 border-slate-200">
+                        {getUserRequestedDocs(claim).map((docName, idx) => {
+                          const note = getDocRequestNote(claim, docName);
+                          return (
+                            <div key={idx} className="text-slate-600 text-xs font-semibold leading-relaxed">
+                              • <span className="text-slate-800 font-extrabold">{docName}</span>
+                              {note && (
+                                <span className="block text-slate-500 pl-3 font-medium italic mt-0.5">
+                                  Note: "{note}"
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <p className="text-slate-400 text-xs font-bold mt-3">
                         Please upload within 3 days...
                       </p>
                     </div>
