@@ -454,9 +454,9 @@ export default function AgentDashboard() {
           
           {/* Pending Document Requests Section */}
           {claimsWithPendingAgentRequests.length > 0 && (
-            <div className="flex flex-col gap-4 bg-gradient-to-br from-white/80 to-slate-50/40 backdrop-blur-md border border-slate-200/60 rounded-3xl p-6 shadow-[0_8px_32px_rgba(0,0,0,0.02)] relative overflow-hidden">
+            <div className="flex flex-col gap-4 bg-gradient-to-br from-white/80 to-slate-50/40 backdrop-blur-md border border-red-200/40 rounded-3xl p-6 shadow-[0_8px_32px_rgba(239,68,68,0.01)] relative overflow-hidden">
               <h2 className="text-lg font-extrabold text-slate-800 tracking-tight flex items-center gap-2 select-none">
-                <svg className="w-5 h-5 text-orange-500 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-red-500 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
                 Action Required: Pending Agent Document Requests
@@ -465,13 +465,13 @@ export default function AgentDashboard() {
                 {claimsWithPendingAgentRequests.map((claim) => {
                   const pendingDocs = getAgentPendingRequests(claim);
                   return (
-                    <div key={claim._id} className="bg-white/70 backdrop-blur-sm border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-orange-200/60 hover:bg-white transition-all duration-300">
+                    <div key={claim._id} className="bg-white/70 backdrop-blur-sm border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm hover:border-red-200/60 hover:bg-white transition-all duration-300">
                       <div className="flex flex-col gap-1">
                         <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
                         <span className="text-sm font-bold text-slate-800">{claim.claimNumber} · {claim.vehiclePlate}</span>
                         <div className="flex flex-wrap gap-2 mt-1.5">
                           {pendingDocs.map((docName, idx) => (
-                            <span key={idx} className="text-[9px] font-bold bg-orange-50/60 text-orange-600 border border-orange-100 px-2.5 py-0.5 rounded-full select-none tracking-wide uppercase">
+                            <span key={idx} className="text-[9px] font-bold bg-red-50/60 text-red-600 border border-red-100 px-2.5 py-0.5 rounded-full select-none tracking-wide uppercase">
                               {docName}
                             </span>
                           ))}
