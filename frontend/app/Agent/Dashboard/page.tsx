@@ -543,73 +543,133 @@ export default function AgentDashboard() {
               activeClaims.map((claim) => {
                 const severity = getSeverity(claim.damageType);
                 const isUrgent = severity === "Urgent";
+                
+                // Frosted glass styling with borders based on severity
                 const borderStyles = isUrgent 
-                  ? "border-red-200 hover:border-red-300 bg-gradient-to-br from-white to-red-50/10 shadow-[0_10px_25px_rgba(239,68,68,0.01)]" 
-                  : "border-cyan-200 hover:border-cyan-300 bg-gradient-to-br from-white to-cyan-50/10 shadow-[0_10px_25px_rgba(6,182,212,0.01)]";
-                const textStyles = isUrgent ? "text-red-600" : "text-cyan-600";
+                  ? "border-red-200 hover:border-red-300 bg-white/80 shadow-[0_12px_32px_rgba(239,68,68,0.02)] hover:shadow-[0_20px_48px_rgba(239,68,68,0.06)]" 
+                  : "border-slate-100 hover:border-cyan-200 bg-white/80 shadow-[0_12px_32px_rgba(0,0,0,0.02)] hover:shadow-[0_20px_48px_rgba(15,45,58,0.05)]";
+                
+                const badgeStyles = isUrgent
+                  ? "border-red-100 bg-red-50 text-red-600"
+                  : severity === "Medium"
+                  ? "border-amber-100 bg-amber-50 text-amber-600"
+                  : "border-cyan-100 bg-cyan-50 text-cyan-600";
+
                 const sideStrip = isUrgent ? "bg-red-500" : "bg-cyan-500";
-                const headerIconColor = isUrgent ? "text-red-500 animate-pulse" : "text-cyan-500";
 
                 return (
                   <div
                     key={claim._id}
-                    className={`w-full border rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.02)] hover:shadow-[0_16px_32px_rgba(0,0,0,0.06)] hover:-translate-y-1 transition-all duration-300 relative overflow-hidden ${borderStyles}`}
+                    className={`w-full border rounded-[2rem] p-6 hover:-translate-y-0.5 hover:scale-[1.01] transition-all duration-300 relative overflow-hidden flex flex-col gap-6 ${borderStyles}`}
                   >
                     {/* Visual Left Indicator Strip */}
                     <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${sideStrip}`} />
 
-                    <div className="flex justify-between items-center relative z-10 pl-2">
-                      <div className="flex items-center gap-2.5">
-                        {isUrgent ? (
-                          /* Urgent Light Siren Icon */
-                          <svg className={`w-5 h-5 ${headerIconColor}`} fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2a1 1 0 0 1 1 1v1.085A8.005 8.005 0 0 1 19.5 12v1H20a1 1 0 1 1 0 2h-1.05a5 5 0 0 1-13.9 0H4a1 1 0 1 1 0-2h.5v-1A8.005 8.005 0 0 1 11 4.085V3a1 1 0 0 1 1-1zm6 11V12a6 6 0 0 0-12 0v1h12z" />
-                            <circle cx="12" cy="18" r="1.5" />
-                          </svg>
-                        ) : (
-                          /* Medium Shield Alert Icon */
-                          <svg className={`w-5 h-5 ${headerIconColor}`} fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M12 2s-8 3-8 8v4.5c0 5 8 7.5 8 7.5s8-2.5 8-7.5V10c0-5-8-8-8-8zm0 13a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm1-5H11V6h2v4z" />
-                          </svg>
-                        )}
-                        <h3 className={`font-bold text-lg tracking-wide uppercase ${textStyles}`}>
-                          {severity} - {claim.claimNumber}
+                    {/* Header Row */}
+                    <div className="flex flex-row justify-between items-start gap-4 relative z-10 pl-2">
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-2 select-none">
+                          <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-2 py-0.5 rounded tracking-wide uppercase">
+                            CLAIM ID
+                          </span>
+                          <span className="text-slate-400 text-xs font-bold">·</span>
+                          <span className="text-slate-500 text-xs font-semibold">Step {claim.currentStep} of 4</span>
+                        </div>
+                        <h3 className="font-extrabold text-xl text-slate-800 tracking-tight">
+                          {claim.claimNumber}
                         </h3>
                       </div>
 
-                    <button
-                      onClick={() => setSelectedClaim(claim)}
-                      className="bg-slate-900 hover:bg-[#ff9800] active:bg-[#f57c00] text-white text-sm font-bold py-2 px-6 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
-                    >
-                      Details
-                    </button>
-                  </div>
-
-                  {/* Vehicle & Location Information */}
-                  <div className="mt-5 pl-2 grid grid-cols-1 md:grid-cols-3 gap-y-3 gap-x-2 text-sm text-slate-600 leading-relaxed relative z-10 font-semibold">
-                    <div>
-                      <span className="text-slate-400 block text-xs uppercase tracking-wider mb-0.5">Vehicle Plate</span>
-                      <span className="text-slate-800 font-bold text-[15px]">
-                        {claim.vehiclePlate} {claim.vehicleModel && <span className="font-semibold text-slate-500">({claim.vehicleModel})</span>}
+                      {/* Severity Badge */}
+                      <span className={`border px-3 py-1 rounded-full text-[10px] font-black tracking-wider uppercase flex items-center gap-1.5 select-none ${badgeStyles}`}>
+                        {isUrgent && (
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          </span>
+                        )}
+                        {severity}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-xs uppercase tracking-wider mb-0.5">Damage Type</span>
-                      <span className="text-slate-800 font-bold text-[15px]">{claim.damageType}</span>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 block text-xs uppercase tracking-wider mb-0.5">Location</span>
-                      <span className="text-slate-800 font-bold text-[15px]">{claim.location}</span>
-                    </div>
-                  </div>
 
-                  {/* Formatted Date / Time */}
-                  <div className="absolute bottom-4 right-6 text-xs text-slate-400 font-bold">
-                    Today, {claim.incidentTime}
+                    {/* Grid Information Block */}
+                    <div className="pl-2 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm relative z-10">
+                      {/* Vehicle Plate */}
+                      <div className="flex items-start gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
+                        <div className="p-2 bg-white text-slate-550 rounded-xl shadow-sm flex-shrink-0">
+                          <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1-1.42l1.107-3.875A3.375 3.375 0 016.711 11.25h10.578a3.375 3.375 0 013.23 2.205l1.107 3.875a1.125 1.125 0 01-1 1.42H18.75m-3-1.5a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125m-11.25 0h1.125M21 11.25c0-2.485-4.03-4.5-9-4.5s-9 2.015-9 4.5" />
+                          </svg>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Vehicle Plate</span>
+                          <span className="text-slate-800 font-extrabold text-[15px] leading-tight truncate">
+                            {claim.vehiclePlate}
+                          </span>
+                          {claim.vehicleModel && (
+                            <span className="text-[11px] font-semibold text-slate-500 mt-0.5 truncate">
+                              {claim.vehicleModel}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Damage Type */}
+                      <div className="flex items-start gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
+                        <div className="p-2 bg-white text-slate-550 rounded-xl shadow-sm flex-shrink-0">
+                          <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                          </svg>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Damage Type</span>
+                          <span className="text-slate-800 font-extrabold text-[15px] leading-tight truncate">
+                            {claim.damageType}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Location */}
+                      <div className="flex items-start gap-3 bg-slate-50/50 p-3 rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors">
+                        <div className="p-2 bg-white text-slate-550 rounded-xl shadow-sm flex-shrink-0">
+                          <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25s-7.5-4.108-7.5-11.25a7.5 7.5 0 1115 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-slate-400 text-[10px] uppercase font-bold tracking-wider mb-0.5">Location</span>
+                          <span className="text-slate-800 font-extrabold text-[15px] leading-tight truncate" title={claim.location}>
+                            {claim.location}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Row */}
+                    <div className="flex flex-row justify-between items-center border-t border-slate-100/80 pt-4 mt-2 pl-2 relative z-10">
+                      {/* Incident Date/Time */}
+                      <div className="flex items-center gap-1.5 text-xs text-slate-400 font-bold select-none">
+                        <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Today, {claim.incidentTime}</span>
+                      </div>
+
+                      {/* Action Button */}
+                      <button
+                        onClick={() => setSelectedClaim(claim)}
+                        className="bg-slate-900 hover:bg-[#00ddff] hover:text-slate-950 text-white text-xs font-black py-2.5 px-6 rounded-full transition-all duration-200 active:scale-95 flex items-center gap-1 select-none shadow-md hover:shadow-cyan-300/20 border-none cursor-pointer"
+                      >
+                        <span>View Details</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              );
-            }))}
+                );
+              }))}
           </div>
         </div>
 
