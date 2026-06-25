@@ -591,47 +591,103 @@ export default function PolicyHolderHome() {
           </div>
 
           {/* Vehicles Column */}
-          <div className="lg:col-span-5">
-            <Link href="/Policy_Holder/MyVehicles" className="flex items-center gap-2 mb-6 cursor-pointer group no-underline text-inherit select-none">
-              <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
-                My Vehicles
-              </h2>
-              <svg
-                className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-              </svg>
-            </Link>
+          <div className="lg:col-span-5 flex flex-col gap-8">
+            <div>
+              <Link href="/Policy_Holder/MyVehicles" className="flex items-center gap-2 mb-6 cursor-pointer group no-underline text-inherit select-none">
+                <h2 className="text-xl md:text-2xl font-black text-slate-800 tracking-tight">
+                  My Vehicles
+                </h2>
+                <svg
+                  className="w-5 h-5 text-slate-500 group-hover:translate-x-1 transition-transform"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                </svg>
+              </Link>
 
-            {/* Vehicle List */}
-            <div className="flex flex-col gap-5">
-              {vehicles.length > 0 ? (
-                vehicles.map((vehicle, idx) => (
-                  <div key={idx} className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      {getVehicleIconContainer(vehicle.vehicleType)}
-                      <div>
-                        <h4 className="text-slate-800 font-extrabold text-base leading-tight">{formatNumberPlate(vehicle.numberPlate)}</h4>
-                        <p className="text-slate-400 font-bold text-xs mt-0.5">{vehicle.company} {vehicle.model} {vehicle.year}</p>
+              {/* Vehicle List */}
+              <div className="flex flex-col gap-5">
+                {vehicles.length > 0 ? (
+                  vehicles.map((vehicle, idx) => (
+                    <div key={idx} className="bg-white border border-slate-200 rounded-[22px] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.02)] flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        {getVehicleIconContainer(vehicle.vehicleType)}
+                        <div>
+                          <h4 className="text-slate-800 font-extrabold text-base leading-tight">{formatNumberPlate(vehicle.numberPlate)}</h4>
+                          <p className="text-slate-400 font-bold text-xs mt-0.5">{vehicle.company} {vehicle.model} {vehicle.year}</p>
+                        </div>
                       </div>
+                      <button
+                        onClick={() => setSelectedVehicleForModal(vehicle)}
+                        className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all bg-transparent cursor-pointer outline-none"
+                      >
+                        View
+                      </button>
                     </div>
-                    <button
-                      onClick={() => setSelectedVehicleForModal(vehicle)}
-                      className="border border-slate-300 hover:border-slate-400 text-slate-600 font-extrabold text-xs px-5 py-1.5 rounded-full transition-all bg-transparent cursor-pointer outline-none"
-                    >
-                      View
-                    </button>
+                  ))
+                ) : (
+                  <div className="bg-white border border-slate-200 rounded-[22px] p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
+                    <p className="text-slate-400 font-bold text-sm">No vehicles registered under this policy.</p>
                   </div>
-                ))
-              ) : (
-                <div className="bg-white border border-slate-200 rounded-[22px] p-8 text-center shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                  <p className="text-slate-400 font-bold text-sm">No vehicles registered under this policy.</p>
-                </div>
-              )}
+                )}
+              </div>
+            </div>
+
+            {/* Contact Support Card Box */}
+            <div className="bg-gradient-to-br from-cyan-50/90 via-sky-50/40 to-blue-50/20 border border-cyan-150/60 rounded-3xl p-6 shadow-md hover:shadow-lg hover:scale-[1.01] transition-all duration-300 relative overflow-hidden flex flex-col gap-4">
+              
+              {/* Pulsing online status indicator */}
+              <div className="absolute top-4 right-4 flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/50 rounded-full px-2.5 py-0.5 select-none">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-[9px] font-bold text-emerald-700 tracking-wide uppercase">Live Support</span>
+              </div>
+
+              <h3 className="text-cyan-800 font-extrabold text-lg tracking-tight flex items-center gap-2 select-none">
+                <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.192l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                Support Helpdesk
+              </h3>
+              
+              <p className="text-xs text-slate-500 font-semibold text-left leading-relaxed -mt-1 select-none">
+                Need assistance with an active claim filing, towing service, or coverage terms? Call our staff directly.
+              </p>
+
+              <div className="flex flex-col gap-2.5 mt-1">
+                <a href="tel:+94112003000" className="flex items-center justify-between bg-white border border-slate-100/60 p-3 rounded-2xl hover:border-cyan-200 hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 font-bold text-sm text-slate-800 group no-underline">
+                  <div className="flex items-center gap-2.5">
+                    <span className="bg-cyan-50 p-2 rounded-xl text-cyan-600 transition-colors group-hover:bg-cyan-500 group-hover:text-white">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.47-5.112-3.758-6.58-6.58l1.293-.97c.362-.272.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                      </svg>
+                    </span>
+                    <span className="text-slate-700 tracking-tight font-extrabold">+94 112 003 000</span>
+                  </div>
+                  <span className="text-[10px] bg-slate-50 border border-slate-150 px-2.5 py-0.5 rounded-full text-slate-400 group-hover:bg-cyan-50 group-hover:text-cyan-600 group-hover:border-cyan-200">
+                    Line 1
+                  </span>
+                </a>
+
+                <a href="tel:+94112003001" className="flex items-center justify-between bg-white border border-slate-100/60 p-3 rounded-2xl hover:border-cyan-200 hover:shadow-sm hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 font-bold text-sm text-slate-800 group no-underline">
+                  <div className="flex items-center gap-2.5">
+                    <span className="bg-cyan-50 p-2 rounded-xl text-cyan-600 transition-colors group-hover:bg-cyan-500 group-hover:text-white">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.824-1.47-5.112-3.758-6.58-6.58l1.293-.97c.362-.272.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z" />
+                      </svg>
+                    </span>
+                    <span className="text-slate-700 tracking-tight font-extrabold">+94 112 003 001</span>
+                  </div>
+                  <span className="text-[10px] bg-slate-50 border border-slate-150 px-2.5 py-0.5 rounded-full text-slate-400 group-hover:bg-cyan-50 group-hover:text-cyan-600 group-hover:border-cyan-200">
+                    Line 2
+                  </span>
+                </a>
+              </div>
             </div>
           </div>
 
