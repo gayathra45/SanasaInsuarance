@@ -491,31 +491,44 @@ export default function AgentDashboard() {
                       {/* Vertical Red Accent Strip */}
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-red-500 to-rose-600 group-hover:w-1.5 transition-all duration-300" />
                       
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
-                        <span className="text-sm font-bold text-slate-800">{claim.claimNumber} · {claim.vehiclePlate}</span>
-                        
-                        {/* Received / Requested documents count with Clipboard icon */}
-                        <div className="flex items-center gap-1.5 mt-1">
-                          <svg className="w-4 h-4 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                          </svg>
-                          <span className="text-xs font-bold text-slate-500 select-none">
-                            Received: <span className="text-emerald-600 font-extrabold">{uploadedDocsCount}</span> / <span className="text-slate-800 font-extrabold">{totalDocs.length}</span>
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center mr-2">
+                        {/* Col 1: Claim ID & Plate */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
+                          <span className="text-sm font-bold text-slate-800 truncate">
+                            {claim.claimNumber} · {claim.vehiclePlate}
                           </span>
                         </div>
 
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {pendingDocs.map((docName, idx) => (
-                            <span key={idx} className="text-[9px] font-black bg-red-50/70 text-red-600 border border-red-150 px-2.5 py-0.5 rounded-full select-none tracking-wide uppercase transition-colors hover:bg-red-100/50">
-                              {docName}
+                        {/* Col 2: Received Progress */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Documents Received</span>
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-slate-600 select-none">
+                            <svg className="w-4 h-4 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                            </svg>
+                            <span>
+                              <span className="text-emerald-600 font-extrabold">{uploadedDocsCount}</span> / <span className="text-slate-800 font-extrabold">{totalDocs.length}</span>
                             </span>
-                          ))}
+                          </div>
+                        </div>
+
+                        {/* Col 3: Pending Documents List */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Pending Files</span>
+                          <div className="flex flex-wrap gap-1.5 mt-0.5">
+                            {pendingDocs.map((docName, idx) => (
+                              <span key={idx} className="text-[9px] font-black bg-red-50/70 text-red-600 border border-red-150 px-2.5 py-0.5 rounded-full select-none tracking-wide uppercase transition-colors hover:bg-red-100/50">
+                                {docName}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
+
                       <button
                         onClick={() => setSelectedClaim(claim)}
-                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black hover:shadow-[0_4px_14px_rgba(0,221,255,0.3)] text-xs font-black py-2.5 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center"
+                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black hover:shadow-[0_4px_14px_rgba(0,221,255,0.3)] text-xs font-black py-2.5 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center flex-shrink-0"
                       >
                         Upload Documents
                       </button>
@@ -563,46 +576,56 @@ export default function AgentDashboard() {
                       {/* Decorative vertical color bar that glows/width-increases on card hover */}
                       <div className={`absolute left-0 top-0 bottom-0 w-1 group-hover:w-1.5 transition-all duration-300 ${isUrgent ? 'bg-gradient-to-b from-red-500 to-rose-600' : 'bg-gradient-to-b from-cyan-400 to-cyan-500'}`} />
                       
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim / Plate</span>
-                          {isUrgent ? (
-                            <span className="text-[9px] font-black uppercase bg-red-50 text-red-600 border border-red-200 px-2.5 py-0.5 rounded-full select-none tracking-wide">
-                              Urgent
-                            </span>
-                          ) : (
-                            <span className="text-[9px] font-black uppercase bg-cyan-50 text-cyan-700 border border-cyan-200 px-2.5 py-0.5 rounded-full select-none tracking-wide">
-                              {severity}
-                            </span>
-                          )}
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-center mr-2">
+                        {/* Col 1: Claim ID & Severity */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Claim Number</span>
+                          <div className="text-sm font-bold text-slate-800 truncate flex items-center gap-1.5 flex-wrap">
+                            {claim.claimNumber}
+                            {isUrgent ? (
+                              <span className="text-[9px] font-black uppercase bg-red-50 text-red-600 border border-red-200 px-2.5 py-0.5 rounded-full select-none tracking-wide">
+                                Urgent
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-black uppercase bg-cyan-50 text-cyan-700 border border-cyan-200 px-2.5 py-0.5 rounded-full select-none tracking-wide">
+                                {severity}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-sm font-bold text-slate-800">
-                          {claim.claimNumber} · {claim.vehiclePlate} {claim.vehicleModel && <span className="font-semibold text-slate-500">({claim.vehicleModel})</span>}
-                        </span>
 
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-[11px] font-bold text-slate-500 select-none">
-                          <div className="flex items-center gap-1">
-                            <span className="text-slate-400 font-extrabold uppercase text-[9px] tracking-wider">Damage:</span>
-                            <span className="text-slate-700 font-extrabold">{claim.damageType}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-slate-400 font-extrabold uppercase text-[9px] tracking-wider">Location:</span>
-                            <span className="text-slate-700 font-extrabold" title={claim.location}>{claim.location}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-slate-400 font-extrabold uppercase text-[9px] tracking-wider">Progress:</span>
-                            <span className="text-slate-700 font-extrabold">Step {claim.currentStep} of 4</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <span className="text-slate-400 font-extrabold uppercase text-[9px] tracking-wider">Time:</span>
-                            <span className="text-slate-700 font-extrabold">Today, {claim.incidentTime}</span>
-                          </div>
+                        {/* Col 2: Vehicle */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Vehicle</span>
+                          <span className="text-xs font-bold text-slate-700 truncate">
+                            {claim.vehiclePlate} {claim.vehicleModel && <span className="font-semibold text-slate-500">({claim.vehicleModel})</span>}
+                          </span>
+                        </div>
+
+                        {/* Col 3: Damage Type */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Damage Type</span>
+                          <span className="text-xs font-bold text-slate-700 truncate">{claim.damageType}</span>
+                        </div>
+
+                        {/* Col 4: Location */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Location</span>
+                          <span className="text-xs font-bold text-slate-700 truncate" title={claim.location}>{claim.location}</span>
+                        </div>
+
+                        {/* Col 5: Progress / Time */}
+                        <div className="flex flex-col gap-1 min-w-0">
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Progress / Time</span>
+                          <span className="text-xs font-bold text-slate-700 truncate">
+                            Step {claim.currentStep} of 4 · <span className="text-slate-400 font-semibold">{claim.incidentTime}</span>
+                          </span>
                         </div>
                       </div>
                       
                       <button
                         onClick={() => setSelectedClaim(claim)}
-                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black hover:shadow-[0_4px_14px_rgba(0,221,255,0.3)] text-xs font-black py-2.5 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center"
+                        className="bg-[#0f2d3a] hover:bg-[#00ddff] hover:text-black hover:shadow-[0_4px_14px_rgba(0,221,255,0.3)] text-xs font-black py-2.5 px-5 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm border-none self-start md:self-center flex-shrink-0"
                       >
                         Details
                       </button>
