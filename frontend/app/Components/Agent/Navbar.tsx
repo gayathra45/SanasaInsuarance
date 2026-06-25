@@ -51,8 +51,8 @@ export default function Navbar() {
 
   // Check if link is active
   const isActive = (href: string) => {
-    if (href === "/Agent/Home") {
-      return pathname === "/Agent/Home" || pathname === "/Agent" || pathname === "/Agent/";
+    if (href === "/Agent/Dashboard") {
+      return pathname === "/Agent/Dashboard" || pathname === "/Agent" || pathname === "/Agent/";
     }
     return pathname === href || pathname.startsWith(href + "/");
   };
@@ -74,7 +74,7 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center">
-            <Link href="/Agent/Home">
+            <Link href="/Agent/Dashboard">
               <Image
                 src="/logo.png"
                 alt="Sanasa General Insurance"
@@ -88,17 +88,17 @@ export default function Navbar() {
 
           {/* Desktop Navigation Links */}
           <div className="hidden md:flex items-center gap-8 text-base font-semibold">
-            <Link href="/Agent/Home" className={getNavLinkClass("/Agent/Home")}>
+            <Link href="/Agent/Dashboard" className={getNavLinkClass("/Agent/Dashboard")}>
               Home
             </Link>
-            <Link href="/Agent/MyActivity" className={getNavLinkClass("/Agent/MyActivity")}>
+            <Link href="/Agent/Dashboard" className="text-slate-800 hover:text-[#00ddff] font-medium px-4 py-2 transition-all duration-200">
               My Activity
             </Link>
-            <Link href="/Agent/Contact" className={getNavLinkClass("/Agent/Contact")}>
+            <Link href="/Agent/Dashboard" className="text-slate-800 hover:text-[#00ddff] font-medium px-4 py-2 transition-all duration-200">
               Contact
             </Link>
             <Link
-              href="/Agent/MyClaims"
+              href="/Agent/Dashboard"
               className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold px-6 py-2 rounded-full shadow-md transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] no-underline"
             >
               My Claims
@@ -108,7 +108,7 @@ export default function Navbar() {
           {/* Action Items (Right) */}
           <div className="hidden md:flex items-center gap-6">
             {/* Notification Bell */}
-            <Link href="/Agent/Notifications" className="text-black hover:text-[#00ddff] transition-colors p-1" aria-label="Notifications">
+            <Link href="/Agent/Dashboard" className="text-black hover:text-[#00ddff] transition-colors p-1" aria-label="Notifications">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -157,7 +157,7 @@ export default function Navbar() {
                   <div className="absolute -top-2 right-4 w-4 h-4 bg-white border-l border-t border-slate-100 rotate-45" />
 
                   <Link
-                    href="/Agent/Profile"
+                    href="/Agent/Dashboard"
                     onClick={() => setProfileMenuOpen(false)}
                     className="flex items-center gap-3 px-5 py-3 text-slate-700 hover:bg-slate-50 hover:text-[#00ddff] font-semibold text-sm transition-colors no-underline"
                   >
@@ -206,34 +206,30 @@ export default function Navbar() {
         {isOpen && (
           <div className="md:hidden absolute top-full left-0 w-full bg-white border-b border-gray-200 py-4 px-6 flex flex-col gap-4 shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-200">
             <Link
-              href="/Agent/Home"
+              href="/Agent/Dashboard"
               onClick={() => setIsOpen(false)}
               className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
-                isActive("/Agent/Home") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
+                isActive("/Agent/Dashboard") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
               }`}
             >
               Home
             </Link>
             <Link
-              href="/Agent/MyActivity"
+              href="/Agent/Dashboard"
               onClick={() => setIsOpen(false)}
-              className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
-                isActive("/Agent/MyActivity") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
-              }`}
+              className="text-slate-800 hover:text-[#00ddff] hover:bg-slate-50 font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200"
             >
               My Activity
             </Link>
             <Link
-              href="/Agent/Contact"
+              href="/Agent/Dashboard"
               onClick={() => setIsOpen(false)}
-              className={`font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200 ${
-                isActive("/Agent/Contact") ? "bg-[#00ddff] text-black" : "text-slate-800 hover:text-[#00ddff] hover:bg-slate-50"
-              }`}
+              className="text-slate-800 hover:text-[#00ddff] hover:bg-slate-50 font-semibold text-lg py-2.5 px-5 rounded-2xl transition-all duration-200"
             >
               Contact
             </Link>
             <Link
-              href="/Agent/MyClaims"
+              href="/Agent/Dashboard"
               onClick={() => setIsOpen(false)}
               className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold py-3 px-5 rounded-2xl shadow-md transition-all duration-150 text-center mx-5 cursor-pointer no-underline"
             >
@@ -242,7 +238,7 @@ export default function Navbar() {
             <div className="h-px bg-gray-100 my-2" />
             <div className="flex items-center justify-between px-5 py-2">
               <div className="flex gap-4">
-                <Link href="/Agent/Notifications" onClick={() => setIsOpen(false)} className="text-black hover:text-[#00ddff] p-1">
+                <Link href="/Agent/Dashboard" onClick={() => setIsOpen(false)} className="text-black hover:text-[#00ddff] p-1">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
                     <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 1.823.508 3.527 1.392 4.978.077.127.112.274.103.42-.008.147-.063.287-.156.398a1.5 1.5 0 0 1-1.093.504H5a1.5 1.5 0 0 1-1.25-.668c-.147-.23-.198-.51-.139-.783A11.962 11.962 0 0 0 5.25 9.75V9Zm.75 9.75a3 3 0 0 0 6 0v-.75h-6v.75Z" clipRule="evenodd" />
                   </svg>
