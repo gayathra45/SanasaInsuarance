@@ -162,7 +162,9 @@ export default function PolicyHolderHome() {
           if (user.nic) {
             const fetchClaims = async () => {
               try {
-                const res = await fetch(`http://localhost:5000/api/policy-holder/user-claims?nic=${encodeURIComponent(user.nic)}`);
+                const res = await fetch(`http://localhost:5000/api/policy-holder/user-claims?nic=${encodeURIComponent(user.nic)}`, {
+                  cache: "no-store"
+                });
                 let dbClaims: any[] = [];
                 if (res.ok) {
                   const data = await res.json();

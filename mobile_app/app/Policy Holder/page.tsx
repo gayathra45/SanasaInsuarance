@@ -135,7 +135,7 @@ export default function PolicyHolderDashboard() {
 
   const fetchClaims = useCallback(async (nic: string) => {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/policy-holder/user-claims?nic=${encodeURIComponent(nic)}`);
+      const res = await fetch(`${API_BASE_URL}/api/policy-holder/user-claims?nic=${encodeURIComponent(nic)}&_=${Date.now()}`);
       let dbClaims: Claim[] = [];
       if (res.ok) {
         const data = await res.json();

@@ -70,7 +70,9 @@ export default function MyClaims() {
         // 2. Fetch Claims from MongoDB API (if NIC exists)
         if (userNic) {
           try {
-            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`);
+            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`, {
+              cache: "no-store"
+            });
             if (res.ok) {
               const data = await res.json();
               if (Array.isArray(data.claims)) {
