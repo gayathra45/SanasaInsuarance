@@ -21,7 +21,7 @@ import {
   Image,
 } from "react-native";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
@@ -374,6 +374,79 @@ export default function AgentDashboard() {
     }
   }, []);
 
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const calculateUnreadCount = useCallback(async (claimsList: Claim[]) => {
+    try {
+      const storedCleared = await AsyncStorage.getItem("@sanasa_agent_cleared_notifs");
+      const cleared = storedCleared ? JSON.parse(storedCleared) : [];
+      const storedRead = await AsyncStorage.getItem("@sanasa_agent_read_notifs");
+      const read = storedRead ? JSON.parse(storedRead) : [];
+
+      let unread = 0;
+      claimsList.forEach(claim => {
+        if (claim.currentStep === 2 && claim.status !== "Approved" && claim.status !== "Rejected") {
+          const id = `${claim._id}_assignment`;
+          if (!cleared.includes(id) && !read.includes(id)) unread++;
+        }
+        if (claim.currentStep === 3 && !claim.inspectionSubmitted && claim.status !== "Approved" && claim.status !== "Rejected") {
+          const id = `${claim._id}_inspection`;
+          if (!cleared.includes(id) && !read.includes(id)) unread++;
+        }
+        if (claim.requestedDocuments && claim.requestedDocuments.length > 0) {
+          const isAgentRequest = claim.documentRequestTo === "Agent" || [...(claim.messages || [])]
+            .reverse()
+            .find(m => m.message && m.message.includes("[Document Request to Agent]"));
+          if (isAgentRequest) {
+            claim.requestedDocuments.forEach(docName => {
+              const isUploaded = (claim.additionalDocuments || []).some(
+                doc => doc.name.trim().toLowerCase() === docName.trim().toLowerCase() && doc.uploadedBy === "Agent"
+              );
+              if (!isUploaded) {
+                const id = `${claim._id}_doc_${docName.replace(/\s+/g, "_")}`;
+                if (!cleared.includes(id) && !read.includes(id)) unread++;
+              }
+            });
+          }
+        }
+        if (claim.messages && claim.messages.length > 0) {
+          const lastMsg = claim.messages[claim.messages.length - 1];
+          if (lastMsg.sender !== "Agent") {
+            const id = `${claim._id}_msg_${lastMsg.sentAt}`;
+            if (!cleared.includes(id) && !read.includes(id)) unread++;
+          }
+        }
+        if (claim.status === "Approved") {
+          const id = `${claim._id}_approved`;
+          if (!cleared.includes(id) && !read.includes(id)) unread++;
+        }
+      });
+
+      const welcomeId = "welcome_notification";
+      if (!cleared.includes(welcomeId) && !read.includes(welcomeId)) {
+        unread++;
+      }
+
+      setUnreadCount(unread);
+    } catch (e) {
+      console.error("Error calculating unread count:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (claims.length >= 0) {
+      calculateUnreadCount(claims);
+    }
+  }, [claims, calculateUnreadCount]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (agentEmail) {
+        fetchClaims(agentEmail);
+      }
+    }, [agentEmail, fetchClaims])
+  );
+
   // ── Boot ─────────────────────────────────────────────────────────────────
   useEffect(() => {
     (async () => {
@@ -401,6 +474,17 @@ export default function AgentDashboard() {
     }, 5000);
     return () => clearInterval(interval);
   }, [agentEmail]);
+
+  // Auto-open claim details when claimId is passed via params
+  const { claimId } = useLocalSearchParams<{ claimId?: string }>();
+  useEffect(() => {
+    if (claimId && claims.length > 0) {
+      const matched = claims.find(c => c._id === claimId || c.claimNumber === claimId);
+      if (matched) {
+        setSelectedClaim(matched);
+      }
+    }
+  }, [claimId, claims]);
 
   // ── Animations ─────────────────────────────────────────────────────────
   useEffect(() => {
@@ -728,10 +812,17 @@ export default function AgentDashboard() {
               <Animated.View style={{ transform: [{ scale: bellScale }], marginRight: 10 }}>
                 <TouchableOpacity
                   style={styles.headerIconBtn}
-                  onPress={showSupportAlert}
+                  onPress={() => router.push("/Agent/Notifications/page")}
                   activeOpacity={0.8}
                 >
-                  <Ionicons name="headset-outline" size={21} color="#ffffff" />
+                  <Ionicons name="notifications-outline" size={21} color="#ffffff" />
+                  {unreadCount > 0 && (
+                    <View style={styles.bellBadge}>
+                      <Text style={styles.bellBadgeText}>
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               </Animated.View>
 
@@ -1919,6 +2010,26 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.1)",
     borderWidth: 1.5, borderColor: "rgba(255,255,255,0.15)",
     alignItems: "center", justifyContent: "center",
+    position: "relative",
+  },
+  bellBadge: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    backgroundColor: "#ef4444",
+    borderRadius: 8.5,
+    minWidth: 17,
+    height: 17,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 2,
+    borderWidth: 1.5,
+    borderColor: "#0f172a",
+  },
+  bellBadgeText: {
+    color: "#ffffff",
+    fontSize: 9,
+    fontWeight: "900",
   },
   avatarButton: {
     width: 44, height: 44, borderRadius: 22,

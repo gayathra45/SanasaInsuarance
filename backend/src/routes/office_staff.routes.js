@@ -227,7 +227,10 @@ router.patch("/claims/:claimNumber", async (req, res) => {
       bankName,
       bankBranch,
       bankAccount,
-      rejectionReason
+      rejectionReason,
+      isManuallyUpdated,
+      manualUpdateReason,
+      manualUpdateBy
     } = req.body;
 
     const claim = await Claim.findOne({ claimNumber: claimNumber.trim().toUpperCase() });
@@ -283,6 +286,19 @@ router.patch("/claims/:claimNumber", async (req, res) => {
     if (bankBranch !== undefined) claim.bankBranch = bankBranch;
     if (bankAccount !== undefined) claim.bankAccount = bankAccount;
     if (rejectionReason !== undefined) claim.rejectionReason = rejectionReason;
+
+    if (isManuallyUpdated !== undefined) {
+      claim.isManuallyUpdated = isManuallyUpdated;
+      if (isManuallyUpdated) {
+        claim.manualUpdateAt = new Date();
+      }
+    }
+    if (manualUpdateReason !== undefined) {
+      claim.manualUpdateReason = manualUpdateReason;
+    }
+    if (manualUpdateBy !== undefined) {
+      claim.manualUpdateBy = manualUpdateBy;
+    }
 
     if (messageText) {
       claim.messages.push({

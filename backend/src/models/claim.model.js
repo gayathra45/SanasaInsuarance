@@ -60,6 +60,10 @@ const claimSchema = new mongoose.Schema({
     ],
     default: []
   },
+  isManuallyUpdated: { type: Boolean, default: false },
+  manualUpdateReason: { type: String, default: "" },
+  manualUpdateAt: { type: Date, default: null },
+  manualUpdateBy: { type: String, default: "" },
   createdAt: { type: Date, default: Date.now }
 });
 

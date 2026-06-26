@@ -61,6 +61,10 @@ interface Claim {
   bankAccount?: string;
   rejectionReason?: string;
   notes?: ClaimNote[];
+  isManuallyUpdated?: boolean;
+  manualUpdateReason?: string;
+  manualUpdateAt?: string;
+  manualUpdateBy?: string;
 }
 
 interface ClaimNote {
@@ -120,6 +124,13 @@ export default function OfficeStaffClaimsPage() {
   const [bankAccount, setBankAccount] = useState("");
   const [paymentReceiptFile, setPaymentReceiptFile] = useState<File | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+
+  const [staffName, setStaffName] = useState("");
+  // Manual override states
+  const [isManualMode, setIsManualMode] = useState(false);
+  const [manualStep, setManualStep] = useState<number | "">("");
+  const [manualReason, setManualReason] = useState<string>("");
+  const [manualUpdateByVal, setManualUpdateByVal] = useState("");
 
   // Sub-modal overlay states
   const [activeSubModal, setActiveSubModal] = useState<"documents" | "contact" | "request_docs" | "add_note" | "update_tracking" | null>(null);
@@ -222,6 +233,7 @@ export default function OfficeStaffClaimsPage() {
         if (staffObj && staffObj.branch) {
           currentBranch = staffObj.branch;
           setBranch(currentBranch);
+          setStaffName(staffObj.name || "");
         } else {
           router.push("/Login");
           return;
@@ -260,6 +272,10 @@ export default function OfficeStaffClaimsPage() {
       setRejectionReasonText(selectedClaim.rejectionReason || "");
       setDecisionAction(null);
       setPaymentReceiptFile(null);
+      setIsManualMode(false);
+      setManualStep("");
+      setManualReason("");
+      setManualUpdateByVal("");
     }
   }, [selectedClaim]);
 
@@ -451,8 +467,19 @@ export default function OfficeStaffClaimsPage() {
           {/* Header welcome bar */}
           <header className="bg-[#f59e0b] text-white px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
             <h1 className="text-xl font-bold tracking-wide">{branch} Branch — Claims Portal</h1>
-            <div className="text-sm font-semibold bg-white/10 px-4 py-1.5 rounded-full">
-              Staff Portal
+            <div className="flex items-center gap-5">
+              {/* Notification Bell Icon */}
+              <button className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors cursor-pointer focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white">
+                  <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 1.65.342 3.228.96 4.658A1.875 1.875 0 0 1 18 17.25H6a1.875 1.875 0 0 1-1.71-2.842 9.06 9.06 0 0 0 .96-4.658V9ZM12 18.75a2.25 2.25 0 0 1-2.247-2.118.75.75 0 0 1 .746-.757h3a.75.75 0 0 1 .746.757A2.25 2.25 0 0 1 12 18.75Z" clipRule="evenodd" />
+                </svg>
+              </button>
+              {/* User Avatar Icon */}
+              <button className="relative p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer focus:outline-none">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-white">
+                  <path fillRule="evenodd" d="M18.685 19.097A9.723 9.723 0 0 0 21.75 12c0-5.385-4.365-9.75-9.75-9.75S2.25 6.615 2.25 12c0 2.754 1.14 5.244 2.98 7.03-.028-.01-.053-.024-.082-.031a.75.75 0 0 1-.502-.879C5.556 14.931 8.193 12 12 12s6.444 2.931 7.352 6.12a.75.75 0 0 1-.502.88c-.029.007-.054.02-.082.031ZM12 11.25a3.375 3.375 0 1 0 0-6.75 3.375 3.375 0 0 0 0 6.75Z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
           </header>
 
@@ -550,6 +577,14 @@ export default function OfficeStaffClaimsPage() {
                               </h3>
                               {isUrgent && (
                                 <span className="bg-red-100 text-red-700 text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md whitespace-nowrap">Urgent</span>
+                              )}
+                              {claim.isManuallyUpdated && (
+                                <span 
+                                  title={`Reason: ${claim.manualUpdateReason}\nBy: ${claim.manualUpdateBy}\nOn: ${claim.manualUpdateAt ? formatDate(claim.manualUpdateAt) : ""}`} 
+                                  className="bg-amber-100 text-amber-800 text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md whitespace-nowrap cursor-help flex items-center gap-0.5"
+                                >
+                                  ⚠️ Manual Override
+                                </span>
                               )}
                             </div>
                             <span className="text-[10px] text-slate-400 font-bold tracking-wider block mt-0.5">
@@ -1508,11 +1543,123 @@ export default function OfficeStaffClaimsPage() {
               {/* Body */}
               <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
                 {/* Claim Summary */}
-                <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed">
+                <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed flex items-center justify-between">
                   <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
+                  <button
+                    type="button"
+                    onClick={() => setIsManualMode(!isManualMode)}
+                    className="bg-[#f97316] hover:bg-orange-600 text-white font-extrabold text-[11px] px-4 py-2 rounded-full transition-all border-none cursor-pointer shadow-sm active:scale-95 flex items-center gap-1.5"
+                  >
+                    {isManualMode ? "⚙️ Standard Flow" : "✏️ Update Manually"}
+                  </button>
                 </div>
 
-                {selectedClaim.status === "Rejected" ? (
+                {isManualMode ? (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 space-y-5 animate-fade-in text-left">
+                    <div className="bg-slate-900 border border-slate-800 rounded-[24px] p-5 shadow-md text-white flex flex-col justify-between hover:border-slate-800 transition-all duration-200 select-none">
+                      <span className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-wider block flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                        </svg>
+                        Manual Override Guidelines
+                      </span>
+                      <p className="text-slate-300 text-xs font-semibold leading-relaxed mt-3">
+                        Manually updating the tracking step overrides standard background automated workflows (such as waiting for agent assignments, report submissions, or system document checks). Use this feature only when standard automated progression cannot continue, and document a valid justification below.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Select Step */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[13px] font-bold text-slate-800 ml-1">Target Tracking Step :</label>
+                        <select
+                          value={manualStep}
+                          onChange={(e) => setManualStep(e.target.value ? Number(e.target.value) : "")}
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                        >
+                          <option value="">Select Target Step</option>
+                          <option value={1}>Step 1: Assignment / Registration</option>
+                          <option value={2}>Step 2: Agent Acceptance</option>
+                          <option value={3}>Step 3: Inspection in Progress</option>
+                          <option value={4}>Step 4: Review Inspection Report</option>
+                          <option value={5}>Step 5: Underwriting / Decision</option>
+                          <option value={6}>Step 6: Payment Processing</option>
+                        </select>
+                      </div>
+
+                      {/* Updated Person Name */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[13px] font-bold text-slate-800 ml-1">Updated Person Name :</label>
+                        <input
+                          type="text"
+                          value={manualUpdateByVal}
+                          onChange={(e) => setManualUpdateByVal(e.target.value)}
+                          placeholder="Enter your name"
+                          className="w-full px-4 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Reason Textbox */}
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-[13px] font-bold text-slate-800 ml-1">Reason for Manual Update :</label>
+                      <textarea
+                        rows={3}
+                        value={manualReason}
+                        onChange={(e) => setManualReason(e.target.value)}
+                        placeholder="Explain why you are overriding tracking (e.g. holder provided documents offline, override agent inspection lock...)"
+                        className="w-full p-4 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 placeholder:text-slate-400 bg-white focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] resize-none"
+                      />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="pt-2 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (manualStep === "") {
+                            alert("Please select a target tracking step.");
+                            return;
+                          }
+                          if (!manualUpdateByVal.trim()) {
+                            alert("Please enter the name of the person performing this manual update.");
+                            return;
+                          }
+                          if (!manualReason.trim()) {
+                            alert("Please enter a reason for manually updating the tracking status.");
+                            return;
+                          }
+                          let targetStatus = "In Progress";
+                          if (manualStep === 1) targetStatus = "Pending";
+                          else if (manualStep === 6) targetStatus = "Approved";
+
+                          const confirmMsg = `Warning:\nYou are about to perform a manual override on the tracking step for claim ${selectedClaim.claimNumber}.\n\n` +
+                            `New Step: ${manualStep}\n` +
+                            `New Status: ${targetStatus}\n` +
+                            `Updated By: ${manualUpdateByVal.trim()}\n` +
+                            `Reason: ${manualReason.trim()}\n\n` +
+                            `This bypasses normal workflow automation rules. Are you sure you want to proceed?`;
+                          
+                          if (window.confirm(confirmMsg)) {
+                            await handleUpdateClaim(selectedClaim.claimNumber, {
+                              currentStep: manualStep,
+                              status: targetStatus,
+                              isManuallyUpdated: true,
+                              manualUpdateReason: manualReason.trim(),
+                              manualUpdateBy: manualUpdateByVal.trim()
+                            });
+                            alert("Claim tracking step has been manually updated.");
+                            setActiveSubModal(null);
+                          }
+                        }}
+                        disabled={updatingClaim}
+                        className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-extrabold text-xs px-6 py-3 rounded-full transition-all border-none cursor-pointer disabled:opacity-50"
+                      >
+                        {updatingClaim ? "Processing..." : "Confirm Override"}
+                      </button>
+                    </div>
+                  </div>
+                ) : selectedClaim.status === "Rejected" ? (
                   <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center space-y-2">
                     <p className="text-red-700 font-bold text-sm">
                       This claim has been Rejected.
@@ -1832,6 +1979,20 @@ export default function OfficeStaffClaimsPage() {
 
               {/* Modal Body */}
               <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+                {selectedClaim.isManuallyUpdated && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3 text-left animate-fade-in select-none">
+                    <span className="text-xl">⚠️</span>
+                    <div className="flex-1">
+                      <h4 className="text-xs font-black text-amber-800 uppercase tracking-wide">Manual Override Active</h4>
+                      <p className="text-xs text-amber-700 font-semibold mt-1">
+                        Reason: <span className="font-bold text-slate-800">{selectedClaim.manualUpdateReason}</span>
+                      </p>
+                      <p className="text-[10px] text-amber-600 font-bold mt-0.5">
+                        Updated by: {selectedClaim.manualUpdateBy} {selectedClaim.manualUpdateAt ? `on ${formatDate(selectedClaim.manualUpdateAt)}` : ""}
+                      </p>
+                    </div>
+                  </div>
+                )}
                 
                 {/* 2-Column Details Block */}
                 <div className="grid grid-cols-1 md:grid-cols-[1.8fr_1fr] gap-8 select-none">

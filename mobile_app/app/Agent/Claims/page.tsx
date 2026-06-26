@@ -19,7 +19,7 @@ import {
   Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
@@ -167,6 +167,17 @@ export default function AgentClaimsPage() {
       }
     })();
   }, [fetchClaims]);
+
+  // Auto-open claim details when claimId is passed via params
+  const { claimId } = useLocalSearchParams<{ claimId?: string }>();
+  useEffect(() => {
+    if (claimId && claims.length > 0) {
+      const matched = claims.find(c => c._id === claimId || c.claimNumber === claimId);
+      if (matched) {
+        setSelectedClaim(matched);
+      }
+    }
+  }, [claimId, claims]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

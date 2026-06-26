@@ -87,7 +87,7 @@ export default function NotificationsPage() {
   const [filteredNotifs, setFilteredNotifs] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "unread" | "urgent" | "approved" | "status">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "unread" | "read" | "urgent" | "approved" | "status">("all");
   const [readIds, setReadIds] = useState<string[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
 
@@ -288,6 +288,8 @@ export default function NotificationsPage() {
 
     if (activeTab === "unread") {
       result = notifications.filter((n) => !readIds.includes(n.id));
+    } else if (activeTab === "read") {
+      result = notifications.filter((n) => readIds.includes(n.id));
     } else if (activeTab === "urgent") {
       result = notifications.filter((n) => n.type === "urgent");
     } else if (activeTab === "approved") {
@@ -436,6 +438,14 @@ export default function NotificationsPage() {
           >
             <Text style={[styles.tabText, activeTab === "unread" && styles.tabTextActiveUnread]}>
               Unread ({notifications.filter(n => !readIds.includes(n.id)).length})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setActiveTab("read")}
+            style={[styles.tabButton, activeTab === "read" && styles.tabButtonActiveRead]}
+          >
+            <Text style={[styles.tabText, activeTab === "read" && styles.tabTextActiveRead]}>
+              Read ({notifications.filter(n => readIds.includes(n.id)).length})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -847,6 +857,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#eab308",
     borderColor: "#eab308",
   },
+  tabButtonActiveRead: {
+    backgroundColor: "#64748b",
+    borderColor: "#64748b",
+  },
   tabText: {
     fontSize: 11.5,
     fontWeight: "800",
@@ -857,6 +871,7 @@ const styles = StyleSheet.create({
   tabTextActiveUrgent: { color: "#ffffff" },
   tabTextActiveApproved: { color: "#ffffff" },
   tabTextActiveStatus: { color: "#ffffff" },
+  tabTextActiveRead: { color: "#ffffff" },
 
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12 },
   loadingText: { fontSize: 14, color: "#64748b", fontWeight: "600" },

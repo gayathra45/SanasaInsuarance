@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, Animated, Easing, L
 import { Ionicons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { API_BASE_URL } from "../../config";
 
 const NAV_ITEMS = [
   { label: "Home",     icon: "home-outline" as const,          iconActive: "home" as const,          route: "/Agent/Dashboard/page" },
@@ -21,6 +22,90 @@ export default function AgentNavbar({ activeRoute, activeTab }: AgentNavbarProps
   const pathname = usePathname();
   const currentRoute = activeRoute ?? pathname;
   const centerPulse = useRef(new Animated.Value(1)).current;
+
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    let intervalId: any = null;
+
+    const fetchUnread = async () => {
+      try {
+        const agentStr = await AsyncStorage.getItem("logged_in_agent");
+        if (!agentStr) return;
+        const agent = JSON.parse(agentStr);
+        if (!agent.email) return;
+
+        const res = await fetch(`${API_BASE_URL}/api/agent/claims?email=${encodeURIComponent(agent.email)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!Array.isArray(data)) return;
+
+        const storedCleared = await AsyncStorage.getItem("@sanasa_agent_cleared_notifs");
+        const cleared = storedCleared ? JSON.parse(storedCleared) : [];
+        const storedRead = await AsyncStorage.getItem("@sanasa_agent_read_notifs");
+        const read = storedRead ? JSON.parse(storedRead) : [];
+
+        let unread = 0;
+        data.forEach((claim: any) => {
+          if (claim.currentStep === 2 && claim.status !== "Approved" && claim.status !== "Rejected") {
+            const id = `${claim._id}_assignment`;
+            if (!cleared.includes(id) && !read.includes(id)) unread++;
+          }
+          if (claim.currentStep === 3 && !claim.inspectionSubmitted && claim.status !== "Approved" && claim.status !== "Rejected") {
+            const id = `${claim._id}_inspection`;
+            if (!cleared.includes(id) && !read.includes(id)) unread++;
+          }
+          if (claim.requestedDocuments && claim.requestedDocuments.length > 0) {
+            const isAgentRequest = claim.documentRequestTo === "Agent" || [...(claim.messages || [])]
+              .reverse()
+              .find((m: any) => m.message && m.message.includes("[Document Request to Agent]"));
+            if (isAgentRequest) {
+              claim.requestedDocuments.forEach((docName: string) => {
+                const isUploaded = (claim.additionalDocuments || []).some(
+                  (doc: any) => doc.name.trim().toLowerCase() === docName.trim().toLowerCase() && doc.uploadedBy === "Agent"
+                );
+                if (!isUploaded) {
+                  const id = `${claim._id}_doc_${docName.replace(/\s+/g, "_")}`;
+                  if (!cleared.includes(id) && !read.includes(id)) unread++;
+                }
+              });
+            }
+          }
+          if (claim.messages && claim.messages.length > 0) {
+            const lastMsg = claim.messages[claim.messages.length - 1];
+            if (lastMsg.sender !== "Agent") {
+              const id = `${claim._id}_msg_${lastMsg.sentAt}`;
+              if (!cleared.includes(id) && !read.includes(id)) unread++;
+            }
+          }
+          if (claim.status === "Approved") {
+            const id = `${claim._id}_approved`;
+            if (!cleared.includes(id) && !read.includes(id)) unread++;
+          }
+        });
+
+        const welcomeId = "welcome_notification";
+        if (!cleared.includes(welcomeId) && !read.includes(welcomeId)) {
+          unread++;
+        }
+
+        if (active) {
+          setUnreadCount(unread);
+        }
+      } catch (e) {
+        console.error("Navbar unread calculation error:", e);
+      }
+    };
+
+    fetchUnread();
+    intervalId = setInterval(fetchUnread, 10000); // refresh every 10s
+
+    return () => {
+      active = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
 
   // Custom Alert State
   const [customAlert, setCustomAlert] = useState<{
@@ -135,11 +220,16 @@ export default function AgentNavbar({ activeRoute, activeTab }: AgentNavbarProps
             style={styles.navItem}
             onPress={handleItemPress}
           >
-            <Ionicons
-              name={(isActive ? item.iconActive : item.icon) as any}
-              size={22}
-              color={isActive ? "#f97316" : "#94a3b8"}
-            />
+            <View style={{ position: "relative" }}>
+              <Ionicons
+                name={(isActive ? item.iconActive : item.icon) as any}
+                size={22}
+                color={isActive ? "#f97316" : "#94a3b8"}
+              />
+              {item.label === "Home" && unreadCount > 0 && (
+                <View style={styles.unreadDotBadge} />
+              )}
+            </View>
             <Text style={[styles.navLabel, isActive && styles.navLabelActive]}>
               {item.label}
             </Text>
@@ -368,5 +458,16 @@ const styles = StyleSheet.create({
     shadowColor: "#ef4444",
     flex: 1,
     alignItems: "center",
+  },
+  unreadDotBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#ef4444",
+    borderWidth: 1.5,
+    borderColor: "#ffffff",
   },
 });

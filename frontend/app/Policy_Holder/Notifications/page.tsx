@@ -56,7 +56,7 @@ export default function PolicyHolderNotifications() {
   const [filteredNotifs, setFilteredNotifs] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "unread" | "urgent" | "approved" | "status">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "unread" | "read" | "urgent" | "approved" | "status">("all");
   const [user, setUser] = useState<{ firstName?: string; nic?: string } | null>(null);
   const [readIds, setReadIds] = useState<string[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
@@ -331,6 +331,8 @@ export default function PolicyHolderNotifications() {
     // Filter by Tab
     if (activeTab === "unread") {
       result = notifications.filter((n) => !readIds.includes(n.id));
+    } else if (activeTab === "read") {
+      result = notifications.filter((n) => readIds.includes(n.id));
     } else if (activeTab === "urgent") {
       result = notifications.filter((n) => n.type === "urgent");
     } else if (activeTab === "approved") {
@@ -459,6 +461,21 @@ export default function PolicyHolderNotifications() {
               activeTab === "unread" ? "bg-white/20 text-white" : "bg-red-500 text-white"
             }`}>
               {notifications.filter((n) => !readIds.includes(n.id)).length}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("read")}
+            className={`font-bold text-sm px-6 py-2.5 rounded-full border border-solid transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "read"
+                ? "bg-slate-600 border-slate-600 text-white shadow-sm"
+                : "bg-white hover:bg-slate-50 border-slate-200 text-slate-600"
+            }`}
+          >
+            Read
+            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+              activeTab === "read" ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+            }`}>
+              {notifications.filter((n) => readIds.includes(n.id)).length}
             </span>
           </button>
           <button

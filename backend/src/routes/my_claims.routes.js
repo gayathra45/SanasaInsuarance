@@ -4,6 +4,7 @@ import User from "../models/user.model.js";
 import Claim from "../models/claim.model.js";
 import { uploadToCloudinary } from "../utils/upload.js";
 import { sendEmail } from "../utils/email.js";
+import { logAgentActivity } from "../utils/activity.js";
 
 const router = express.Router();
 
@@ -139,6 +140,13 @@ router.patch("/update-claim/:claimNumber", async (req, res) => {
             uploadedAt: new Date(),
             uploadedBy: creator
           });
+
+          if (creator === "Agent" && claim.assignedAgent) {
+            const userAgent = req.headers["user-agent"] || "";
+            const isMobile = userAgent.includes("okhttp") || userAgent.includes("Expo") || userAgent.includes("Mobile") || req.body.device === "Mobile App";
+            const deviceType = isMobile ? "Mobile App" : "Web";
+            await logAgentActivity(claim.assignedAgent, "Document Uploaded", deviceType, `Uploaded document: ${documentName} for claim ${claim.claimNumber}`);
+          }
 
           // Remove uploaded document from requested list
           if (claim.requestedDocuments && Array.isArray(claim.requestedDocuments)) {
