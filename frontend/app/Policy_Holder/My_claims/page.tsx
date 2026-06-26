@@ -6,6 +6,14 @@ import PolicyHolderFooter from "@/app/Components/Policy_Holder/footer";
 import Link from "next/link";
 import { API_URL } from "@/app/config";
 
+interface AdditionalDoc {
+  name: string;
+  url: string;
+  uploadedAt: string;
+  uploadedBy?: string;
+  _id?: string;
+}
+
 interface Claim {
   claimNumber: string;
   vehiclePlate: string;
@@ -23,6 +31,16 @@ interface Claim {
   documentRequestTo?: string;
   currentStep?: number;
   messages?: { sender: string; message: string; sentAt: string; recipient?: string }[];
+  accidentPhotos?: {
+    front?: string[];
+    rear?: string[];
+    side?: string[];
+  };
+  drivingLicense?: {
+    front?: string[];
+    rear?: string[];
+  };
+  additionalDocuments?: AdditionalDoc[];
 }
 
 export default function MyClaims() {
@@ -30,6 +48,8 @@ export default function MyClaims() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState<"All" | "Pending" | "Review" | "Approved" | "Rejected" | "Completed">("All");
 
   const getUserRequestedDocs = (claim: Claim): string[] => {
     const getRecipientForDoc = (name: string) => {
@@ -99,13 +119,14 @@ export default function MyClaims() {
         setIsLoading(true);
         let userNic = "";
         
-        // 1. Get Logged In User NIC
+        // 1. Get Logged In User
         const userStr = sessionStorage.getItem("logged_in_user");
         if (userStr) {
           try {
-            const user = JSON.parse(userStr);
-            if (user.nic) {
-              userNic = user.nic;
+            const parsedUser = JSON.parse(userStr);
+            setUser(parsedUser);
+            if (parsedUser.nic) {
+              userNic = parsedUser.nic;
             }
           } catch (err) {
             console.error("Error parsing logged_in_user session", err);
@@ -117,7 +138,7 @@ export default function MyClaims() {
         // 2. Fetch Claims from MongoDB API (if NIC exists)
         if (userNic) {
           try {
-            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}`, {
+            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}&includeDocs=true`, {
               cache: "no-store"
             });
             if (res.ok) {
@@ -133,11 +154,15 @@ export default function MyClaims() {
                   status: claim.status || "Pending",
                   description: claim.description,
                   location: claim.location,
-                  officer: "Not Assigned",
+                  officer: claim.assignedAgent || "Not Assigned",
                   documentsRequested: claim.documentsRequested || false,
                   requestedDocuments: claim.requestedDocuments || [],
                   currentStep: claim.currentStep || 1,
-                  messages: claim.messages || []
+                  messages: claim.messages || [],
+                  accidentPhotos: claim.accidentPhotos || {},
+                  drivingLicense: claim.drivingLicense || {},
+                  additionalDocuments: claim.additionalDocuments || [],
+                  createdAt: claim.createdAt || claim.incidentDate
                 }));
               }
             }
@@ -169,7 +194,11 @@ export default function MyClaims() {
                 documentsRequested: false,
                 requestedDocuments: [],
                 currentStep: 1,
-                messages: []
+                messages: [],
+                accidentPhotos: {},
+                drivingLicense: {},
+                additionalDocuments: [],
+                createdAt: parsed.createdAt || parsed.incidentDate || new Date().toISOString()
               });
             }
           }
@@ -256,18 +285,73 @@ export default function MyClaims() {
     return cleaned;
   };
 
-  // Filter claims based on search query
-  const filteredClaims = claims.filter(
-    (claim) =>
+  // Calculate statistics for the Policy Holder
+  const currentYear = new Date().getFullYear();
+  const claimsThisYear = claims.filter(c => {
+    const dateStr = c.createdAt || c.incidentDate;
+    if (!dateStr) return false;
+    try {
+      const d = new Date(dateStr);
+      return !isNaN(d.getTime()) && d.getFullYear() === currentYear;
+    } catch {
+      return false;
+    }
+  });
+
+  const totalClaimsThisYear = claimsThisYear.length;
+  const pendingClaimsThisYear = claimsThisYear.filter(c => {
+    const s = c.status.toLowerCase();
+    return s.includes("pending") || s.includes("progress");
+  }).length;
+  const completedClaimsThisYear = claimsThisYear.filter(c => {
+    const s = c.status.toLowerCase();
+    return s.includes("approved") || s.includes("active") || s.includes("done") || s.includes("rejected");
+  }).length;
+
+  const totalUploads = claims.reduce((acc, c) => {
+    let count = 0;
+    if (c.drivingLicense?.front && c.drivingLicense.front.length > 0) count++;
+    if (c.drivingLicense?.rear && c.drivingLicense.rear.length > 0) count++;
+    if (c.accidentPhotos?.front) count += c.accidentPhotos.front.length;
+    if (c.accidentPhotos?.rear) count += c.accidentPhotos.rear.length;
+    if (c.accidentPhotos?.side) count += c.accidentPhotos.side.length;
+    if (c.additionalDocuments) {
+      count += c.additionalDocuments.length;
+    }
+    return acc + count;
+  }, 0);
+  const totalChats = claims.reduce((acc, c) => acc + (c.messages?.length || 0), 0);
+
+  // Filter claims based on status filter and search query
+  const filteredClaims = claims.filter((claim) => {
+    let matchesStatus = false;
+    const s = claim.status.toLowerCase();
+    if (statusFilter === "All") {
+      matchesStatus = true;
+    } else if (statusFilter === "Completed") {
+      matchesStatus = s.includes("approved") || s.includes("active") || s.includes("done") || s.includes("rejected");
+    } else if (statusFilter === "Pending") {
+      matchesStatus = s.includes("pending") || s.includes("progress");
+    } else if (statusFilter === "Review") {
+      matchesStatus = s.includes("review") || s.includes("submit");
+    } else if (statusFilter === "Approved") {
+      matchesStatus = s.includes("approved") || s.includes("active") || s.includes("done");
+    } else if (statusFilter === "Rejected") {
+      matchesStatus = s.includes("rejected");
+    }
+
+    const matchesSearch =
       claim.claimNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       claim.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
       claim.damageType.toLowerCase().includes(searchQuery.toLowerCase()) ||
       claim.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (claim.location && claim.location.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+      (claim.location && claim.location.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    return matchesStatus && matchesSearch;
+  });
 
   return (
-    <div className="min-h-screen bg-white flex flex-col font-sans relative">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans relative">
       <PolicyHolderNavbar />
 
       {/* Styled curved header matching the mockup exactly */}
@@ -291,93 +375,225 @@ export default function MyClaims() {
       </div>
 
       {/* Main Table Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 md:px-16 py-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 md:px-16 py-10 flex flex-col gap-8">
         
-        {/* Premium Search Bar */}
-        <div className="flex justify-start mb-8 select-none">
-          <div className="relative w-full max-w-[420px] bg-slate-50 hover:bg-white focus-within:bg-white border border-slate-200 rounded-full pl-5 pr-2.5 py-2 flex items-center gap-3 transition-all duration-200 shadow-sm focus-within:shadow-md focus-within:border-[#0284c7] focus-within:ring-4 focus-within:ring-[#0284c7]/10">
-            <span className="text-slate-400 flex items-center justify-center">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        {/* Top Overview Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 select-none">
+          
+          {/* Card 1: Profile & Status */}
+          <div className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm flex flex-col justify-between min-h-[140px] hover:border-slate-350 transition-all duration-200">
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Profile & Status</span>
+            <div className="flex items-center gap-3.5 mt-3">
+              <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">
+                <svg className="w-6 h-6 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="overflow-hidden">
+                <span className="block font-black text-slate-800 text-base truncate">
+                  {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : (user?.name || "Policy Holder")}
+                </span>
+                <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider mt-0.5">NIC: {user?.nic || "N/A"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Performance Summary */}
+          <div className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm flex flex-col justify-between min-h-[140px] hover:border-slate-350 transition-all duration-200">
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Performance Summary</span>
+
+            <div className="grid grid-cols-3 gap-3 text-center mt-3">
+              <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-2.5 flex flex-col justify-center">
+                <span className="text-xl font-black text-slate-800">{totalClaimsThisYear}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Claims</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-2.5 flex flex-col justify-center">
+                <span className="text-xl font-black text-slate-800">{pendingClaimsThisYear}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Pending</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-2.5 flex flex-col justify-center">
+                <span className="text-xl font-black text-slate-800">{completedClaimsThisYear}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Completed</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Quick Guidelines */}
+          <div className="bg-slate-900 border border-slate-800 rounded-[28px] p-6 shadow-md text-white flex flex-col justify-between min-h-[140px] hover:border-slate-800 transition-all duration-200">
+            <span className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-wider block flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+              Quick Guidelines
+            </span>
+            <p className="text-slate-300 text-xs font-semibold leading-relaxed mt-3.5">
+              Use the status tabs to filter your claims. Click "View" to check live assessment tracking, view officer details, and read message logs.
+            </p>
+          </div>
+
+        </div>
+
+        {/* Search & Filter row */}
+        <div className="bg-white border border-slate-200 rounded-[24px] p-5 flex flex-col lg:flex-row gap-4 items-center justify-between shadow-sm select-none">
+          
+          {/* Status Tabs */}
+          <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl w-full lg:w-auto">
+            {(["All", "Pending", "Review", "Approved", "Rejected", "Completed"] as const).map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setStatusFilter(tab)}
+                className={`px-4 py-2 rounded-lg text-xs font-black transition-all border-none outline-none cursor-pointer ${
+                  statusFilter === tab
+                    ? "bg-[#0f2d4a] text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50"
+                }`}
+              >
+                {tab} ({
+                  tab === "All"
+                    ? claims.length
+                    : tab === "Completed"
+                    ? claims.filter(c => {
+                        const s = c.status.toLowerCase();
+                        return s.includes("approved") || s.includes("active") || s.includes("done") || s.includes("rejected");
+                      }).length
+                    : tab === "Pending"
+                    ? claims.filter(c => {
+                        const s = c.status.toLowerCase();
+                        return s.includes("pending") || s.includes("progress");
+                      }).length
+                    : tab === "Review"
+                    ? claims.filter(c => {
+                        const s = c.status.toLowerCase();
+                        return s.includes("review") || s.includes("submit");
+                      }).length
+                    : tab === "Approved"
+                    ? claims.filter(c => {
+                        const s = c.status.toLowerCase();
+                        return s.includes("approved") || s.includes("active") || s.includes("done");
+                      }).length
+                    : claims.filter(c => c.status.toLowerCase().includes(tab.toLowerCase())).length
+                })
+              </button>
+            ))}
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative w-full lg:w-80">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.637 10.637z" />
               </svg>
             </span>
             <input
               type="text"
-              placeholder="Search claims by ID, vehicle, type, or status..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent text-slate-800 text-[15px] placeholder-slate-400 focus:outline-none font-medium"
+              placeholder="Search ID, vehicle, type, or status..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-slate-700 placeholder:text-slate-400 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#0f2d4a] focus:border-transparent transition-all bg-slate-50 focus:bg-white"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => setSearchQuery("")}
-                className="text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer p-1"
+                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 border-none bg-transparent cursor-pointer"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             )}
-            <button
-              type="button"
-              className="bg-[#0284c7] hover:bg-[#0275a1] active:scale-95 text-white py-2 px-5 rounded-full text-xs font-bold transition-all duration-150 border-none cursor-pointer flex items-center justify-center shadow-md shadow-[#0284c7]/20"
-            >
-              Search
-            </button>
           </div>
         </div>
 
-        {/* Table Container Card */}
-        <div className="bg-white border border-slate-200 rounded-[30px] shadow-sm overflow-hidden mb-10">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead className="bg-[#e2e8f0]/60">
-                <tr className="border-b border-slate-200">
-                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Claim ID</th>
-                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Vehicle</th>
-                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Date</th>
-                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Type</th>
-                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Amount</th>
-                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Status</th>
-                  <th className="px-6 py-4.5 text-center text-base font-extrabold text-slate-800 whitespace-nowrap">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-slate-500 font-bold">
-                      Loading your claims...
-                    </td>
-                  </tr>
-                ) : filteredClaims.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-10 text-center text-slate-500 font-bold">
-                      No claims found.
-                    </td>
-                  </tr>
-                ) : (
-                  filteredClaims.map((claim) => (
-                    <tr key={claim.claimNumber} className="hover:bg-slate-50/40 transition-colors">
-                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.claimNumber}</td>
-                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{formatNumberPlate(claim.vehiclePlate)}</td>
-                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.incidentDate}</td>
-                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium whitespace-nowrap">{claim.damageType}</td>
-                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium text-center whitespace-nowrap">{claim.amount}</td>
-                      <td className="px-6 py-4.5 text-sm text-slate-700 font-medium text-center whitespace-nowrap">{getStatusBadge(claim.status)}</td>
-                      <td className="px-6 py-4.5 text-sm text-center whitespace-nowrap">
-                        <button
-                          onClick={() => setSelectedClaim(claim)}
-                          className="border border-slate-300 hover:border-slate-400 bg-white hover:bg-slate-50 text-slate-800 text-xs font-bold py-1 px-4.5 rounded-lg transition-all shadow-sm cursor-pointer"
-                        >
-                          View
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        {/* Modern Card Grid list */}
+        <div className="flex flex-col gap-6">
+          
+          {/* Grid Table Header (Desktop Only) */}
+          <div className="hidden md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)] items-center gap-4 px-5 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border border-transparent border-l-4 border-l-transparent">
+            <div>Claim Info</div>
+            <div>Vehicle No</div>
+            <div>Date</div>
+            <div>Damage Type</div>
+            <div className="text-center">Amount</div>
+            <div className="text-center">Status</div>
+            <div className="text-right">Actions</div>
+          </div>
+
+          {/* List Cards */}
+          <div className="flex flex-col gap-3.5">
+            {isLoading ? (
+              <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#0284c7]"></div>
+                <span className="mt-3 text-slate-400 text-sm font-bold">Loading your claims dossier...</span>
+              </div>
+            ) : filteredClaims.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
+                <h3 className="font-extrabold text-slate-700 text-lg">No Claims Found</h3>
+                <p className="text-slate-400 text-xs font-semibold mt-1.5 max-w-sm leading-relaxed">
+                  We couldn't find any claims matching the selected filters or search queries.
+                </p>
+              </div>
+            ) : (
+              filteredClaims.map((claim) => {
+                const s = claim.status.toLowerCase();
+                const isUrgent = s.includes("pending") || s.includes("progress") || s.includes("review") || s.includes("submit");
+                return (
+                  <div
+                    key={claim.claimNumber}
+                    onClick={() => setSelectedClaim(claim)}
+                    className={`bg-white border border-slate-200 hover:border-[#0f2d4a] rounded-xl px-5 py-3.5 flex flex-col md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.2fr)_minmax(0,1.5fr)_minmax(0,1.2fr)_minmax(0,1.2fr)_minmax(0,0.8fr)] md:items-center gap-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md relative overflow-hidden ${
+                      isUrgent ? "border-l-4 border-l-[#0f2d4a]" : "border-l-4 border-l-slate-300"
+                    }`}
+                  >
+                    {/* Claim Info */}
+                    <div className="flex flex-col min-w-0 select-none">
+                      <span className="font-black text-slate-800 text-sm whitespace-nowrap">{claim.claimNumber}</span>
+                      {claim.createdAt && (
+                        <span className="text-[10px] text-slate-400 font-bold mt-1 block">Registered: {formatDateString(claim.createdAt)}</span>
+                      )}
+                    </div>
+
+                    {/* Vehicle Plate */}
+                    <div className="text-xs md:text-sm font-bold text-slate-800">
+                      {formatNumberPlate(claim.vehiclePlate)}
+                    </div>
+
+                    {/* Incident Date */}
+                    <div className="text-xs md:text-sm font-semibold text-slate-700">
+                      {claim.incidentDate}
+                    </div>
+
+                    {/* Damage Type */}
+                    <div className="text-xs md:text-sm font-semibold text-slate-700 truncate" title={claim.damageType}>
+                      {claim.damageType}
+                    </div>
+
+                    {/* Amount */}
+                    <div className="text-xs md:text-sm font-bold text-slate-700 text-center">
+                      {claim.amount}
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="flex flex-col items-center min-w-0">
+                      {getStatusBadge(claim.status)}
+                    </div>
+
+                    {/* Action */}
+                    <div className="text-left md:text-right" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClaim(claim)}
+                        className="border border-slate-350 hover:bg-slate-50 text-slate-600 font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg transition-all cursor-pointer focus:outline-none shadow-sm bg-white whitespace-nowrap active:scale-95"
+                      >
+                        Details
+                      </button>
+                    </div>
+
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 

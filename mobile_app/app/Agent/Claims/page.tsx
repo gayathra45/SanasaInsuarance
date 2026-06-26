@@ -805,60 +805,7 @@ export default function AgentClaimsPage() {
                         <Text style={styles.modalDescText}>{selectedClaim.description}</Text>
                       </View>
 
-                      {/* Accept / Reject Claim Assignment */}
-                      {isActive && selectedClaim.currentStep === 2 && (
-                        <View style={styles.modalDescBox}>
-                          <Text style={styles.modalDescLabel}>Claim Assignment Request</Text>
-                          <Text style={[styles.modalDescText, { fontSize: 11, color: '#64748b', marginBottom: 12 }]}>
-                            Please accept or reject this claim dossier assignment.
-                          </Text>
-                          <View style={{ flexDirection: "row", gap: 10 }}>
-                            <TouchableOpacity
-                              style={[styles.approveBtn, { backgroundColor: "#16a34a", flex: 1 }]}
-                              onPress={handleAcceptClaim}
-                              disabled={isAcceptingClaim}
-                            >
-                              <Text style={styles.approveBtnText}>
-                                {isAcceptingClaim ? "Accepting..." : "Accept"}
-                              </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.approveBtn, { backgroundColor: "#dc2626", flex: 1 }]}
-                              onPress={handleDeclineClaim}
-                              disabled={isAcceptingClaim}
-                            >
-                              <Text style={styles.approveBtnText}>
-                                {isAcceptingClaim ? "Declining..." : "Reject"}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Submit Inspection Report */}
-                      {isActive && selectedClaim.currentStep === 3 && !selectedClaim.inspectionSubmitted && (
-                        <View style={styles.modalDescBox}>
-                          <Text style={styles.modalDescLabel}>Submit Inspection Report</Text>
-                          <TextInput
-                            style={[styles.modalAssessField, { height: 70, textAlignVertical: 'top', padding: 8, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, color: '#1e293b' }]}
-                            placeholder="Type evaluation notes..."
-                            placeholderTextColor="#94a3b8"
-                            multiline
-                            numberOfLines={3}
-                            value={inspectionReportText}
-                            onChangeText={setInspectionReportText}
-                          />
-                          <TouchableOpacity
-                            style={[styles.approveBtn, { backgroundColor: "#06b6d4", marginTop: 8 }]}
-                            onPress={handleSubmitInspectionReport}
-                            disabled={isSubmittingReport || !inspectionReportText.trim()}
-                          >
-                            <Text style={styles.approveBtnText}>
-                              {isSubmittingReport ? "Submitting..." : "Submit Report"}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
+                      {/* Action forms are grouped lower down in the scroll view */}
 
                       {selectedClaim.inspectionSubmitted && (
                         <View style={styles.modalDescBox}>
@@ -1007,8 +954,134 @@ export default function AgentClaimsPage() {
                         );
                       })()}
 
-                      {/* Upload new agent doc */}
-                      {isActive && (
+                      {/* Redesigned Step-based Interactive Actions Panel */}
+                      {isActive ? (
+                        <View style={[styles.modalDescBox, { backgroundColor: "#f8fafc", borderColor: "#cbd5e1", borderLeftWidth: 4, borderLeftColor: "#1e3a8a", padding: 16 }]}>
+                          <Text style={[styles.modalDescLabel, { color: "#1e3a8a" }]}>Action Required: Step 0{selectedClaim.currentStep}</Text>
+                          
+                          {/* Step 2 Actions: Case Assignment */}
+                          {selectedClaim.currentStep === 2 && (
+                            <View style={{ gap: 8, marginTop: 4 }}>
+                              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#475569", lineHeight: 18 }}>
+                                Review and accept this case file assignment to start damage inspections.
+                              </Text>
+                              <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+                                <TouchableOpacity
+                                  style={[styles.approveBtn, { backgroundColor: "#16a34a", flex: 1, borderRadius: 10, height: 38 }]}
+                                  onPress={handleAcceptClaim}
+                                  disabled={isAcceptingClaim}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.approveBtnText}>
+                                    {isAcceptingClaim ? "Accepting..." : "Accept"}
+                                  </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[styles.approveBtn, { backgroundColor: "#dc2626", flex: 1, borderRadius: 10, height: 38 }]}
+                                  onPress={handleDeclineClaim}
+                                  disabled={isAcceptingClaim}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.approveBtnText}>
+                                    {isAcceptingClaim ? "Declining..." : "Reject"}
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Step 3 Actions: Physical Inspection Notes */}
+                          {selectedClaim.currentStep === 3 && (
+                            <View style={{ gap: 10, marginTop: 4 }}>
+                              {!selectedClaim.inspectionSubmitted ? (
+                                <>
+                                  <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#475569", lineHeight: 18 }}>
+                                    Submit physical vehicle damage findings below to advance this claim.
+                                  </Text>
+                                  <TextInput
+                                    style={{
+                                      height: 70,
+                                      textAlignVertical: 'top',
+                                      padding: 8,
+                                      borderWidth: 1,
+                                      borderColor: '#cbd5e1',
+                                      borderRadius: 10,
+                                      color: '#1e293b',
+                                      fontSize: 13,
+                                      backgroundColor: '#ffffff'
+                                    }}
+                                    placeholder="Type inspection notes..."
+                                    placeholderTextColor="#94a3b8"
+                                    multiline
+                                    numberOfLines={3}
+                                    value={inspectionReportText}
+                                    onChangeText={setInspectionReportText}
+                                  />
+                                  <TouchableOpacity
+                                    style={[styles.approveBtn, { backgroundColor: "#06b6d4", borderRadius: 10, height: 38, marginTop: 4 }]}
+                                    onPress={handleSubmitInspectionReport}
+                                    disabled={isSubmittingReport || !inspectionReportText.trim()}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Text style={styles.approveBtnText}>
+                                      {isSubmittingReport ? "Submitting..." : "Submit Inspection Report"}
+                                    </Text>
+                                  </TouchableOpacity>
+                                </>
+                              ) : (
+                                <Text style={{ fontSize: 13, fontWeight: "800", color: "#16a34a" }}>
+                                  Inspection report has been submitted.
+                                </Text>
+                              )}
+                            </View>
+                          )}
+
+                          {/* Step 4 & 5 Actions: Assessment Approval */}
+                          {(selectedClaim.currentStep === 4 || selectedClaim.currentStep === 5) && (
+                            <View style={{ gap: 10, marginTop: 4 }}>
+                              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#475569", lineHeight: 18 }}>
+                                Enter estimated assessment amount (LKR) to finalize evaluated damage approval.
+                              </Text>
+                              <View style={[styles.modalAssessInput, { borderRadius: 10, height: 40 }]}>
+                                <Text style={styles.modalAssessCurrency}>LKR</Text>
+                                <TextInput
+                                  style={styles.modalAssessField}
+                                  placeholder="Enter final amount"
+                                  placeholderTextColor="#94a3b8"
+                                  keyboardType="numeric"
+                                  value={assessmentAmount}
+                                  onChangeText={setAssessmentAmount}
+                                />
+                              </View>
+                              <TouchableOpacity
+                                style={[styles.approveBtn, { backgroundColor: "#1e3a8a", borderRadius: 10, height: 40, marginTop: 4 }]}
+                                onPress={handleApproveAssessment}
+                                disabled={savingAssessment || !assessmentAmount.trim()}
+                                activeOpacity={0.7}
+                              >
+                                {savingAssessment ? (
+                                  <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                  <>
+                                    <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                    <Text style={styles.approveBtnText}>Approve Claim & Assessment</Text>
+                                  </>
+                                )}
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
+                      ) : (
+                        <View style={[styles.modalAssessBox, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0", borderLeftWidth: 4, borderLeftColor: "#16a34a" }]}>
+                          <Text style={[styles.modalAssessLabel, { color: "#166534" }]}>Final Claim Amount</Text>
+                          <Text style={[styles.modalInfoValue, { fontSize: 18, color: "#16a34a", fontWeight: "900" }]}>
+                            {selectedClaim.amount ? `LKR ${selectedClaim.amount.toLocaleString()}` : "Not Evaluated"}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Upload Document File (Step 3, 4, 5 only) */}
+                      {isActive && (selectedClaim.currentStep === 3 || selectedClaim.currentStep === 4 || selectedClaim.currentStep === 5) && (
                         <View style={styles.modalDescBox}>
                           <Text style={styles.modalDescLabel}>Upload Document File</Text>
                           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
@@ -1069,56 +1142,13 @@ export default function AgentClaimsPage() {
                         </View>
                       )}
 
-                      {/* Assessment amount evaluation */}
-                      {isActive && (
-                        <View style={styles.modalAssessBox}>
-                          <Text style={styles.modalAssessLabel}>Assessment Amount (LKR)</Text>
-                          <View style={styles.modalAssessInput}>
-                            <Text style={styles.modalAssessCurrency}>LKR</Text>
-                            <TextInput
-                              style={styles.modalAssessField}
-                              placeholder="Enter amount"
-                              placeholderTextColor="#94a3b8"
-                              keyboardType="numeric"
-                              value={assessmentAmount}
-                              onChangeText={setAssessmentAmount}
-                            />
-                          </View>
-                        </View>
-                      )}
-
-                      {!isActive && (
-                        <View style={[styles.modalAssessBox, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
-                          <Text style={[styles.modalAssessLabel, { color: "#166534" }]}>Final Claim Amount</Text>
-                          <Text style={[styles.modalInfoValue, { fontSize: 18, color: "#16a34a", fontWeight: "900" }]}>
-                            {selectedClaim.amount ? `LKR ${selectedClaim.amount.toLocaleString()}` : "Not Evaluated"}
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Submit and close buttons */}
+                      {/* Modal Footer actions (Close button only) */}
                       <View style={styles.modalActions}>
-                        {isActive && (
-                          <TouchableOpacity
-                            style={[styles.approveBtn, savingAssessment && { opacity: 0.7 }]}
-                            onPress={handleApproveAssessment}
-                            disabled={savingAssessment}
-                          >
-                            {savingAssessment ? (
-                              <ActivityIndicator color="#fff" size="small" />
-                            ) : (
-                              <>
-                                <Ionicons name="checkmark-circle" size={16} color="#fff" />
-                                <Text style={styles.approveBtnText}>Approve Claim</Text>
-                              </>
-                            )}
-                          </TouchableOpacity>
-                        )}
                         <TouchableOpacity
-                          style={styles.closeBtn}
+                          style={[styles.closeBtn, { flex: 1, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center", backgroundColor: "#f1f5f9", borderWidth: 1, borderColor: "#cbd5e1" }]}
                           onPress={() => setSelectedClaim(null)}
                         >
-                          <Text style={styles.closeBtnText}>Close</Text>
+                          <Text style={[styles.closeBtnText, { color: "#475569" }]}>Close</Text>
                         </TouchableOpacity>
                       </View>
                     </>

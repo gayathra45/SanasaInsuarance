@@ -74,6 +74,17 @@ function getSeverity(damageType: string): "Urgent" | "Medium" | "Low" {
   return "Low";
 }
 
+const formatNumberPlate = (plate: string): string => {
+  if (!plate) return "";
+  const cleaned = plate.trim();
+  if (cleaned.includes("-")) return cleaned.toUpperCase();
+  const lastNumbersMatch = cleaned.match(/^(.*[A-Za-z]+)(\d+)$/);
+  if (lastNumbersMatch) {
+    return `${lastNumbersMatch[1].trim().toUpperCase()}-${lastNumbersMatch[2]}`;
+  }
+  return cleaned.toUpperCase();
+};
+
 function formatDate(dateStr?: string) {
   if (!dateStr) return "";
   try {
@@ -382,6 +393,15 @@ export default function AgentDashboard() {
     })();
   }, []);
 
+  // Poll availability status
+  useEffect(() => {
+    if (!agentEmail) return;
+    const interval = setInterval(() => {
+      fetchAvailability(agentEmail);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [agentEmail]);
+
   // ── Animations ─────────────────────────────────────────────────────────
   useEffect(() => {
     Animated.parallel([
@@ -605,6 +625,75 @@ export default function AgentDashboard() {
   const severityBorder = (s: "Urgent" | "Medium" | "Low") =>
     s === "Urgent" ? "#fecaca" : s === "Medium" ? "#fde68a" : "#bbf7d0";
 
+  const renderClaimProgress = (status: string, dbStep?: number) => {
+    let currentStep = dbStep || 1;
+    if (!dbStep) {
+      const s = status.toLowerCase();
+      if (s.includes("pending") || s.includes("progress")) currentStep = 3;
+      else if (s.includes("review")) currentStep = 4;
+      else if (s.includes("approved") || s.includes("done")) currentStep = 6;
+      else if (s.includes("rejected")) currentStep = 5;
+    }
+
+    const isRejected = status.toLowerCase() === "rejected";
+
+    const steps = [
+      { num: "01", label: "Submitted" },
+      { num: "02", label: "Assigned" },
+      { num: "03", label: "Inspection" },
+      { num: "04", label: "Review" },
+      { num: "05", label: "Decision" },
+      { num: "06", label: "Payment" }
+    ];
+
+    return (
+      <View style={styles.wizardContainer}>
+        {/* Grey background connection line */}
+        <View style={styles.wizardBgLine} />
+        {/* Green/Red progress connection line */}
+        <View
+          style={[
+            styles.wizardProgressLine,
+            isRejected && { backgroundColor: "#ef4444" },
+            { width: `${((currentStep - 1) / 5) * 100}%` }
+          ]}
+        />
+
+        <View style={styles.wizardStepsRow}>
+          {steps.map((step, idx) => {
+            const stepNum = idx + 1;
+            const isCompleted = stepNum < currentStep;
+            const isActive = stepNum === currentStep;
+
+            let circleStyle: any = styles.stepCircleInactive;
+            let textStyle: any = styles.stepTextInactive;
+
+            if (isCompleted) {
+              circleStyle = isRejected ? { borderColor: "#ef4444" } : styles.stepCircleCompleted;
+              textStyle = isRejected ? { color: "#ef4444" } : styles.stepTextCompleted;
+            } else if (isActive) {
+              circleStyle = isRejected ? { borderColor: "#ef4444", backgroundColor: "#fef2f2" } : styles.stepCircleActive;
+              textStyle = isRejected ? { color: "#ef4444", fontWeight: "800" } : styles.stepTextActive;
+            }
+
+            return (
+              <View key={step.num} style={styles.stepItem}>
+                <View style={[styles.stepCircle, circleStyle]}>
+                  {isCompleted ? (
+                    <Ionicons name="checkmark" size={14} color={isRejected ? "#ef4444" : "#00b050"} />
+                  ) : (
+                    <Text style={[styles.stepNumber, isActive && { color: isRejected ? "#ef4444" : "#2563eb" }]}>{step.num}</Text>
+                  )}
+                </View>
+                <Text style={[styles.stepLabel, textStyle]}>{step.label}</Text>
+              </View>
+            );
+          })}
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
@@ -669,28 +758,23 @@ export default function AgentDashboard() {
             </View>
 
             {/* Availability Picker Row */}
-            <View style={[
-              styles.availabilityRow,
-              availability === "Active"
-                ? { borderColor: "#10b981", shadowColor: "#10b981" }
-                : { borderColor: "#ef4444", shadowColor: "#ef4444" }
-            ]}>
-              <Text style={styles.availabilityLabel}>Live Status:</Text>
+            <View style={styles.availabilityRow}>
+              <Text style={styles.availabilityLabel}>Status</Text>
               <View style={styles.availabilityButtons}>
                 <TouchableOpacity
                   onPress={() => toggleAvailability("Active")}
                   style={[styles.availBtn, availability === "Active" ? styles.availBtnActive : styles.availBtnInactive]}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
-                  <View style={[styles.statusDot, { backgroundColor: availability === "Active" ? "#ffffff" : "#10b981" }]} />
+                  <View style={[styles.statusDot, { backgroundColor: availability === "Active" ? "#ffffff" : "#94a3b8" }]} />
                   <Text style={[styles.availBtnText, availability === "Active" ? styles.availBtnTextActive : styles.availBtnTextInactive]}>Active</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => toggleAvailability("Offline")}
                   style={[styles.availBtn, availability === "Offline" ? styles.availBtnOffline : styles.availBtnInactive]}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                 >
-                  <View style={[styles.statusDot, { backgroundColor: availability === "Offline" ? "#ffffff" : "#ef4444" }]} />
+                  <View style={[styles.statusDot, { backgroundColor: availability === "Offline" ? "#ffffff" : "#94a3b8" }]} />
                   <Text style={[styles.availBtnText, availability === "Offline" ? styles.availBtnTextOffline : styles.availBtnTextInactive]}>Offline</Text>
                 </TouchableOpacity>
               </View>
@@ -1111,25 +1195,20 @@ export default function AgentDashboard() {
                   const isActive = selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected";
                   return (
                     <>
-                      {/* Severity badge */}
-                      <View style={[styles.modalSevBadge, { backgroundColor: severityBg(sev), borderColor: severityBorder(sev) }]}>
-                        <Ionicons name="alert-circle" size={18} color={severityColor(sev)} />
-                        <Text style={[styles.modalSevText, { color: severityColor(sev) }]}>
-                          {sev} Priority · {selectedClaim.status}
-                        </Text>
-                      </View>
+                      {/* Visual Stepper */}
+                      {renderClaimProgress(selectedClaim.status, selectedClaim.currentStep)}
 
                       {/* Info grid */}
                       <View style={styles.modalInfoGrid}>
                         {[
                           { label: "User NIC",      value: selectedClaim.userNic },
-                          { label: "Vehicle Plate",  value: selectedClaim.vehiclePlate },
+                          { label: "Vehicle Plate",  value: formatNumberPlate(selectedClaim.vehiclePlate) },
                           { label: "Damage Type",    value: selectedClaim.damageType },
                           { label: "Location",       value: selectedClaim.location },
                           { label: "Incident Date",  value: selectedClaim.incidentDate },
                           { label: "Incident Time",  value: selectedClaim.incidentTime },
                           { label: "Assigned Agent", value: agentName || selectedClaim.assignedAgent },
-                          { label: "Submitted",      value: formatDate(selectedClaim.createdAt) },
+                          { label: "Submitted Date", value: formatDate(selectedClaim.createdAt) },
                         ].map((item, i) => (
                           <View key={i} style={styles.modalInfoItem}>
                             <Text style={styles.modalInfoLabel}>{item.label}</Text>
@@ -1144,60 +1223,7 @@ export default function AgentDashboard() {
                         <Text style={styles.modalDescText}>{selectedClaim.description}</Text>
                       </View>
 
-                      {/* Accept / Reject Claim Assignment */}
-                      {isActive && selectedClaim.currentStep === 2 && (
-                        <View style={styles.modalDescBox}>
-                          <Text style={styles.modalDescLabel}>Claim Assignment Request</Text>
-                          <Text style={[styles.modalDescText, { fontSize: 11, color: '#64748b', marginBottom: 12 }]}>
-                            Please accept or reject this claim dossier assignment.
-                          </Text>
-                          <View style={{ flexDirection: "row", gap: 10 }}>
-                            <TouchableOpacity
-                              style={[styles.approveBtn, { backgroundColor: "#16a34a", flex: 1 }]}
-                              onPress={handleAcceptClaim}
-                              disabled={isAcceptingClaim}
-                            >
-                              <Text style={styles.approveBtnText}>
-                                {isAcceptingClaim ? "Accepting..." : "Accept"}
-                              </Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.approveBtn, { backgroundColor: "#dc2626", flex: 1 }]}
-                              onPress={handleDeclineClaim}
-                              disabled={isAcceptingClaim}
-                            >
-                              <Text style={styles.approveBtnText}>
-                                {isAcceptingClaim ? "Declining..." : "Reject"}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Submit Inspection Report Section */}
-                      {isActive && selectedClaim.currentStep === 3 && !selectedClaim.inspectionSubmitted && (
-                        <View style={styles.modalDescBox}>
-                          <Text style={styles.modalDescLabel}>Submit Inspection Report</Text>
-                          <TextInput
-                            style={[styles.modalAssessField, { height: 80, textAlignVertical: 'top', padding: 10, borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, color: '#1e293b', marginBottom: 8 }]}
-                            placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)..."
-                            placeholderTextColor="#94a3b8"
-                            multiline
-                            numberOfLines={4}
-                            value={inspectionReportText}
-                            onChangeText={setInspectionReportText}
-                          />
-                          <TouchableOpacity
-                            style={[styles.approveBtn, { backgroundColor: "#06b6d4", marginTop: 8, alignSelf: 'flex-end', paddingHorizontal: 16, height: 36 }]}
-                            onPress={handleSubmitInspectionReport}
-                            disabled={isSubmittingReport || !inspectionReportText.trim()}
-                          >
-                            <Text style={styles.approveBtnText}>
-                              {isSubmittingReport ? "Submitting..." : "Submit Report"}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
+                      {/* Action forms are grouped lower down in the scroll view */}
 
                       {selectedClaim.inspectionSubmitted ? (
                         <View style={styles.modalDescBox}>
@@ -1382,28 +1408,146 @@ export default function AgentDashboard() {
                         );
                       })()}
 
-                      {/* Upload new agent doc */}
-                      {isActive && (
-                        <View style={styles.modalDescBox}>
-                          <Text style={styles.modalDescLabel}>Upload Agent Document</Text>
+                      {/* Redesigned Step-based Interactive Actions Panel */}
+                      {isActive ? (
+                        <View style={[styles.modalDescBox, { backgroundColor: "#f8fafc", borderColor: "#cbd5e1", borderLeftWidth: 4, borderLeftColor: "#1e3a8a", padding: 16 }]}>
+                          <Text style={[styles.modalDescLabel, { color: "#1e3a8a" }]}>Action Required: Step 0{selectedClaim.currentStep}</Text>
                           
-                          {/* Selector Pills */}
-                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                          {/* Step 2 Actions: Case Assignment */}
+                          {selectedClaim.currentStep === 2 && (
+                            <View style={{ gap: 8, marginTop: 4 }}>
+                              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#475569", lineHeight: 18 }}>
+                                Review and accept this case file assignment to start damage inspections.
+                              </Text>
+                              <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+                                <TouchableOpacity
+                                  style={[styles.approveBtn, { backgroundColor: "#16a34a", flex: 1, borderRadius: 10, height: 38 }]}
+                                  onPress={handleAcceptClaim}
+                                  disabled={isAcceptingClaim}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.approveBtnText}>
+                                    {isAcceptingClaim ? "Accepting..." : "Accept"}
+                                  </Text>
+                                </TouchableOpacity>
+                                <TouchableOpacity
+                                  style={[styles.approveBtn, { backgroundColor: "#dc2626", flex: 1, borderRadius: 10, height: 38 }]}
+                                  onPress={handleDeclineClaim}
+                                  disabled={isAcceptingClaim}
+                                  activeOpacity={0.7}
+                                >
+                                  <Text style={styles.approveBtnText}>
+                                    {isAcceptingClaim ? "Declining..." : "Reject"}
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          )}
+
+                          {/* Step 3 Actions: Physical Inspection Notes */}
+                          {selectedClaim.currentStep === 3 && (
+                            <View style={{ gap: 10, marginTop: 4 }}>
+                              {!selectedClaim.inspectionSubmitted ? (
+                                <>
+                                  <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#475569", lineHeight: 18 }}>
+                                    Submit physical vehicle damage findings below to advance this claim.
+                                  </Text>
+                                  <TextInput
+                                    style={{
+                                      height: 70,
+                                      textAlignVertical: 'top',
+                                      padding: 8,
+                                      borderWidth: 1,
+                                      borderColor: '#cbd5e1',
+                                      borderRadius: 10,
+                                      color: '#1e293b',
+                                      fontSize: 13,
+                                      backgroundColor: '#ffffff'
+                                    }}
+                                    placeholder="Type inspection notes..."
+                                    placeholderTextColor="#94a3b8"
+                                    multiline
+                                    numberOfLines={3}
+                                    value={inspectionReportText}
+                                    onChangeText={setInspectionReportText}
+                                  />
+                                  <TouchableOpacity
+                                    style={[styles.approveBtn, { backgroundColor: "#06b6d4", borderRadius: 10, height: 38, marginTop: 4 }]}
+                                    onPress={handleSubmitInspectionReport}
+                                    disabled={isSubmittingReport || !inspectionReportText.trim()}
+                                    activeOpacity={0.7}
+                                  >
+                                    <Text style={styles.approveBtnText}>
+                                      {isSubmittingReport ? "Submitting..." : "Submit Inspection Report"}
+                                    </Text>
+                                  </TouchableOpacity>
+                                </>
+                              ) : (
+                                <Text style={{ fontSize: 13, fontWeight: "800", color: "#16a34a" }}>
+                                  Inspection report has been submitted.
+                                </Text>
+                              )}
+                            </View>
+                          )}
+
+                          {/* Step 4 & 5 Actions: Assessment Approval */}
+                          {(selectedClaim.currentStep === 4 || selectedClaim.currentStep === 5) && (
+                            <View style={{ gap: 10, marginTop: 4 }}>
+                              <Text style={{ fontSize: 12.5, fontWeight: "600", color: "#475569", lineHeight: 18 }}>
+                                Enter estimated assessment amount (LKR) to finalize evaluated damage approval.
+                              </Text>
+                              <View style={[styles.modalAssessInput, { borderRadius: 10, height: 40 }]}>
+                                <Text style={styles.modalAssessCurrency}>LKR</Text>
+                                <TextInput
+                                  style={styles.modalAssessField}
+                                  placeholder="Enter final amount"
+                                  placeholderTextColor="#94a3b8"
+                                  keyboardType="numeric"
+                                  value={assessmentAmount}
+                                  onChangeText={setAssessmentAmount}
+                                />
+                              </View>
+                              <TouchableOpacity
+                                style={[styles.approveBtn, { backgroundColor: "#1e3a8a", borderRadius: 10, height: 40, marginTop: 4 }]}
+                                onPress={handleApproveAssessment}
+                                disabled={savingAssessment || !assessmentAmount.trim()}
+                                activeOpacity={0.7}
+                              >
+                                {savingAssessment ? (
+                                  <ActivityIndicator color="#fff" size="small" />
+                                ) : (
+                                  <>
+                                    <Ionicons name="checkmark-circle" size={16} color="#fff" />
+                                    <Text style={styles.approveBtnText}>Approve Claim & Assessment</Text>
+                                  </>
+                                )}
+                              </TouchableOpacity>
+                            </View>
+                          )}
+                        </View>
+                      ) : (
+                        <View style={[styles.modalAssessBox, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0", borderLeftWidth: 4, borderLeftColor: "#16a34a" }]}>
+                          <Text style={[styles.modalAssessLabel, { color: "#166534" }]}>Final Claim Amount</Text>
+                          <Text style={[styles.modalInfoValue, { fontSize: 18, color: "#16a34a", fontWeight: "900" }]}>
+                            {selectedClaim.amount ? `LKR ${selectedClaim.amount.toLocaleString()}` : "Not Evaluated"}
+                          </Text>
+                        </View>
+                      )}
+
+                      {/* Upload Document File (Step 3, 4, 5 only) */}
+                      {isActive && (selectedClaim.currentStep === 3 || selectedClaim.currentStep === 4 || selectedClaim.currentStep === 5) && (
+                        <View style={styles.modalDescBox}>
+                          <Text style={styles.modalDescLabel}>Upload Document File</Text>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
                             {["Repair Estimate", "Inspection Photos", "Damage Assessment", "Other"].map((type) => {
                               const isSelected = agentUploadDocName === type;
                               return (
                                 <TouchableOpacity
                                   key={type}
                                   onPress={() => setAgentUploadDocName(type)}
-                                  style={{
-                                    paddingHorizontal: 12,
-                                    paddingVertical: 7,
-                                    borderRadius: 12,
-                                    backgroundColor: isSelected ? "#dbeafe" : "#f1f5f9",
-                                  }}
-                                  activeOpacity={0.8}
+                                  style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, backgroundColor: isSelected ? "#dbeafe" : "#f1f5f9" }}
                                 >
-                                  <Text style={{ fontSize: 11, fontWeight: "800", color: isSelected ? "#1e3a8a" : "#64748b" }}>
+                                  <Text style={{ fontSize: 10.5, fontWeight: "800", color: isSelected ? "#1e3a8a" : "#64748b" }}>
                                     {type}
                                   </Text>
                                 </TouchableOpacity>
@@ -1411,7 +1555,6 @@ export default function AgentDashboard() {
                             })}
                           </View>
 
-                          {/* Upload Slot Design */}
                           {agentUploadFileBase64 ? (
                             <View style={styles.agentDocCardSubmitted}>
                               <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
@@ -1419,133 +1562,47 @@ export default function AgentDashboard() {
                                   <Ionicons name="image-outline" size={20} color="#16a34a" />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                  <Text style={styles.agentDocTitleSubmitted} numberOfLines={1}>
-                                    {agentUploadFileName}
-                                  </Text>
-                                  <Text style={styles.agentDocSubSubmitted}>Ready to upload ({agentUploadDocName})</Text>
+                                  <Text style={styles.agentDocTitleSubmitted} numberOfLines={1}>{agentUploadFileName}</Text>
+                                  <Text style={styles.agentDocSubSubmitted}>Ready ({agentUploadDocName})</Text>
                                 </View>
                               </View>
-                              <TouchableOpacity
-                                style={{ padding: 6 }}
-                                onPress={() => {
-                                  setAgentUploadFileBase64(null);
-                                  setAgentUploadFileName("");
-                                }}
-                                activeOpacity={0.7}
-                              >
-                                <Ionicons name="trash-outline" size={20} color="#dc2626" />
+                              <TouchableOpacity onPress={() => { setAgentUploadFileBase64(null); setAgentUploadFileName(""); }}>
+                                <Ionicons name="trash-outline" size={18} color="#dc2626" />
                               </TouchableOpacity>
                             </View>
                           ) : (
                             <TouchableOpacity
-                              style={{
-                                borderStyle: "dashed",
-                                borderWidth: 1.5,
-                                borderColor: "#1e3a8a",
-                                backgroundColor: "#f0f7ff30",
-                                borderRadius: 16,
-                                paddingVertical: 24,
-                                alignItems: "center",
-                                justifyContent: "center",
-                                gap: 8,
-                              }}
+                              style={{ borderStyle: "dashed", borderWidth: 1.5, borderColor: "#1e3a8a", borderRadius: 12, paddingVertical: 18, alignItems: "center", justifyContent: "center", gap: 6 }}
                               onPress={handlePickAgentDoc}
-                              activeOpacity={0.8}
                             >
-                              <Ionicons name="cloud-upload" size={30} color="#1e3a8a" />
-                              <Text style={{ fontSize: 13, fontWeight: "800", color: "#1e293b" }}>
-                                Select document file
-                              </Text>
-                              <Text style={{ fontSize: 10, fontWeight: "600", color: "#64748b" }}>
-                                Image (Max 5MB)
-                              </Text>
+                              <Ionicons name="cloud-upload" size={24} color="#1e3a8a" />
+                              <Text style={{ fontSize: 12, fontWeight: "800", color: "#1e293b" }}>Select document file</Text>
                             </TouchableOpacity>
                           )}
 
                           {agentUploadFileBase64 && (
                             <TouchableOpacity
-                              style={[
-                                styles.approveBtn,
-                                {
-                                  backgroundColor: "#f97316",
-                                  marginTop: 14,
-                                  height: 44,
-                                  flexDirection: "row",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  gap: 6,
-                                  borderRadius: 14,
-                                },
-                                isAgentUploading && { opacity: 0.7 }
-                              ]}
+                              style={[styles.approveBtn, { backgroundColor: "#f97316", marginTop: 10, height: 38 }]}
                               onPress={handleAgentDocSubmit}
                               disabled={isAgentUploading}
                             >
                               {isAgentUploading ? (
                                 <ActivityIndicator color="#ffffff" size="small" />
                               ) : (
-                                <>
-                                  <Ionicons name="cloud-upload-outline" size={16} color="#ffffff" />
-                                  <Text style={styles.approveBtnText}>Upload to Claim</Text>
-                                </>
+                                <Text style={styles.approveBtnText}>Upload to Claim</Text>
                               )}
                             </TouchableOpacity>
                           )}
                         </View>
                       )}
 
-                      {/* Assessment Amount */}
-                      {isActive && (
-                        <View style={styles.modalAssessBox}>
-                          <Text style={styles.modalAssessLabel}>Assessment Amount (LKR)</Text>
-                          <View style={styles.modalAssessInput}>
-                            <Text style={styles.modalAssessCurrency}>LKR</Text>
-                            <TextInput
-                              style={styles.modalAssessField}
-                              placeholder="Enter amount"
-                              placeholderTextColor="#94a3b8"
-                              keyboardType="numeric"
-                              value={assessmentAmount}
-                              onChangeText={setAssessmentAmount}
-                            />
-                          </View>
-                        </View>
-                      )}
-
-                      {/* Amount display if done */}
-                      {!isActive && (
-                        <View style={[styles.modalAssessBox, { backgroundColor: "#f0fdf4", borderColor: "#bbf7d0" }]}>
-                          <Text style={[styles.modalAssessLabel, { color: "#166534" }]}>Final Claim Amount</Text>
-                          <Text style={[styles.modalInfoValue, { fontSize: 20, color: "#16a34a", fontWeight: "900" }]}>
-                            {selectedClaim.amount ? `LKR ${selectedClaim.amount.toLocaleString()}` : "Not Evaluated"}
-                          </Text>
-                        </View>
-                      )}
-
-                      {/* Action buttons */}
+                      {/* Modal Footer actions (Close button only) */}
                       <View style={styles.modalActions}>
-                        {isActive && (
-                          <TouchableOpacity
-                            style={[styles.approveBtn, savingAssessment && { opacity: 0.7 }]}
-                            onPress={handleApproveAssessment}
-                            disabled={savingAssessment}
-                            activeOpacity={0.8}
-                          >
-                            {savingAssessment ? (
-                              <ActivityIndicator color="#fff" size="small" />
-                            ) : (
-                              <>
-                                <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                                <Text style={styles.approveBtnText}>Approve Assessment</Text>
-                              </>
-                            )}
-                          </TouchableOpacity>
-                        )}
                         <TouchableOpacity
-                          style={styles.closeBtn}
+                          style={[styles.closeBtn, { flex: 1, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center", backgroundColor: "#f1f5f9", borderWidth: 1, borderColor: "#cbd5e1" }]}
                           onPress={() => setSelectedClaim(null)}
                         >
-                          <Text style={styles.closeBtnText}>Close</Text>
+                          <Text style={[styles.closeBtnText, { color: "#475569" }]}>Close</Text>
                         </TouchableOpacity>
                       </View>
                     </>
@@ -1885,37 +1942,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#ffffff",
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    backgroundColor: "rgba(15, 23, 42, 0.45)",
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: "#e2e8f0",
-    marginTop: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: "rgba(255, 255, 255, 0.08)",
+    marginTop: 10,
   },
   availabilityLabel: {
     fontSize: 13,
-    color: "#475569",
-    fontWeight: "800",
+    color: "#cbd5e1",
+    fontWeight: "700",
+    letterSpacing: 0.2,
   },
   availabilityButtons: {
     flexDirection: "row",
-    gap: 8,
+    backgroundColor: "rgba(15, 23, 42, 0.65)",
+    borderRadius: 20,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.05)",
+    gap: 4,
   },
   availBtn: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 16,
     gap: 6,
-    borderWidth: 1,
-    borderColor: "transparent",
   },
   availBtnActive: {
     backgroundColor: "#10b981",
@@ -1924,9 +1980,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ef4444",
   },
   availBtnInactive: {
-    backgroundColor: "#f1f5f9",
-    borderColor: "#e2e8f0",
-    borderWidth: 1,
+    backgroundColor: "transparent",
   },
   statusDot: {
     width: 6,
@@ -1944,7 +1998,7 @@ const styles = StyleSheet.create({
     color: "#ffffff",
   },
   availBtnTextInactive: {
-    color: "#64748b",
+    color: "#94a3b8",
   },
 
   /* Callout */
@@ -2615,4 +2669,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  wizardContainer: {
+    backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#f1f5f9", borderRadius: 20,
+    paddingTop: 18, paddingBottom: 12, paddingHorizontal: 12, marginBottom: 20, position: "relative", width: "100%",
+  },
+  wizardBgLine: { position: "absolute", top: 32, left: 28, right: 28, height: 3, backgroundColor: "#e2e8f0" },
+  wizardProgressLine: { position: "absolute", top: 32, left: 28, height: 3, backgroundColor: "#00b050" },
+  wizardStepsRow: { flexDirection: "row", justifyContent: "space-between" },
+  stepItem: { flex: 1, alignItems: "center" },
+  stepCircle: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, alignItems: "center", justifyContent: "center", backgroundColor: "#ffffff" },
+  stepCircleInactive: { borderColor: "#cbd5e1" },
+  stepCircleCompleted: { borderColor: "#00b050" },
+  stepCircleActive: { borderColor: "#2563eb", backgroundColor: "#eff6ff" },
+  stepNumber: { fontSize: 10.5, fontWeight: "800", color: "#64748b" },
+  stepLabel: { fontSize: 9.5, fontWeight: "700", marginTop: 6 },
+  stepTextInactive: { color: "#94a3b8" },
+  stepTextCompleted: { color: "#475569" },
+  stepTextActive: { color: "#2563eb", fontWeight: "800" },
 });

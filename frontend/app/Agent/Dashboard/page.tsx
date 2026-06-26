@@ -160,6 +160,15 @@ export default function AgentDashboard() {
     }
   }, []);
 
+  // Poll availability status
+  useEffect(() => {
+    if (!agentEmail) return;
+    const interval = setInterval(() => {
+      fetchAvailability(agentEmail);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [agentEmail]);
+
   useEffect(() => {
     if (selectedClaim) {
       setAssessmentAmount(selectedClaim.amount ? String(selectedClaim.amount) : "");
@@ -494,18 +503,14 @@ export default function AgentDashboard() {
                 Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-cyan-200">{agentName}</span>!
               </h1>
               {/* Availability Status Selector */}
-              <div className={`flex items-center gap-2 bg-white text-slate-800 border-2 rounded-full px-4 py-1.5 self-start md:self-center select-none transition-all duration-300 ${
-                availability === "Active"
-                  ? "border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.35)]"
-                  : "border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.35)]"
-              }`}>
-                <span className="text-xs text-slate-500 font-extrabold tracking-wider uppercase">Status:</span>
+              <div className="flex items-center gap-2 bg-slate-950/45 border border-white/10 rounded-full p-1 self-start md:self-center select-none shadow-md">
+                <span className="text-[10px] text-slate-400 font-extrabold tracking-wider uppercase pl-3 pr-1">Status</span>
                 <button
                   onClick={() => toggleAvailability("Active")}
-                  className={`px-3.5 py-1 rounded-full text-xs font-black cursor-pointer transition-all border-none flex items-center gap-1.5 ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-black cursor-pointer transition-all border-none flex items-center gap-1.5 ${
                     availability === "Active"
-                      ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/20"
-                      : "bg-transparent text-slate-400 hover:text-slate-600"
+                      ? "bg-emerald-500 text-white shadow-md shadow-emerald-500/30"
+                      : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5"
                   }`}
                 >
                   {availability === "Active" && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
@@ -513,10 +518,10 @@ export default function AgentDashboard() {
                 </button>
                 <button
                   onClick={() => toggleAvailability("Offline")}
-                  className={`px-3.5 py-1 rounded-full text-xs font-black cursor-pointer transition-all border-none flex items-center gap-1.5 ${
+                  className={`px-4 py-1.5 rounded-full text-xs font-black cursor-pointer transition-all border-none flex items-center gap-1.5 ${
                     availability === "Offline"
-                      ? "bg-red-500 text-white shadow-md shadow-red-500/20"
-                      : "bg-transparent text-slate-400 hover:text-slate-600"
+                      ? "bg-red-500 text-white shadow-md shadow-red-500/30"
+                      : "bg-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5"
                   }`}
                 >
                   {availability === "Offline" && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}

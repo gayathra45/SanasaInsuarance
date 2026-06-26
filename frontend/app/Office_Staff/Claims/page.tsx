@@ -518,14 +518,14 @@ export default function OfficeStaffClaimsPage() {
                   </div>
                 ) : (
                   <div className="flex flex-col gap-3 animate-fade-in">                    {/* Header Row for Desktop */}
-                    <div className="hidden md:grid md:grid-cols-[1.5fr_0.8fr_1.3fr_1.2fr_1.9fr_1fr_0.9fr_1.5fr] items-center gap-4 px-5 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border border-transparent border-l-4 border-l-transparent">
+                    <div className="hidden md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.8fr)_minmax(0,1.0fr)_minmax(0,1.2fr)_minmax(0,1.4fr)] items-center gap-4 px-5 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border border-transparent border-l-4 border-l-transparent">
                       <div className="flex flex-col select-none min-w-0">Claim Info</div>
                       <div className="flex flex-col select-none min-w-0">Vehicle No</div>
                       <div className="flex flex-col select-none min-w-0">Damage Type</div>
                       <div className="flex flex-col select-none min-w-0">Location</div>
                       <div className="flex flex-col select-none min-w-0">Assigned Agent</div>
                       <div className="flex flex-col select-none min-w-0">Assessment</div>
-                      <div className="flex flex-col select-none min-w-0">Status</div>
+                      <div className="flex flex-col select-none min-w-0 text-center">Status</div>
                       <div className="flex flex-col select-none min-w-0 text-right">Actions</div>
                     </div>
  
@@ -538,7 +538,7 @@ export default function OfficeStaffClaimsPage() {
                             setSelectedClaim(claim);
                             setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
                           }}
-                          className={`bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex flex-col md:grid md:grid-cols-[1.5fr_0.8fr_1.3fr_1.2fr_1.9fr_1fr_0.9fr_1.5fr] md:items-center gap-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-[#0f2d4a] relative overflow-hidden ${
+                          className={`bg-white border border-slate-200 rounded-xl px-5 py-3.5 flex flex-col md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.8fr)_minmax(0,1.0fr)_minmax(0,1.2fr)_minmax(0,1.4fr)] md:items-center gap-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md hover:border-[#0f2d4a] relative overflow-hidden ${
                             isUrgent ? "border-l-4 border-l-red-500" : "border-l-4 border-l-[#0f2d4a]"
                           }`}
                         >
@@ -600,9 +600,9 @@ export default function OfficeStaffClaimsPage() {
                           </div>
 
                           {/* Status Badge */}
-                          <div className="flex flex-col select-none items-start min-w-0">
+                          <div className="flex flex-col select-none items-center min-w-0">
                             <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider block mb-1 md:hidden">Status</span>
-                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide block text-center ${getStatusStyle(claim.status, claim.damageType, claim.priority)}`}>
+                            <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide block text-center whitespace-nowrap ${getStatusStyle(claim.status, claim.damageType, claim.priority)}`}>
                               {claim.status}
                             </span>
                           </div>

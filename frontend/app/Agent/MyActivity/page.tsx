@@ -96,12 +96,11 @@ export default function AgentActivityPage() {
   const [loading, setLoading] = useState(true);
   const [availability, setAvailability] = useState<string>("Active");
 
-  // Page level tabs: "claims" or "timeline"
-  const [pageViewTab, setPageViewTab] = useState<"claims" | "timeline">("claims");
+
 
   // Claims filters
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"All" | "Pending" | "In Progress" | "Approved" | "Rejected">("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | "Pending" | "In Progress" | "Approved" | "Rejected" | "Completed">("All");
   
   // Interactive detail modals
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
@@ -134,8 +133,7 @@ export default function AgentActivityPage() {
   const [isAgentUploading, setIsAgentUploading] = useState(false);
   const agentFileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Timeline Filter State
-  const [timelineTab, setTimelineTab] = useState<"all" | "upload" | "message" | "claim">("all");
+
 
   const handleFileChange = (file: File | null) => {
     if (agentUploadPreview) {
@@ -218,6 +216,29 @@ export default function AgentActivityPage() {
       setLoading(false);
     }
   };
+
+  const fetchAvailability = async (email: string) => {
+    try {
+      const res = await fetch(`${API_URL}/agent/availability?email=${encodeURIComponent(email)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.availability) {
+          setAvailability(data.availability);
+        }
+      }
+    } catch (e) {
+      console.error("Error polling availability:", e);
+    }
+  };
+
+  // Poll availability status
+  useEffect(() => {
+    if (!agent || !agent.email) return;
+    const interval = setInterval(() => {
+      fetchAvailability(agent.email);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [agent]);
 
   const getPolicyHolderName = (nic: string) => {
     if (!nic) return "-";
@@ -375,33 +396,149 @@ export default function AgentActivityPage() {
         });
       }
 
-      // 2. Chat messages sent by the agent
+      // 2. Chat messages sent by the agent (excluding automated milestone messages to keep timeline clean)
       if (claim.messages) {
         claim.messages.forEach((msg, idx) => {
           if (msg.sender === "Agent" || msg.sender === "Agent (You)") {
-            list.push({
-              id: `msg-${claim.claimNumber}-${idx}-${msg.sentAt}`,
-              type: "message",
-              title: "Message Sent",
-              description: `Sent message to Office Staff: "${msg.message}"`,
-              timestamp: msg.sentAt,
-              claimNumber: claim.claimNumber,
-              vehiclePlate: claim.vehiclePlate
-            });
+            const isMilestone = 
+              msg.message.toLowerCase().includes("accepted the claim") ||
+              msg.message.toLowerCase().includes("rejected by agent") ||
+              msg.message.toLowerCase().includes("inspection report submitted") ||
+              msg.message.toLowerCase().includes("assessment approved for") ||
+              msg.message.toLowerCase().includes("claim rejected by agent");
+
+            if (!isMilestone) {
+              list.push({
+                id: `msg-${claim.claimNumber}-${idx}-${msg.sentAt}`,
+                type: "message",
+                title: "Message Sent",
+                description: `Sent message to Office Staff: "${msg.message}"`,
+                timestamp: msg.sentAt,
+                claimNumber: claim.claimNumber,
+                vehiclePlate: claim.vehiclePlate
+              });
+            }
           }
         });
       }
 
-      // 3. Claims assigned to the agent
+      // 3. Initial claim assignment log
       list.push({
         id: `assign-${claim.claimNumber}-${claim.createdAt}`,
         type: "claim",
-        title: "Claim Accepted / Assigned",
-        description: `Accepted case assignment with status "${claim.status}".`,
+        title: "Claim Assigned",
+        description: `New claim file assigned to you for verification.`,
         timestamp: claim.createdAt,
         claimNumber: claim.claimNumber,
         vehiclePlate: claim.vehiclePlate
       });
+
+      // 4. Claim accepted log
+      const acceptMsg = claim.messages?.find(m => 
+        m.message.toLowerCase().includes("accepted the claim") || 
+        m.message.toLowerCase().includes("accepted case")
+      );
+      if (acceptMsg) {
+        list.push({
+          id: `accept-${claim.claimNumber}-${acceptMsg.sentAt}`,
+          type: "claim",
+          title: "Claim Accepted",
+          description: `You accepted the claim assignment and started the verification process.`,
+          timestamp: acceptMsg.sentAt,
+          claimNumber: claim.claimNumber,
+          vehiclePlate: claim.vehiclePlate
+        });
+      } else if (claim.status === "In Progress" || claim.status === "Approved") {
+        list.push({
+          id: `accept-${claim.claimNumber}-fallback`,
+          type: "claim",
+          title: "Claim Accepted",
+          description: `You accepted the claim assignment and started the verification process.`,
+          timestamp: claim.createdAt,
+          claimNumber: claim.claimNumber,
+          vehiclePlate: claim.vehiclePlate
+        });
+      }
+
+      // 5. Inspection report submission log
+      const inspectMsg = claim.messages?.find(m => 
+        m.message.toLowerCase().includes("inspection report submitted")
+      );
+      if (inspectMsg) {
+        list.push({
+          id: `inspect-${claim.claimNumber}-${inspectMsg.sentAt}`,
+          type: "claim",
+          title: "Inspection Submitted",
+          description: `Submitted the physical vehicle inspection report.`,
+          timestamp: inspectMsg.sentAt,
+          claimNumber: claim.claimNumber,
+          vehiclePlate: claim.vehiclePlate
+        });
+      } else if (claim.inspectionSubmitted) {
+        list.push({
+          id: `inspect-${claim.claimNumber}-fallback`,
+          type: "claim",
+          title: "Inspection Submitted",
+          description: `Submitted the physical vehicle inspection report.`,
+          timestamp: claim.createdAt,
+          claimNumber: claim.claimNumber,
+          vehiclePlate: claim.vehiclePlate
+        });
+      }
+
+      // 6. Claim approved log
+      const approveMsg = claim.messages?.find(m => 
+        m.message.toLowerCase().includes("approved for lkr") || 
+        m.message.toLowerCase().includes("assessment approved")
+      );
+      if (approveMsg) {
+        list.push({
+          id: `approve-${claim.claimNumber}-${approveMsg.sentAt}`,
+          type: "claim",
+          title: "Claim Approved",
+          description: `Approved the claim assessment for LKR ${claim.amount?.toLocaleString() || "0"}.`,
+          timestamp: approveMsg.sentAt,
+          claimNumber: claim.claimNumber,
+          vehiclePlate: claim.vehiclePlate
+        });
+      } else if (claim.status === "Approved") {
+        list.push({
+          id: `approve-${claim.claimNumber}-fallback`,
+          type: "claim",
+          title: "Claim Approved",
+          description: `Approved the claim assessment for LKR ${claim.amount?.toLocaleString() || "0"}.`,
+          timestamp: claim.createdAt,
+          claimNumber: claim.claimNumber,
+          vehiclePlate: claim.vehiclePlate
+        });
+      }
+
+      // 7. Claim rejected log
+      const rejectMsg = claim.messages?.find(m => 
+        m.message.toLowerCase().includes("claim rejected") || 
+        m.message.toLowerCase().includes("rejected by agent")
+      );
+      if (rejectMsg) {
+        list.push({
+          id: `reject-${claim.claimNumber}-${rejectMsg.sentAt}`,
+          type: "claim",
+          title: "Claim Rejected",
+          description: `Declined case assignment. Reason: ${claim.rejectionReason || "Rejected by agent"}.`,
+          timestamp: rejectMsg.sentAt,
+          claimNumber: claim.claimNumber,
+          vehiclePlate: claim.vehiclePlate
+        });
+      } else if (claim.status === "Rejected") {
+        list.push({
+          id: `reject-${claim.claimNumber}-fallback`,
+          type: "claim",
+          title: "Claim Rejected",
+          description: `Declined case assignment. Reason: ${claim.rejectionReason || "Rejected by agent"}.`,
+          timestamp: claim.createdAt,
+          claimNumber: claim.claimNumber,
+          vehiclePlate: claim.vehiclePlate
+        });
+      }
     });
 
     // Sort by timestamp descending
@@ -409,14 +546,17 @@ export default function AgentActivityPage() {
   };
 
   const allActivities = getCompiledActivities();
-  const filteredActivities = allActivities.filter(act => {
-    if (timelineTab === "all") return true;
-    return act.type === timelineTab;
-  });
 
   // Filter claims based on status and search query
   const filteredClaims = claims.filter(c => {
-    const matchesStatus = statusFilter === "All" ? true : c.status === statusFilter;
+    let matchesStatus = false;
+    if (statusFilter === "All") {
+      matchesStatus = true;
+    } else if (statusFilter === "Completed") {
+      matchesStatus = c.status === "Approved" || c.status === "Rejected";
+    } else {
+      matchesStatus = c.status === statusFilter;
+    }
     const matchesSearch =
       c.claimNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.vehiclePlate.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -613,64 +753,91 @@ export default function AgentActivityPage() {
         </header>
       </div>
 
-      {/* Dual Page Mode Selector Tabs (Highlighted Segmented Control Style) */}
-      <div className="max-w-7xl w-full mx-auto px-6 md:px-16 mt-8 select-none">
-        <div className="inline-flex p-1.5 bg-slate-100 border border-slate-200/60 rounded-2xl shadow-sm gap-2">
-          <button
-            onClick={() => setPageViewTab("claims")}
-            className={`py-3 px-6 rounded-xl font-black text-sm transition-all border-none outline-none cursor-pointer flex items-center gap-2.5 ${
-              pageViewTab === "claims"
-                ? "bg-[#0f2d4a] text-white shadow-md animate-fade-in"
-                : "bg-transparent text-slate-500 hover:bg-slate-200/50 hover:text-slate-700"
-            }`}
-          >
-            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Assigned Claims
-            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-              pageViewTab === "claims" ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/20" : "bg-slate-200 text-slate-600"
-            }`}>
-              {claims.length}
-            </span>
-          </button>
-          <button
-            onClick={() => setPageViewTab("timeline")}
-            className={`py-3 px-6 rounded-xl font-black text-sm transition-all border-none outline-none cursor-pointer flex items-center gap-2.5 ${
-              pageViewTab === "timeline"
-                ? "bg-[#0f2d4a] text-white shadow-md animate-fade-in"
-                : "bg-transparent text-slate-500 hover:bg-slate-200/50 hover:text-slate-700"
-            }`}
-          >
-            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Activity Timeline Feed
-            <span className={`text-[10px] font-black px-2.5 py-0.5 rounded-full ${
-              pageViewTab === "timeline" ? "bg-cyan-500 text-white shadow-sm shadow-cyan-500/20" : "bg-slate-200 text-slate-600"
-            }`}>
-              {allActivities.length}
-            </span>
-          </button>
-        </div>
-      </div>
-
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-6 md:px-16 py-10 relative z-20 flex flex-col lg:flex-row gap-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-6 md:px-16 py-10 relative z-20 flex flex-col gap-8">
         
-        {/* Left Column: Primary Tab Content */}
-        <div className="flex-1 flex flex-col gap-6">
+        {/* Top Overview Cards Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 select-none">
+          
+          {/* Card 1: Profile & Status */}
+          <div className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm flex flex-col justify-between min-h-[140px] hover:border-slate-350 transition-all duration-200">
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Profile & Status</span>
+            
+            <div className="flex items-center justify-between gap-4 mt-3">
+              <div className="flex items-center gap-3.5 overflow-hidden">
+                <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">
+                  <svg className="w-6 h-6 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="overflow-hidden">
+                  <span className="block font-black text-slate-800 text-base truncate">{agent?.name || "Insurance Agent"}</span>
+                  <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider mt-0.5">ID: {agent?.agentId || "N/A"}</span>
+                </div>
+              </div>
 
-          {pageViewTab === "claims" ? (
-            /* CLAIMS DIRECTORY VIEW */
-            <div className="flex flex-col gap-6">
+              <div>
+                {availability === "Offline" ? (
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase bg-[#ef4444] text-white shadow-sm">
+                    Offline
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase bg-[#10b981] text-white shadow-sm">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                    </span>
+                    Active
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Performance Summary */}
+          <div className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm flex flex-col justify-between min-h-[140px] hover:border-slate-350 transition-all duration-200">
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Performance Summary</span>
+
+            <div className="grid grid-cols-3 gap-3 text-center mt-3">
+              <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-2.5 flex flex-col justify-center">
+                <span className="text-xl font-black text-slate-800">{totalAssigned}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Claims</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-2.5 flex flex-col justify-center">
+                <span className="text-xl font-black text-slate-800">{totalUploads}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Uploads</span>
+              </div>
+              <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-2.5 flex flex-col justify-center">
+                <span className="text-xl font-black text-slate-800">{totalMessages}</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Chats</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Quick Guidelines */}
+          <div className="bg-slate-900 border border-slate-800 rounded-[28px] p-6 shadow-md text-white flex flex-col justify-between min-h-[140px] hover:border-slate-800 transition-all duration-200">
+            <span className="text-[10px] text-cyan-400 font-extrabold uppercase tracking-wider block flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-cyan-400" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+              Quick Guidelines
+            </span>
+            <p className="text-slate-300 text-xs font-semibold leading-relaxed mt-3.5">
+              Use the status tabs to view files, status, and download documents. Use the detail modal to update claim progress, upload estimates, and chat with office staff.
+            </p>
+          </div>
+
+        </div>
+
+        {/* CLAIMS DIRECTORY VIEW */}
+        <div className="flex flex-col gap-6">
               
               {/* Search & Filter row */}
               <div className="bg-white border border-slate-200 rounded-[24px] p-5 flex flex-col md:flex-row gap-4 items-center justify-between shadow-sm select-none">
                 
                 {/* Status Tabs */}
                 <div className="flex flex-wrap gap-1 p-1 bg-slate-100 rounded-xl w-full md:w-auto">
-                  {(["All", "Pending", "In Progress", "Approved", "Rejected"] as const).map(tab => (
+                  {(["All", "Pending", "In Progress", "Approved", "Rejected", "Completed"] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setStatusFilter(tab)}
@@ -680,7 +847,13 @@ export default function AgentActivityPage() {
                           : "text-slate-500 hover:text-slate-800 hover:bg-slate-200/50"
                       }`}
                     >
-                      {tab} ({tab === "All" ? claims.length : claims.filter(c => c.status === tab).length})
+                      {tab} ({
+                        tab === "All"
+                          ? claims.length
+                          : tab === "Completed"
+                          ? claims.filter(c => c.status === "Approved" || c.status === "Rejected").length
+                          : claims.filter(c => c.status === tab).length
+                      })
                     </button>
                   ))}
                 </div>
@@ -703,309 +876,118 @@ export default function AgentActivityPage() {
 
               </div>
 
-              {/* Claims Data grid list */}
-              {loading ? (
-                <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
-                  <span className="mt-3 text-slate-400 text-sm font-bold">Fetching claims dossier...</span>
+
+            {/* Claims Data grid list */}
+            {loading ? (
+              <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
+                <span className="mt-3 text-slate-400 text-sm font-bold">Fetching claims dossier...</span>
+              </div>
+            ) : filteredClaims.length === 0 ? (
+              <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
+                <h3 className="font-extrabold text-slate-700 text-lg">No Claims Found</h3>
+                <p className="text-slate-400 text-xs font-semibold mt-1.5 max-w-sm leading-relaxed">
+                  We couldn't find any claims assigned to you under active search queries or filters.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3.5">
+                {/* Grid Table Header (Desktop Only) */}
+                <div className="hidden md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.7fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.7fr)] md:items-center gap-4 px-5 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border border-transparent border-l-4 border-l-transparent">
+                  <div>Claim Info</div>
+                  <div>Vehicle No</div>
+                  <div>Damage Type</div>
+                  <div>Location</div>
+                  <div>Policy Holder</div>
+                  <div>Assessment</div>
+                  <div className="text-center">Status</div>
+                  <div className="text-right">Actions</div>
                 </div>
-              ) : filteredClaims.length === 0 ? (
-                <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
-                  <h3 className="font-extrabold text-slate-700 text-lg">No Claims Found</h3>
-                  <p className="text-slate-400 text-xs font-semibold mt-1.5 max-w-sm leading-relaxed">
-                    We couldn't find any claims assigned to you under active search queries or filters.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-3.5">
-                  {/* Grid Table Header (Desktop Only) */}
-                  <div className="hidden md:grid md:grid-cols-[1.5fr_0.8fr_1.3fr_1.2fr_1.9fr_1fr_0.9fr_1.5fr] items-center gap-4 px-5 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border border-transparent border-l-4 border-l-transparent">
-                    <div>Claim Info</div>
-                    <div>Vehicle No</div>
-                    <div>Damage Type</div>
-                    <div>Location</div>
-                    <div>Policy Holder</div>
-                    <div>Assessment</div>
-                    <div>Status</div>
-                    <div className="text-right">Actions</div>
-                  </div>
 
-                  {/* List Cards */}
-                  {filteredClaims.map((claim) => {
-                    const isUrgent = getSeverity(claim.damageType) === "Urgent" || claim.priority === "Urgent";
-                    return (
-                      <div
-                        key={claim._id}
-                        onClick={() => {
-                          setSelectedClaim(claim);
-                          setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
-                        }}
-                        className={`bg-white border border-slate-200 hover:border-[#0f2d4a] rounded-xl px-5 py-3.5 flex flex-col md:grid md:grid-cols-[1.5fr_0.8fr_1.3fr_1.2fr_1.9fr_1fr_0.9fr_1.5fr] md:items-center gap-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md relative overflow-hidden ${
-                          isUrgent ? "border-l-4 border-l-red-500" : "border-l-4 border-l-[#0f2d4a]"
-                        }`}
-                      >
-                        {/* Claim Info */}
-                        <div className="flex flex-col min-w-0 select-none">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-black text-slate-800 text-sm whitespace-nowrap">{claim.claimNumber}</span>
-                            {isUrgent && (
-                              <span className="bg-red-100 text-red-700 text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md whitespace-nowrap animate-pulse">Urgent</span>
-                            )}
-                          </div>
-                          <span className="text-[10px] text-slate-400 font-bold mt-1 block">Registered: {formatDate(claim.createdAt)}</span>
-                        </div>
-
-                        {/* Vehicle Plate */}
-                        <div className="text-xs md:text-sm font-bold text-slate-800">
-                          {formatPlate(claim.vehiclePlate)}
-                        </div>
-
-                        {/* Damage type */}
-                        <div className="text-xs md:text-sm font-semibold text-slate-700 truncate" title={claim.damageType}>
-                          {claim.damageType}
-                        </div>
-
-                        {/* Location */}
-                        <div className="text-xs md:text-sm font-semibold text-slate-700 truncate" title={claim.location}>
-                          {claim.location || "-"}
-                        </div>
-
-                        {/* Policy Holder */}
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-bold text-slate-800 truncate">{getPolicyHolderName(claim.userNic)}</span>
-                          <span className="text-[10px] text-slate-400 font-bold mt-0.5">NIC: {claim.userNic}</span>
-                        </div>
-
-                        {/* Assessment */}
-                        <div className="text-xs font-bold text-slate-700">
-                          {typeof claim.amount === "number" ? (
-                            `Rs. ${claim.amount.toLocaleString()}`
-                          ) : (
-                            <span className="text-slate-400 font-normal italic text-[11px]">Not Assessed</span>
+                {/* List Cards */}
+                {filteredClaims.map((claim) => {
+                  const isUrgent = getSeverity(claim.damageType) === "Urgent" || claim.priority === "Urgent";
+                  return (
+                    <div
+                      key={claim._id}
+                      onClick={() => {
+                        setSelectedClaim(claim);
+                        setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
+                      }}
+                      className={`bg-white border border-slate-200 hover:border-[#0f2d4a] rounded-xl px-5 py-3.5 flex flex-col md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.7fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.7fr)] md:items-center gap-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md relative overflow-hidden ${
+                        isUrgent ? "border-l-4 border-l-red-500" : "border-l-4 border-l-[#0f2d4a]"
+                      }`}
+                    >
+                      {/* Claim Info */}
+                      <div className="flex flex-col min-w-0 select-none">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-black text-slate-800 text-sm whitespace-nowrap">{claim.claimNumber}</span>
+                          {isUrgent && (
+                            <span className="bg-red-100 text-red-700 text-[8px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md whitespace-nowrap animate-pulse">Urgent</span>
                           )}
                         </div>
-
-                        {/* Status Badge */}
-                        <div className="flex flex-col items-start min-w-0">
-                          <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide block text-center ${getStatusStyle(claim.status, claim.damageType, claim.priority)}`}>
-                            {claim.status}
-                          </span>
-                        </div>
-
-                        {/* Action */}
-                        <div className="text-left md:text-right" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedClaim(claim);
-                              setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
-                            }}
-                            className="border border-slate-300 hover:bg-slate-50 text-slate-600 font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg transition-all cursor-pointer focus:outline-none shadow-sm bg-white whitespace-nowrap active:scale-95"
-                          >
-                            Details
-                          </button>
-                        </div>
-
+                        <span className="text-[10px] text-slate-400 font-bold mt-1 block">Registered: {formatDate(claim.createdAt)}</span>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
 
-            </div>
-          ) : (
-            /* ACTIVITY TIMELINE VIEW */
-            <div className="flex flex-col gap-6">
-              
-              {/* Timeline filters */}
-              <div className="bg-[#e2e8f0]/40 p-1 rounded-[16px] flex flex-wrap gap-1 font-bold text-sm select-none border border-slate-200 shadow-inner">
-                {(
-                  [
-                    { label: "All Activities", val: "all" },
-                    { label: "Document Uploads", val: "upload" },
-                    { label: "Correspondence", val: "message" },
-                    { label: "Assignments", val: "claim" }
-                  ] as const
-                ).map(tab => (
-                  <button
-                    key={tab.val}
-                    type="button"
-                    onClick={() => setTimelineTab(tab.val)}
-                    className={`px-6 py-2.5 rounded-[12px] text-xs md:text-sm transition-all cursor-pointer border-none outline-none font-black ${
-                      timelineTab === tab.val
-                        ? "bg-white text-slate-800 shadow-sm"
-                        : "text-slate-500 hover:text-slate-800 bg-transparent"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+                      {/* Vehicle Plate */}
+                      <div className="text-xs md:text-sm font-bold text-slate-800">
+                        {formatPlate(claim.vehiclePlate)}
+                      </div>
+
+                      {/* Damage type */}
+                      <div className="text-xs md:text-sm font-semibold text-slate-700 truncate" title={claim.damageType}>
+                        {claim.damageType}
+                      </div>
+
+                      {/* Location */}
+                      <div className="text-xs md:text-sm font-semibold text-slate-700 truncate" title={claim.location}>
+                        {claim.location || "-"}
+                      </div>
+
+                      {/* Policy Holder */}
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-slate-800 truncate">{getPolicyHolderName(claim.userNic)}</span>
+                        <span className="text-[10px] text-slate-400 font-bold mt-0.5">NIC: {claim.userNic}</span>
+                      </div>
+
+                      {/* Assessment */}
+                      <div className="text-xs font-bold text-slate-700">
+                        {typeof claim.amount === "number" ? (
+                          `Rs. ${claim.amount.toLocaleString()}`
+                        ) : (
+                          <span className="text-slate-400 font-normal italic text-[11px]">Not Assessed</span>
+                        )}
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="flex flex-col items-center min-w-0">
+                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-wide block text-center whitespace-nowrap ${getStatusStyle(claim.status, claim.damageType, claim.priority)}`}>
+                          {claim.status}
+                        </span>
+                      </div>
+
+                      {/* Action */}
+                      <div className="text-left md:text-right" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedClaim(claim);
+                            setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
+                          }}
+                          className="border border-slate-300 hover:bg-slate-50 text-slate-600 font-extrabold text-[10px] px-3.5 py-1.5 rounded-lg transition-all cursor-pointer focus:outline-none shadow-sm bg-white whitespace-nowrap active:scale-95"
+                        >
+                          Details
+                        </button>
+                      </div>
+
+                    </div>
+                  );
+                })}
               </div>
-
-              {/* Feed timeline log */}
-              {loading ? (
-                <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500"></div>
-                  <span className="mt-3 text-slate-400 text-sm font-bold">Parsing timeline...</span>
-                </div>
-              ) : filteredActivities.length === 0 ? (
-                <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
-                  <h3 className="font-extrabold text-slate-700 text-lg">No Activities Logged</h3>
-                  <p className="text-slate-400 text-xs font-semibold mt-1.5 max-w-sm leading-relaxed">
-                    There are no logged activities matching the selected timeline category filter.
-                  </p>
-                </div>
-              ) : (
-                <div className="relative pl-6 md:pl-8 border-l border-slate-200/80 ml-4 py-2 space-y-8 select-none">
-                  {filteredActivities.map((act) => {
-                    let iconBg = "bg-slate-100 text-slate-600 border-slate-200";
-                    let iconSvg = null;
-
-                    if (act.type === "upload") {
-                      iconBg = "bg-emerald-50 text-emerald-600 border-emerald-100";
-                      iconSvg = (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32a1.5 1.5 0 01-2.12-2.121L16.208 8" />
-                        </svg>
-                      );
-                    } else if (act.type === "message") {
-                      iconBg = "bg-cyan-50 text-cyan-600 border-cyan-100";
-                      iconSvg = (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a.75.75 0 01-1.074-.765 6.003 6.003 0 011.085-3.11 8.261 8.261 0 01-1.672-4.82c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" />
-                        </svg>
-                      );
-                    } else {
-                      iconBg = "bg-amber-50 text-amber-600 border-amber-100";
-                      iconSvg = (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.03 0 1.9.693 2.166 1.638m-7.377 12.408l1.5-1.5 3 3m-3-3l1.5 1.5" />
-                    </svg>
-                      );
-                    }
-
-                    return (
-                      <div key={act.id} className="relative animate-fade-in">
-                        {/* Node Symbol */}
-                        <div className={`absolute left-[calc(-24px-20px)] md:left-[calc(-32px-20px)] w-10 h-10 rounded-full border flex items-center justify-center shadow-sm ${iconBg}`}>
-                          {iconSvg}
-                        </div>
-
-                        {/* Node Card details */}
-                        <div className="bg-white border border-slate-200/80 rounded-[24px] p-5 shadow-[0_4px_15px_rgba(0,0,0,0.01)] hover:shadow-md transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-2.5">
-                              <h4 className="font-extrabold text-slate-800 text-sm md:text-base leading-none">
-                                {act.title}
-                              </h4>
-                              <span className="text-[10px] text-slate-400 font-extrabold bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full uppercase">
-                                Plate: {act.vehiclePlate}
-                              </span>
-                            </div>
-                            <p className="text-slate-500 text-xs md:text-sm font-semibold mt-2">
-                              {act.description}
-                            </p>
-                          </div>
-                          
-                          <div className="flex flex-col items-start md:items-end shrink-0 gap-1.5">
-                            <span className="text-[10px] text-slate-400 font-black tracking-wide uppercase">
-                              {formatDateTime(act.timestamp)}
-                            </span>
-                            <span className="text-[10px] text-emerald-600 font-black tracking-wide uppercase bg-emerald-50 border border-emerald-100 px-2.5 py-0.5 rounded-full">
-                              Claim #{act.claimNumber}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-            </div>
-          )}
+            )}
 
         </div>
 
-        {/* Right Column: Statistics & Profile */}
-        {pageViewTab === "timeline" && (
-          <div className="w-full lg:w-[350px] shrink-0 flex flex-col gap-6 select-none">
-            
-            {/* Status card */}
-            <div className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4">
-              <h3 className="font-black text-slate-800 text-base border-b border-slate-100 pb-3">
-                Profile & Status
-              </h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 font-bold shrink-0">
-                    <svg className="w-6 h-6 text-slate-455" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="overflow-hidden">
-                    <span className="block font-black text-slate-800 text-base truncate">{agent?.name || "Insurance Agent"}</span>
-                    <span className="block text-slate-400 text-[10px] font-bold uppercase tracking-wider mt-0.5">ID: {agent?.agentId || "N/A"}</span>
-                  </div>
-                </div>
-
-                <div className="border-t border-slate-100 pt-4 flex items-center justify-between">
-                  <span className="text-xs font-black text-slate-400 uppercase tracking-wide">Live status:</span>
-                  {availability === "Offline" ? (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-[#ef4444] text-white shadow-sm">
-                      Offline
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase bg-[#10b981] text-white shadow-sm">
-                      <span className="relative flex h-1.5 w-1.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
-                      </span>
-                      Active
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Performance counts */}
-            <div className="bg-white border border-slate-200 rounded-[28px] p-6 shadow-sm flex flex-col gap-4">
-              <h3 className="font-black text-slate-800 text-base border-b border-slate-100 pb-3">
-                Performance Summary
-              </h3>
-
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3 flex flex-col justify-center">
-                  <span className="text-lg font-black text-slate-800">{totalAssigned}</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1">Claims</span>
-                </div>
-                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3 flex flex-col justify-center">
-                  <span className="text-lg font-black text-slate-800">{totalUploads}</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1">Uploads</span>
-                </div>
-                <div className="bg-slate-50 border border-slate-200/50 rounded-2xl p-3 flex flex-col justify-center">
-                  <span className="text-lg font-black text-slate-800">{totalMessages}</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide mt-1">Chats</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Guide info block */}
-            <div className="bg-slate-900 border border-slate-800 rounded-[28px] p-6 shadow-md text-white">
-              <h3 className="font-black text-white text-base border-b border-slate-800 pb-3 flex items-center gap-1.5">
-                <svg className="w-5 h-5 text-cyan-400" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                </svg>
-                Quick Guidelines
-              </h3>
-              <p className="text-slate-350 text-xs font-semibold mt-3.5 leading-relaxed">
-                Use the **Assigned Claims** tab to view files, status, and download documents. The **Activity Timeline** tab lists your audit logs for verification audits.
-              </p>
-            </div>
-
-          </div>
-        )}
 
       </main>
 
