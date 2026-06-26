@@ -21,7 +21,9 @@ router.get("/vehicles", async (req, res) => {
       return res.status(404).json({ error: "User not found." });
     }
 
-    res.json({ vehicles: user.vehicles || [] });
+    // Filter to only return approved vehicles for claims
+    const activeVehicles = (user.vehicles || []).filter(v => !v.status || v.status === "Approved");
+    res.json({ vehicles: activeVehicles });
   } catch (err) {
     console.error("Fetch vehicles API error:", err);
     res.status(500).json({ error: "An internal server error occurred." });

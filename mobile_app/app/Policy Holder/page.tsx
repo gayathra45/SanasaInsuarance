@@ -237,6 +237,22 @@ export default function PolicyHolderDashboard() {
   const heroPulse        = useRef(new Animated.Value(1)).current;
   const bellScale        = useRef(new Animated.Value(1)).current;
 
+  const fetchVehicles = useCallback(async (nic: string, currentUserObj: any) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/policy-holder/vehicles?nic=${encodeURIComponent(nic)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.vehicles)) {
+          setVehicles(data.vehicles);
+          const updatedUser = { ...currentUserObj, vehicles: data.vehicles };
+          await AsyncStorage.setItem("logged_in_user", JSON.stringify(updatedUser));
+        }
+      }
+    } catch (e) {
+      console.warn("Error syncing vehicles on mobile mount:", e);
+    }
+  }, []);
+
   useEffect(() => {
     (async () => {
       await loadReadStatus();
@@ -247,19 +263,71 @@ export default function PolicyHolderDashboard() {
         setUserName(user.firstName || "User");
         setUserNic(user.nic || "");
         if (user.vehicles && Array.isArray(user.vehicles)) setVehicles(user.vehicles);
-        if (user.nic) fetchClaims(user.nic);
+        if (user.nic) {
+          fetchClaims(user.nic);
+          fetchVehicles(user.nic, user);
+        }
       } catch { router.replace("/login/page"); }
     })();
-  }, []);
+  }, [fetchVehicles]);
 
-  // Reload read status and claims when screen is focused
+  // Reload read status and claims when screen is focused, and set up 5s polling
   useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => {
+    let intervalId: any;
+
+    const startPolling = (nic: string, userObj: any) => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(() => {
+        fetchClaims(nic);
+        fetchVehicles(nic, userObj);
+      }, 5000);
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const unsubscribeFocus = navigation.addListener("focus", async () => {
       loadReadStatus();
-      if (userNic) fetchClaims(userNic);
+      const userStr = await AsyncStorage.getItem("logged_in_user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          const nic = user.nic || userNic;
+          if (nic) {
+            fetchClaims(nic);
+            fetchVehicles(nic, user);
+            startPolling(nic, user);
+          }
+        } catch {}
+      }
     });
-    return unsubscribe;
-  }, [navigation, userNic, fetchClaims]);
+
+    const unsubscribeBlur = navigation.addListener("blur", () => {
+      stopPolling();
+    });
+
+    // Also start polling initially if userNic is already set
+    if (userNic) {
+      AsyncStorage.getItem("logged_in_user").then((userStr) => {
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            startPolling(userNic, user);
+          } catch {}
+        }
+      });
+    }
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+      stopPolling();
+    };
+  }, [navigation, userNic, fetchClaims, fetchVehicles]);
 
   useEffect(() => {
     Animated.parallel([

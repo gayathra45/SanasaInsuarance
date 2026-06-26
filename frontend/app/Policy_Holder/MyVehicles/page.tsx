@@ -155,6 +155,7 @@ export default function MyVehicles() {
   const [newChassisNumber, setNewChassisNumber] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   const getAddCardTitle = () => {
     switch (activeCategory) {
@@ -252,7 +253,7 @@ export default function MyVehicles() {
       setNewEngineNumber("");
       setNewChassisNumber("");
 
-      triggerToast("Vehicle added successfully!");
+      setShowSuccessModal(true);
     } catch (err) {
       console.error("Add vehicle request failed", err);
       setValidationError("Unable to connect to the server.");
@@ -262,68 +263,53 @@ export default function MyVehicles() {
   };
 
 
-  // 1. Fetch vehicles list from Database
+  // 1. Fetch vehicles list from Database (with real-time polling for branch approvals)
   useEffect(() => {
+    let intervalId: any;
     if (typeof window !== "undefined") {
-      const fetchVehicles = async () => {
-        setIsLoading(true);
-        const userStr = sessionStorage.getItem("logged_in_user");
-        if (userStr) {
-          try {
-            const user = JSON.parse(userStr);
-            if (user.nic) {
-              const res = await fetch(`${API_URL}/policy-holder/vehicles?nic=${encodeURIComponent(user.nic)}`, {
-                cache: "no-store"
-              });
-              if (res.ok) {
-                const data = await res.json();
-                if (Array.isArray(data.vehicles) && data.vehicles.length > 0) {
-                  setVehicles(data.vehicles);
-                  setIsLoading(false);
-                  return;
+      const userStr = sessionStorage.getItem("logged_in_user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          if (user.nic) {
+            const fetchVehicles = async (showLoading = false) => {
+              if (showLoading) setIsLoading(true);
+              try {
+                const res = await fetch(`${API_URL}/policy-holder/vehicles?nic=${encodeURIComponent(user.nic)}`, {
+                  cache: "no-store"
+                });
+                if (res.ok) {
+                  const data = await res.json();
+                  if (Array.isArray(data.vehicles)) {
+                    setVehicles(data.vehicles);
+                    const updatedUser = { ...user, vehicles: data.vehicles };
+                    sessionStorage.setItem("logged_in_user", JSON.stringify(updatedUser));
+                  }
                 }
+              } catch (err) {
+                console.error("Error fetching vehicles:", err);
+              } finally {
+                if (showLoading) setIsLoading(false);
               }
-              // Fallback to locally stored user vehicles
-              if (user.vehicles && Array.isArray(user.vehicles)) {
-                setVehicles(user.vehicles);
-                setIsLoading(false);
-                return;
-              }
-            }
-          } catch (err) {
-            console.error("Error fetching vehicles:", err);
-          }
-        }
-        
-        // Fallback mockup details
-        const fallbackVehicles: Vehicle[] = [
-          {
-            numberPlate: "CBH-3202",
-            vehicleType: "Car",
-            year: "2019",
-            company: "Toyota",
-            model: "Corolla",
-            engineNumber: "1NZ-FE-3849204",
-            chassisNumber: "NZE141-8930492",
-            policyNumber: "POL-V-930492"
-          },
-          {
-            numberPlate: "NE-7856",
-            vehicleType: "Lorry",
-            year: "2016",
-            company: "Ashok Leyland",
-            model: "Lorry",
-            engineNumber: "AL-6DTI-930294",
-            chassisNumber: "AL-TRK-7492049",
-            policyNumber: "POL-V-120492"
-          }
-        ];
-        setVehicles(fallbackVehicles);
-        setIsLoading(false);
-      };
+            };
 
-      fetchVehicles();
+            // Run immediately with loading indicator
+            fetchVehicles(true);
+
+            // Poll every 5 seconds silently
+            intervalId = setInterval(() => fetchVehicles(false), 5000);
+          }
+        } catch (e) {
+          console.error(e);
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
+      }
     }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   // 2. Auto-open modal if plate query param is present in URL
@@ -344,7 +330,7 @@ export default function MyVehicles() {
 
   // 3. Disable body scroll when modal is active
   useEffect(() => {
-    if (selectedVehicleForModal || isAddVehicleOpen) {
+    if (selectedVehicleForModal || isAddVehicleOpen || showSuccessModal) {
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -352,7 +338,7 @@ export default function MyVehicles() {
     return () => {
       document.body.style.overflow = "";
     };
-  }, [selectedVehicleForModal, isAddVehicleOpen]);
+  }, [selectedVehicleForModal, isAddVehicleOpen, showSuccessModal]);
 
   const triggerToast = (msg: string) => {
     setToastMessage(msg);
@@ -986,6 +972,36 @@ export default function MyVehicles() {
           <path fillRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 1.821.487 3.53 1.338 5L2.1 21.5l4.63-.827A9.957 9.957 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm-3.5 11a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm3.5 0a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" clipRule="evenodd" />
         </svg>
       </button>
+
+      {/* Registration Success Modal Popup */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300 animate-fade-in">
+          <div className="bg-white border border-slate-200 rounded-[28px] w-full max-w-[460px] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.15)] flex flex-col items-center text-center relative overflow-hidden">
+            <div className="w-16 h-16 bg-amber-50 border border-amber-200 rounded-full flex items-center justify-center text-[#f59e0b] mb-6 select-none">
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            
+            <h3 className="font-black text-slate-800 text-lg mb-3 tracking-tight select-none">
+              Registration Under Review
+            </h3>
+            
+            <p className="text-slate-500 text-sm font-semibold leading-relaxed mb-6 px-2">
+              Your vehicle details have been submitted successfully. The regional branch office staff will review and verify your policy information. 
+              <br /><br />
+              This process typically takes <strong className="text-slate-700 font-extrabold">1-2 business days</strong>. You will be notified via email once approved.
+            </p>
+            
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="w-full bg-[#19385a] hover:bg-[#11273f] text-white font-extrabold text-sm py-3.5 rounded-full transition-all cursor-pointer border-none shadow-md flex items-center justify-center active:scale-[0.98] outline-none"
+            >
+              Understood
+            </button>
+          </div>
+        </div>
+      )}
 
       <PolicyHolderFooter />
     </div>

@@ -42,6 +42,11 @@ router.post("/login", async (req, res) => {
     const userObj = user.toObject();
     delete userObj.password;
 
+    // Filter out unapproved vehicles from policy holder session
+    if (userObj.vehicles && Array.isArray(userObj.vehicles)) {
+      userObj.vehicles = userObj.vehicles.filter(v => !v.status || v.status === "Approved");
+    }
+
     res.json({ message: "Login successful", user: userObj });
   } catch (err) {
     console.error("Policy holder login API error:", err);

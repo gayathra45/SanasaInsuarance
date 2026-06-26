@@ -11,7 +11,6 @@ export default function AdminNavbar() {
   const menuItems = [
     { name: "Home", href: "/Admin/Dashboard" },
     { name: "Claims", href: "/Admin/Claims" },
-    { name: "Registrations", href: "/Admin/Registrations" },
     { name: "Policy Holders", href: "/Admin/PolicyHolders" },
     { name: "Agents", href: "/Admin/Agents" },
     { name: "Staff", href: "/Admin/Staff" },

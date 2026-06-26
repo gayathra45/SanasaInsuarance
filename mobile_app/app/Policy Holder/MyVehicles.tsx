@@ -18,7 +18,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
+import { router, useNavigation } from "expo-router";
 import PolicyHolderNavbar from "../Components/policy holder/page";
 import { API_BASE_URL } from "../config";
 
@@ -58,6 +58,7 @@ function vehicleIcon(type: string) {
 }
 
 export default function MyVehicles() {
+  const navigation = useNavigation();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -91,15 +92,15 @@ export default function MyVehicles() {
     setCustomAlert({ title, message, type, onClose });
   };
 
-  const fetchVehicles = useCallback(async (nic: string) => {
-    setLoading(true);
+  const fetchVehicles = useCallback(async (nic: string, silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/api/policy-holder/vehicles?nic=${encodeURIComponent(nic)}&_=${Date.now()}`);
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data.vehicles) && data.vehicles.length > 0) {
+        if (Array.isArray(data.vehicles)) {
           setVehicles(data.vehicles);
-          setLoading(false);
+          if (!silent) setLoading(false);
           return;
         }
       }
@@ -122,7 +123,7 @@ export default function MyVehicles() {
         }
       }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
       setRefreshing(false);
     }
   }, []);
@@ -135,7 +136,7 @@ export default function MyVehicles() {
           const user = JSON.parse(userStr);
           if (user.nic) {
             setUserNic(user.nic);
-            fetchVehicles(user.nic);
+            fetchVehicles(user.nic, false);
           }
         } catch (e) {
           console.error(e);
@@ -143,6 +144,54 @@ export default function MyVehicles() {
       }
     })();
   }, [fetchVehicles]);
+
+  // Setup periodic silent polling (every 5 seconds) on screen focus
+  useEffect(() => {
+    let intervalId: any;
+
+    const startPolling = (nic: string) => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(() => {
+        fetchVehicles(nic, true);
+      }, 5000);
+    };
+
+    const stopPolling = () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    };
+
+    const unsubscribeFocus = navigation.addListener("focus", async () => {
+      const userStr = await AsyncStorage.getItem("logged_in_user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          const nic = user.nic || userNic;
+          if (nic) {
+            fetchVehicles(nic, true);
+            startPolling(nic);
+          }
+        } catch {}
+      }
+    });
+
+    const unsubscribeBlur = navigation.addListener("blur", () => {
+      stopPolling();
+    });
+
+    // Start polling initially if userNic is already set
+    if (userNic) {
+      startPolling(userNic);
+    }
+
+    return () => {
+      unsubscribeFocus();
+      unsubscribeBlur();
+      stopPolling();
+    };
+  }, [navigation, userNic, fetchVehicles]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -228,7 +277,11 @@ export default function MyVehicles() {
       setNewPolicyNumber("");
       setNewEngineNumber("");
       setNewChassisNumber("");
-      showCustomAlert("Success", "Vehicle registered successfully!", "success");
+      showCustomAlert(
+        "Registration Under Review",
+        "Your vehicle details have been submitted successfully. The regional branch office staff will review and verify your policy information.\n\nThis process typically takes 1-2 business days. You will be notified via email once approved.",
+        "success"
+      );
     } catch (err) {
       console.error("Add Vehicle network request failed error:", err);
       setValidationError("Unable to connect to the server.");

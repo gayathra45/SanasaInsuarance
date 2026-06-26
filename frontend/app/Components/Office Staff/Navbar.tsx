@@ -13,6 +13,7 @@ export default function OfficeStaffNavbar() {
     { name: "Claims", href: "/Office_Staff/Claims" },
     { name: "Registrations", href: "/Office_Staff/Registrations" },
     { name: "Policy Holders", href: "/Office_Staff/PolicyHolders" },
+    { name: "Add Vehicles", href: "/Office_Staff/AddVehicles" },
     { name: "Agents", href: "/Office_Staff/Agents" },
     { name: "Reports", href: "/Office_Staff/Reports" },
     { name: "Contact", href: "/Office_Staff/Contact" },

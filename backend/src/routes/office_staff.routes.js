@@ -194,6 +194,14 @@ router.patch("/registrations/:id/status", async (req, res) => {
     }
 
     user.status = status;
+    
+    // Automatically approve initial vehicles if registration is approved
+    if (status === "Approved" && user.vehicles && Array.isArray(user.vehicles)) {
+      user.vehicles.forEach(v => {
+        v.status = "Approved";
+      });
+    }
+
     await user.save();
 
     res.json({ message: `Registration status updated to ${status}`, user });
@@ -569,6 +577,102 @@ router.patch("/agents/:id", async (req, res) => {
     res.json({ message: "Agent updated successfully", agent: agentObj });
   } catch (err) {
     console.error("Update agent error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET pending vehicles for office staff: /api/office-staff/pending-vehicles
+router.get("/pending-vehicles", async (req, res) => {
+  try {
+    const { branch } = req.query;
+    if (!branch) {
+      return res.status(400).json({ error: "Branch query parameter is required." });
+    }
+
+    const users = await User.find({
+      branch: branch.trim(),
+      $or: [
+        { "vehicles.status": "Pending" },
+        { "vehicles.status": null },
+        { "vehicles.status": { $exists: false } },
+        { "vehicles": { $elemMatch: { status: { $exists: false } } } }
+      ]
+    }, { password: 0 });
+
+    const pendingVehiclesList = [];
+    users.forEach(user => {
+      user.vehicles.forEach(vehicle => {
+        if (!vehicle.status || vehicle.status === "Pending") {
+          pendingVehiclesList.push({
+            user: {
+              _id: user._id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              nic: user.nic,
+              email: user.email,
+              mobile: user.mobile,
+              dob: user.dob,
+              address: user.address,
+              province: user.province,
+              city: user.city,
+              branch: user.branch,
+              status: user.status,
+              createdAt: user.createdAt,
+              referenceNumber: user.referenceNumber,
+              vehicles: user.vehicles
+            },
+            vehicle
+          });
+        }
+      });
+    });
+
+    res.json({ pendingVehicles: pendingVehiclesList });
+  } catch (err) {
+    console.error("Fetch pending vehicles error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// PATCH verify vehicle: /api/office-staff/vehicles/verify
+router.patch("/vehicles/verify", async (req, res) => {
+  try {
+    const { nic, numberPlate, action } = req.body; // action: "Approve" or "Reject"
+    if (!nic || !numberPlate || !action) {
+      return res.status(400).json({ error: "NIC, numberPlate, and action are required." });
+    }
+
+    if (!["Approve", "Reject"].includes(action)) {
+      return res.status(400).json({ error: "Invalid action. Must be Approve or Reject." });
+    }
+
+    const user = await User.findOne({ nic: nic.trim() });
+    if (!user) {
+      return res.status(404).json({ error: "Policy holder not found." });
+    }
+
+    const vehicle = user.vehicles.find(
+      v => v.numberPlate.replace(/[^a-zA-Z0-9]/g, "").toLowerCase() === numberPlate.replace(/[^a-zA-Z0-9]/g, "").toLowerCase()
+    );
+
+    if (!vehicle) {
+      return res.status(404).json({ error: "Vehicle not found." });
+    }
+
+    if (action === "Approve") {
+      vehicle.status = "Approved";
+    } else {
+      vehicle.status = "Rejected";
+    }
+
+    await user.save();
+
+    res.json({
+      message: `Vehicle successfully ${action === "Approve" ? "approved" : "rejected"}.`,
+      vehicle
+    });
+  } catch (err) {
+    console.error("Verify vehicle error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });

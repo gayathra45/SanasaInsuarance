@@ -258,6 +258,7 @@ export default function PolicyHolderHome() {
   };
 
   useEffect(() => {
+    let intervalId: any;
     if (typeof window !== "undefined") {
       const userStr = sessionStorage.getItem("logged_in_user");
       if (userStr) {
@@ -270,109 +271,133 @@ export default function PolicyHolderHome() {
             setVehicles(user.vehicles);
           }
 
-          if (user.nic) {
-            const fetchClaims = async () => {
-              try {
-                const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(user.nic)}`, {
-                  cache: "no-store"
-                });
-                let dbClaims: any[] = [];
-                if (res.ok) {
-                  const data = await res.json();
-                  if (Array.isArray(data.claims)) {
-                    dbClaims = data.claims;
-                  }
+          const syncVehicles = async () => {
+            if (!user.nic) return;
+            try {
+              const res = await fetch(`${API_URL}/policy-holder/vehicles?nic=${encodeURIComponent(user.nic)}`);
+              if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data.vehicles)) {
+                  setVehicles(data.vehicles);
+                  const updatedUser = { ...user, vehicles: data.vehicles };
+                  sessionStorage.setItem("logged_in_user", JSON.stringify(updatedUser));
                 }
-
-                // Check for local session submitted claims
-                let localClaims: any[] = [];
-                const lastSubmitted = sessionStorage.getItem("last_submitted_claim");
-                if (lastSubmitted) {
-                  const parsed = JSON.parse(lastSubmitted);
-                  const exists = dbClaims.some(c => c.claimNumber === parsed.claimNumber);
-                  if (!exists) {
-                    localClaims.push(parsed);
-                  }
-                }
-
-                const allClaims = [...localClaims, ...dbClaims];
-
-                // A claim is pending if status is not approved, done, or rejected
-                const pendingClaims = allClaims.filter(c => {
-                  const s = (c.status || "Pending").toLowerCase();
-                  return !["approved", "done", "rejected"].some(val => s.includes(val));
-                });
-
-                const approvedClaims = allClaims.filter(c => {
-                  const s = (c.status || "").toLowerCase();
-                  return ["approved", "done", "active"].some(val => s.includes(val));
-                });
-
-                const docRequest = allClaims.some(c => c.documentsRequested === true);
-
-                // Compile dynamic notifications list
-                const compiledNotifications: any[] = [];
-                allClaims.forEach((claim: any) => {
-                  if (claim.documentsRequested) {
-                    compiledNotifications.push({
-                      id: claim.claimNumber + "-doc",
-                      type: "urgent",
-                      title: "Documents Requested – Action Required",
-                      description: `Staff has requested a ${claim.requestedDocuments && claim.requestedDocuments.length > 0 ? claim.requestedDocuments.join(' & ') : 'Police Report & Repair Estimate'} for ${claim.claimNumber}.`,
-                      subText: "Please upload within 3 days...",
-                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
-                      actions: [
-                        { label: "Upload", href: `/Policy_Holder/Documents?uploadClaim=${claim.claimNumber}`, primary: true },
-                        { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
-                      ],
-                      isUrgent: true,
-                      claim: claim
-                    });
-                  }
-
-                  const s = (claim.status || "").toLowerCase();
-                  if (["approved", "done", "active"].some(val => s.includes(val))) {
-                    compiledNotifications.push({
-                      id: claim.claimNumber + "-approved",
-                      type: "approved",
-                      title: `Claim ${claim.claimNumber} Approved!`,
-                      description: `Your claim for LKR ${claim.amount ? Number(claim.amount).toLocaleString() : '85,000'} has been approved. Payment processed within 5 days.`,
-                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
-                      actions: [
-                        { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
-                      ],
-                      isUrgent: false,
-                      claim: claim
-                    });
-                  } else if (!claim.documentsRequested) {
-                    compiledNotifications.push({
-                      id: claim.claimNumber + "-status",
-                      type: "status",
-                      title: `Claim ${claim.claimNumber} Status: ${claim.status || "Pending"}`,
-                      description: `Your claim is currently in ${claim.status || "Pending"} stage. Agent is reviewing details.`,
-                      date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
-                      actions: [
-                        { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
-                      ],
-                      isUrgent: false,
-                      claim: claim
-                    });
-                  }
-                });
-
-                // Sort: Urgent first
-                compiledNotifications.sort((a, b) => (a.isUrgent === b.isUrgent ? 0 : a.isUrgent ? -1 : 1));
-
-                setTotalClaimsCount(allClaims.length);
-                setPendingClaimsCount(pendingClaims.length);
-                setApprovedClaimsCount(approvedClaims.length);
-                setHasDocumentRequest(docRequest);
-                setNotifications(compiledNotifications);
-              } catch (err) {
-                console.error("Error fetching claims for home page banner:", err);
               }
-            };
+            } catch (e) {
+              console.error("Error syncing vehicles:", e);
+            }
+          };
+
+          const fetchClaims = async () => {
+            if (!user.nic) return;
+            try {
+              const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(user.nic)}`, {
+                cache: "no-store"
+              });
+              let dbClaims: any[] = [];
+              if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data.claims)) {
+                  dbClaims = data.claims;
+                }
+              }
+
+              // Check for local session submitted claims
+              let localClaims: any[] = [];
+              const lastSubmitted = sessionStorage.getItem("last_submitted_claim");
+              if (lastSubmitted) {
+                const parsed = JSON.parse(lastSubmitted);
+                const exists = dbClaims.some(c => c.claimNumber === parsed.claimNumber);
+                if (!exists) {
+                  localClaims.push(parsed);
+                }
+              }
+
+              const allClaims = [...localClaims, ...dbClaims];
+
+              // A claim is pending if status is not approved, done, or rejected
+              const pendingClaims = allClaims.filter(c => {
+                const s = (c.status || "Pending").toLowerCase();
+                return !["approved", "done", "rejected"].some(val => s.includes(val));
+              });
+
+              const approvedClaims = allClaims.filter(c => {
+                const s = (c.status || "").toLowerCase();
+                return ["approved", "done", "active"].some(val => s.includes(val));
+              });
+
+              const docRequest = allClaims.some(c => c.documentsRequested === true);
+
+              // Compile dynamic notifications list
+              const compiledNotifications: any[] = [];
+              allClaims.forEach((claim: any) => {
+                if (claim.documentsRequested) {
+                  compiledNotifications.push({
+                    id: claim.claimNumber + "-doc",
+                    type: "urgent",
+                    title: "Documents Requested – Action Required",
+                    description: `Staff has requested a ${claim.requestedDocuments && claim.requestedDocuments.length > 0 ? claim.requestedDocuments.join(' & ') : 'Police Report & Repair Estimate'} for ${claim.claimNumber}.`,
+                    subText: "Please upload within 3 days...",
+                    date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
+                    actions: [
+                      { label: "Upload", href: `/Policy_Holder/Documents?uploadClaim=${claim.claimNumber}`, primary: true },
+                      { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
+                    ],
+                    isUrgent: true,
+                    claim: claim
+                  });
+                }
+
+                const s = (claim.status || "").toLowerCase();
+                if (["approved", "done", "active"].some(val => s.includes(val))) {
+                  compiledNotifications.push({
+                    id: claim.claimNumber + "-approved",
+                    type: "approved",
+                    title: `Claim ${claim.claimNumber} Approved!`,
+                    description: `Your claim for LKR ${claim.amount ? Number(claim.amount).toLocaleString() : '85,000'} has been approved. Payment processed within 5 days.`,
+                    date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
+                    actions: [
+                      { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
+                    ],
+                    isUrgent: false,
+                    claim: claim
+                  });
+                } else if (!claim.documentsRequested) {
+                  compiledNotifications.push({
+                    id: claim.claimNumber + "-status",
+                    type: "status",
+                    title: `Claim ${claim.claimNumber} Status: ${claim.status || "Pending"}`,
+                    description: `Your claim is currently in ${claim.status || "Pending"} stage. Agent is reviewing details.`,
+                    date: claim.createdAt ? formatDateString(claim.createdAt) : "Today",
+                    actions: [
+                      { label: "View", href: `/Policy_Holder/TrackClaims?id=${claim.claimNumber}` }
+                    ],
+                    isUrgent: false,
+                    claim: claim
+                  });
+                }
+              });
+
+              // Sort: Urgent first
+              compiledNotifications.sort((a, b) => (a.isUrgent === b.isUrgent ? 0 : a.isUrgent ? -1 : 1));
+
+              setTotalClaimsCount(allClaims.length);
+              setPendingClaimsCount(pendingClaims.length);
+              setApprovedClaimsCount(approvedClaims.length);
+              setHasDocumentRequest(docRequest);
+              setNotifications(compiledNotifications);
+            } catch (err) {
+              console.error("Error fetching claims for home page banner:", err);
+            }
+          };
+
+          if (user.nic) {
+            syncVehicles();
             fetchClaims();
+            intervalId = setInterval(() => {
+              syncVehicles();
+              fetchClaims();
+            }, 5000);
           }
         } catch (err) {
           console.error("Error parsing user session", err);
@@ -382,6 +407,9 @@ export default function PolicyHolderHome() {
         window.location.href = "/Login";
       }
     }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
   }, []);
 
   return (

@@ -6,7 +6,7 @@ const router = express.Router();
 // 1. Add a new vehicle to user's registered list
 router.post("/add-vehicle", async (req, res) => {
   try {
-    const { nic, numberPlate, vehicleType, year, company, model, engineNumber, chassisNumber, policyNumber } = req.body;
+    const { nic, numberPlate, vehicleType, year, company, model, engineNumber, chassisNumber, policyNumber, status } = req.body;
     
     if (!nic || !numberPlate || !vehicleType || !year || !company || !model || !engineNumber || !chassisNumber || !policyNumber) {
       return res.status(400).json({ error: "All vehicle details must be provided." });
@@ -47,16 +47,20 @@ router.post("/add-vehicle", async (req, res) => {
       model: model.trim(),
       engineNumber: engineNumber.trim(),
       chassisNumber: chassisNumber.trim(),
-      policyNumber: policyNumber.trim()
+      policyNumber: policyNumber.trim(),
+      status: status || "Pending"
     };
 
     user.vehicles.push(newVehicle);
     await user.save();
 
+    // Filter to only return approved vehicles to the user portal/app
+    const approvedVehicles = user.vehicles.filter(v => !v.status || v.status === "Approved");
+
     res.status(201).json({
       message: "Vehicle added successfully",
       vehicle: newVehicle,
-      vehicles: user.vehicles
+      vehicles: approvedVehicles
     });
   } catch (err) {
     console.error("Add vehicle backend error:", err);

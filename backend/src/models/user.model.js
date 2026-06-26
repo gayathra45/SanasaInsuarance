@@ -20,7 +20,8 @@ const userSchema = new mongoose.Schema({
       model: { type: String, required: true },
       engineNumber: { type: String, required: true },
       chassisNumber: { type: String, required: true },
-      policyNumber: { type: String, required: true }
+      policyNumber: { type: String, required: true },
+      status: { type: String, enum: ["Pending", "Approved", "Rejected"], default: "Pending" }
     }
   ],
   documents: {
