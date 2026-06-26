@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import OfficeStaffNavbar from "@/app/Components/Office Staff/Navbar";
 import OfficeStaffFooter from "@/app/Components/Office Staff/Footer";
 import { API_URL } from "@/app/config";
@@ -94,6 +95,8 @@ interface Agent {
 
 export default function OfficeStaffClaimsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const claimId = searchParams.get("claimId");
   const [branch, setBranch] = useState("");
   const [claims, setClaims] = useState<Claim[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -249,6 +252,15 @@ export default function OfficeStaffClaimsPage() {
       loadClaimsAndAgents(currentBranch);
     }
   }, [router]);
+
+  useEffect(() => {
+    if (claimId && claims.length > 0) {
+      const matched = claims.find(c => c._id === claimId || c.claimNumber === claimId);
+      if (matched) {
+        setSelectedClaim(matched);
+      }
+    }
+  }, [claimId, claims]);
 
   // Lock background scroll when modals are open
   useEffect(() => {
@@ -469,11 +481,11 @@ export default function OfficeStaffClaimsPage() {
             <h1 className="text-xl font-bold tracking-wide">{branch} Branch — Claims Portal</h1>
             <div className="flex items-center gap-5">
               {/* Notification Bell Icon */}
-              <button className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors cursor-pointer focus:outline-none">
+              <Link href="/Office_Staff/Notifications" className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors cursor-pointer focus:outline-none flex items-center justify-center">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-white">
                   <path fillRule="evenodd" d="M5.25 9a6.75 6.75 0 0 1 13.5 0v.75c0 1.65.342 3.228.96 4.658A1.875 1.875 0 0 1 18 17.25H6a1.875 1.875 0 0 1-1.71-2.842 9.06 9.06 0 0 0 .96-4.658V9ZM12 18.75a2.25 2.25 0 0 1-2.247-2.118.75.75 0 0 1 .746-.757h3a.75.75 0 0 1 .746.757A2.25 2.25 0 0 1 12 18.75Z" clipRule="evenodd" />
                 </svg>
-              </button>
+              </Link>
               {/* User Avatar Icon */}
               <button className="relative p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer focus:outline-none">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-8 h-8 text-white">
