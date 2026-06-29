@@ -82,7 +82,7 @@ export default function Navbar() {
               Contact
             </Link>
             <Link
-              href="/Agent/Dashboard"
+              href="/Agent/MyClaims"
               className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold px-6 py-2 rounded-full shadow-md transition-all duration-150 hover:scale-[1.03] active:scale-[0.98] no-underline"
             >
               My Claims
@@ -182,7 +182,7 @@ export default function Navbar() {
               Contact
             </Link>
             <Link
-              href="/Agent/Dashboard"
+              href="/Agent/MyClaims"
               onClick={() => setIsOpen(false)}
               className="bg-[#ff9800] text-white hover:bg-[#e68900] font-bold py-3 px-5 rounded-2xl shadow-md transition-all duration-150 text-center mx-5 cursor-pointer no-underline"
             >
