@@ -170,7 +170,7 @@ export default function OfficeStaffNotifications() {
         }
 
         // 2. Inspection report submitted (Step = 3, inspectionSubmitted = true)
-        if (claim.inspectionSubmitted && claim.currentStep === 3) {
+        if (claim.inspectionSubmitted && claim.status !== "Approved" && claim.status !== "Rejected") {
           compiled.push({
             id: `${claim._id}-inspection-submitted`,
             type: "action",

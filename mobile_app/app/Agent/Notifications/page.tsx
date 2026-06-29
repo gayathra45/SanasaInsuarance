@@ -170,6 +170,22 @@ export default function AgentNotificationsPage() {
     Alert.alert("Success", "All notifications marked as read.");
   };
 
+  // Load Cached Claims from AsyncStorage
+  const loadCachedClaims = async () => {
+    try {
+      const cached = await AsyncStorage.getItem("@sanasa_agent_cached_claims");
+      if (cached) {
+        const data = JSON.parse(cached);
+        if (Array.isArray(data) && data.length > 0) {
+          setClaims(data);
+          setLoading(false);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading cached claims in notifications:", e);
+    }
+  };
+
   // Fetch Claims from Server
   const fetchClaims = useCallback(async (email: string) => {
     try {
@@ -178,6 +194,7 @@ export default function AgentNotificationsPage() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setClaims(data);
+        await AsyncStorage.setItem("@sanasa_agent_cached_claims", JSON.stringify(data));
       }
     } catch (e) {
       console.error("Fetch claims in notifications error:", e);
@@ -192,6 +209,7 @@ export default function AgentNotificationsPage() {
     (async () => {
       await loadClearedIds();
       await loadReadIds();
+      await loadCachedClaims();
       const agentStr = await AsyncStorage.getItem("logged_in_agent");
       if (!agentStr) {
         router.replace("/login/page");
@@ -368,10 +386,21 @@ export default function AgentNotificationsPage() {
       Alert.alert("System Notification", item.message);
       return;
     }
+
+    // Find the claim details in current claims list to pass it instantly
+    const matchedClaim = claims.find(c => c._id === item.claimId || c.claimNumber === item.claimId);
+    if (matchedClaim) {
+      try {
+        await AsyncStorage.setItem("notification_claim_data", JSON.stringify(matchedClaim));
+      } catch (e) {
+        console.error("Error setting notification claim data:", e);
+      }
+    }
+
     // Navigate back to Dashboard with deep linking param
     router.replace({
       pathname: "/Agent/Dashboard/page",
-      params: { claimId: item.claimId }
+      params: { claimId: item.claimId, from: "notifications" }
     });
   };
 

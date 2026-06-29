@@ -637,12 +637,9 @@ export default function AgentMyClaims() {
         {/* Claims List container */}
         <div className="flex flex-col gap-5">
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 bg-white border border-slate-100 rounded-[30px] gap-4 shadow-sm select-none">
-              <svg className="animate-spin h-9 w-9 text-cyan-600" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <p className="text-slate-400 font-extrabold text-sm uppercase tracking-wider">Syncing cases with Sanasa Database...</p>
+            <div className="bg-white border border-slate-200 rounded-[28px] p-16 flex flex-col items-center justify-center text-center shadow-sm min-h-[300px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-cyan-500"></div>
+              <span className="mt-3 text-slate-400 text-sm font-bold">Syncing cases with Sanasa Database...</span>
             </div>
           ) : filteredClaims.length === 0 ? (
             <div className="bg-white border border-slate-100 rounded-[30px] p-16 text-center shadow-sm select-none">

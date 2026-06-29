@@ -2,6 +2,7 @@ import express from "express";
 import crypto from "crypto";
 import Agent from "../models/agent.model.js";
 import Claim from "../models/claim.model.js";
+import User from "../models/user.model.js";
 import { logAgentActivity } from "../utils/activity.js";
 import AgentActivity from "../models/agent_activity.model.js";
 
@@ -65,6 +66,21 @@ router.get("/claims", async (req, res) => {
     res.json(claims);
   } catch (err) {
     console.error("Fetch agent claims error:", err);
+    res.status(500).json({ error: "An internal server error occurred." });
+  }
+});
+
+// GET policyholder phone by NIC: /api/agent/policyholder/:nic
+router.get("/policyholder/:nic", async (req, res) => {
+  try {
+    const { nic } = req.params;
+    const user = await User.findOne({ nic: nic.trim().toUpperCase() });
+    if (!user) {
+      return res.status(404).json({ error: "Policy holder not found." });
+    }
+    res.json({ mobile: user.mobile });
+  } catch (err) {
+    console.error("Fetch policyholder error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
   }
 });

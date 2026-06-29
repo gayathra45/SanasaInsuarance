@@ -142,7 +142,7 @@ router.get("/notifications", async (req, res) => {
       }
 
       // B. Inspection Report Submitted (awaiting staff/admin decision)
-      if (claim.inspectionSubmitted && claim.currentStep === 3) {
+      if (claim.inspectionSubmitted && claim.status !== "Approved" && claim.status !== "Rejected") {
         compiled.push({
           id: `${claim._id}-inspection-submitted`,
           type: "action",

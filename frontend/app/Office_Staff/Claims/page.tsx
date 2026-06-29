@@ -93,6 +93,196 @@ interface Agent {
   phone?: string;
 }
 
+const parseInspectionReport = (reportText: string) => {
+  if (!reportText) return null;
+  
+  if (!reportText.includes("[1. VEHICLE CONDITION DETAILS]")) {
+    return { isRaw: true, rawText: reportText };
+  }
+
+  try {
+    const lines = reportText.split("\n");
+    let odometer = "";
+    let fuelLevel = "";
+    let recommendedAction = "";
+    let estimatedCost = "";
+    let preExistingDamage = "";
+    let physicalInspectionNotes = "";
+    const checklist: { [key: string]: string } = {};
+
+    let currentSection = "";
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      if (trimmed.startsWith("• Odometer:")) {
+        odometer = trimmed.replace("• Odometer:", "").trim();
+      } else if (trimmed.startsWith("• Fuel Level:")) {
+        fuelLevel = trimmed.replace("• Fuel Level:", "").trim();
+      } else if (trimmed.startsWith("• Recommended Action:")) {
+        recommendedAction = trimmed.replace("• Recommended Action:", "").trim();
+      } else if (trimmed.startsWith("• Estimated Cost:")) {
+        estimatedCost = trimmed.replace("• Estimated Cost:", "").trim();
+      } else if (trimmed.includes("[3. PRE-EXISTING DAMAGE NOTES]")) {
+        currentSection = "pre-existing";
+      } else if (trimmed.includes("[4. PHYSICAL INSPECTION NOTES]")) {
+        currentSection = "physical-notes";
+      } else if (trimmed.includes("==================================") || trimmed.includes("VEHICLE CLAIM INSPECTION")) {
+        // skip
+      } else if (trimmed.includes("[2. COMPONENT DAMAGE CHECKLIST]")) {
+        currentSection = "checklist";
+      } else if (currentSection === "checklist" && trimmed.startsWith("• ")) {
+        const parts = trimmed.substring(2).split(":");
+        if (parts.length >= 2) {
+          const compName = parts[0].trim();
+          const compVal = parts[1].replace("[", "").replace("]", "").trim();
+          checklist[compName] = compVal;
+        }
+      } else if (currentSection === "pre-existing") {
+        if (!trimmed.startsWith("[")) {
+          preExistingDamage += (preExistingDamage ? "\n" : "") + trimmed;
+        }
+      } else if (currentSection === "physical-notes") {
+        if (!trimmed.startsWith("[")) {
+          physicalInspectionNotes += (physicalInspectionNotes ? "\n" : "") + trimmed;
+        }
+      }
+    });
+
+    return {
+      isRaw: false,
+      odometer,
+      fuelLevel,
+      recommendedAction,
+      estimatedCost,
+      checklist,
+      preExistingDamage: preExistingDamage || "None reported.",
+      physicalInspectionNotes: physicalInspectionNotes || "None reported."
+    };
+  } catch (err) {
+    console.error("Error parsing inspection report:", err);
+    return { isRaw: true, rawText: reportText };
+  }
+};
+
+const renderParsedInspection = (
+  reportText: string,
+  additionalDocuments: AdditionalDoc[] = [],
+  apiUrl: string = "",
+  onPhotoClick?: (url: string) => void
+) => {
+  const parsed = parseInspectionReport(reportText);
+  if (!parsed) return null;
+
+  if (parsed.isRaw) {
+    return (
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 select-text">
+        <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">
+          {parsed.rawText}
+        </pre>
+      </div>
+    );
+  }
+
+  const renderChecklistBadge = (val: string) => {
+    let color = "text-slate-600 bg-slate-50 border-slate-100";
+    if (val === "None") color = "text-emerald-700 bg-emerald-50/50 border-emerald-100";
+    else if (val === "Minor") color = "text-amber-700 bg-amber-50/50 border-amber-100";
+    else if (val === "Major") color = "text-rose-700 bg-rose-50/50 border-rose-100";
+
+    return (
+      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${color}`}>
+        {val}
+      </span>
+    );
+  };
+
+  const agentPhotos = (additionalDocuments || [])
+    .filter((doc) => doc.uploadedBy === "Agent" || doc.name.toLowerCase().includes("inspection photo"))
+    .map((doc) => {
+      let docUrl = doc.url;
+      if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+        docUrl = `${apiUrl.replace("/api", "")}/uploads/${docUrl}`;
+      }
+      return { name: doc.name, url: docUrl };
+    });
+
+  return (
+    <div className="space-y-6 text-left select-text text-slate-700 font-sans text-xs">
+      {/* 1. Condition details section */}
+      <div className="space-y-2 pb-4 border-b border-slate-100">
+        <h4 className="text-[11px] font-bold text-slate-900 uppercase tracking-wider">Vehicle Condition Details</h4>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+          <div className="flex justify-between py-1 border-b border-slate-50">
+            <span className="text-slate-400 font-medium">Odometer Mileage:</span>
+            <span className="font-semibold text-slate-800">{(parsed.odometer || "").trim()}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b border-slate-50">
+            <span className="text-slate-400 font-medium">Fuel Level:</span>
+            <span className="font-semibold text-slate-800">{parsed.fuelLevel}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b border-slate-50">
+            <span className="text-slate-400 font-medium">Estimated Cost:</span>
+            <span className="font-semibold text-emerald-600">{parsed.estimatedCost}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b border-slate-50">
+            <span className="text-slate-400 font-medium">Recommendation:</span>
+            <span className="font-semibold text-slate-800">{parsed.recommendedAction}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Component checklist section */}
+      <div className="space-y-2 pb-4 border-b border-slate-100">
+        <h4 className="text-[11px] font-bold text-slate-900 uppercase tracking-wider">Component Damage Checklist</h4>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
+          {Object.entries(parsed.checklist || {}).map(([key, value]) => (
+            <div key={key} className="flex justify-between items-center py-1 border-b border-slate-50">
+              <span className="text-slate-500 font-medium">{key}:</span>
+              {renderChecklistBadge(value)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. Photos section */}
+      {agentPhotos.length > 0 && (
+        <div className="space-y-2 pb-4 border-b border-slate-100">
+          <h4 className="text-[11px] font-bold text-slate-900 uppercase tracking-wider">Inspection Photos ({agentPhotos.length})</h4>
+          <div className="flex flex-wrap gap-2 pt-1">
+            {agentPhotos.map((photo, index) => (
+              <div
+                key={index}
+                onClick={() => onPhotoClick && onPhotoClick(photo.url)}
+                className="w-16 h-16 rounded border border-slate-200 overflow-hidden cursor-zoom-in hover:border-slate-400 transition-colors"
+                title={photo.name}
+              >
+                <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 4. Notes sections */}
+      <div className="space-y-3">
+        {parsed.preExistingDamage && parsed.preExistingDamage !== "None reported." && (
+          <div className="space-y-1">
+            <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Pre-Existing Damage Notes</span>
+            <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{parsed.preExistingDamage}</p>
+          </div>
+        )}
+
+        <div className="space-y-1">
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Agent Inspection Notes</span>
+          <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{parsed.physicalInspectionNotes}</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function OfficeStaffClaimsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -109,6 +299,7 @@ export default function OfficeStaffClaimsPage() {
   // Modal / Detail / Action states
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewReportText, setPreviewReportText] = useState<string | null>(null);
   const [showAssignModal, setShowAssignModal] = useState<Claim | null>(null);
   const [selectedAgentEmail, setSelectedAgentEmail] = useState("");
   const [selectedPriority, setSelectedPriority] = useState<"Normal" | "Urgent">("Normal");
@@ -823,7 +1014,7 @@ export default function OfficeStaffClaimsPage() {
                                 key={idx}
                                 type="button"
                                 onClick={() => {
-                                  alert(`--- Inspection Report ---\n\n${doc.textContent}`);
+                                  setPreviewReportText(doc.textContent || null);
                                 }}
                                 className="bg-white border border-slate-200 hover:bg-slate-50 transition-all p-3.5 rounded-[15px] flex items-center justify-start gap-3 cursor-pointer outline-none shadow-sm active:scale-98 text-left"
                               >
@@ -2048,6 +2239,18 @@ export default function OfficeStaffClaimsPage() {
 
                     {/* Cyan Buttons Stack */}
                     <div className="pt-2 flex flex-col gap-3">
+                      {selectedClaim.inspectionSubmitted && selectedClaim.inspectionReport && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewReportText(selectedClaim.inspectionReport || null)}
+                          className="bg-[#10b981] hover:bg-[#059669] text-white font-extrabold text-xs py-2.5 rounded-full transition-all border-none cursor-pointer text-center select-none shadow-sm active:scale-95 flex items-center justify-center gap-1.5"
+                        >
+                          <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                          </svg>
+                          Inspection Report
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => setActiveSubModal("documents")}
@@ -2132,6 +2335,43 @@ export default function OfficeStaffClaimsPage() {
                     Add Note
                   </button>
                 </div>
+
+                {/* On-Site Physical Inspection Report Section */}
+                {selectedClaim.inspectionSubmitted && selectedClaim.inspectionReport && (
+                  <div className="border-t border-slate-100 pt-5 text-left">
+                    <div className="flex items-center justify-between mb-3 select-none">
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        On-Site Physical Inspection Report
+                      </h4>
+                      {selectedClaim.assignedAgent && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setContactRecipient("Agent");
+                            setActiveSubModal("contact");
+                          }}
+                          className="text-cyan-600 hover:text-cyan-700 font-extrabold text-[11px] bg-transparent border-none cursor-pointer flex items-center gap-1"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                          </svg>
+                          Discuss with Agent
+                        </button>
+                      )}
+                    </div>
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden flex flex-col p-5">
+                      {renderParsedInspection(
+                        selectedClaim.inspectionReport,
+                        selectedClaim.additionalDocuments || [],
+                        API_URL,
+                        setPreviewImage
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Internal Notes — Bottom Section */}
                 <div className="border-t border-slate-100 pt-5 select-none">
@@ -2570,6 +2810,68 @@ export default function OfficeStaffClaimsPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Inspection Report Text Preview Modal */}
+      {previewReportText && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300 select-none animate-fade-in"
+          onClick={() => setPreviewReportText(null)}
+        >
+          <div className="relative w-full max-w-2xl bg-white rounded-3xl border border-slate-200 shadow-2xl flex flex-col p-6 max-h-[85vh] animate-scale-up select-text" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4 select-none">
+              <div className="flex items-center gap-2.5">
+                <svg className="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                <h3 className="font-extrabold text-slate-800 text-base">Vehicle Physical Inspection Report</h3>
+              </div>
+              <button
+                onClick={() => setPreviewReportText(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-50 transition-colors cursor-pointer border-none outline-none"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.5" stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="overflow-y-auto flex-1 pr-1 bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm">
+              {renderParsedInspection(
+                previewReportText,
+                selectedClaim ? selectedClaim.additionalDocuments : [],
+                API_URL,
+                setPreviewImage
+              )}
+            </div>
+            <div className="mt-5 pt-3 border-t border-slate-100 flex justify-between items-center select-none">
+              {selectedClaim && selectedClaim.assignedAgent ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewReportText(null);
+                    setContactRecipient("Agent");
+                    setActiveSubModal("contact");
+                  }}
+                  className="px-5 py-2.5 rounded-full border border-[#0f2d4a] hover:bg-[#0f2d4a]/5 text-[#0f2d4a] font-extrabold text-xs transition-all cursor-pointer bg-white flex items-center gap-1.5 shadow-sm active:scale-95"
+                >
+                  <svg className="w-4 h-4 text-[#0f2d4a]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                  </svg>
+                  Chat with Agent
+                </button>
+              ) : (
+                <div />
+              )}
+              <button
+                type="button"
+                onClick={() => setPreviewReportText(null)}
+                className="px-6 py-2.5 rounded-full bg-cyan-600 hover:bg-cyan-700 text-white font-extrabold text-xs transition-colors cursor-pointer border-none shadow-sm active:scale-95"
+              >
+                Dismiss Preview
+              </button>
+            </div>
           </div>
         </div>
       )}
