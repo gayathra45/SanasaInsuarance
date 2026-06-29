@@ -15,6 +15,7 @@ export default function AdminNavbar() {
     { name: "Agents", href: "/Admin/Agents" },
     { name: "Staff", href: "/Admin/Staff" },
     { name: "Analytics & Reports", href: "/Admin/Analytics" },
+    { name: "Notifications", href: "/Admin/Notifications" },
     { name: "Contact", href: "/Admin/Contact" },
   ];
 

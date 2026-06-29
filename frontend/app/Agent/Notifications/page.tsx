@@ -50,7 +50,7 @@ interface Claim {
 
 interface NotificationItem {
   id: string;
-  type: "action" | "decision" | "info" | "message" | "urgent";
+  type: "action" | "decision" | "info" | "message" | "staff_message" | "urgent";
   title: string;
   description: string;
   subText?: string;
@@ -79,7 +79,7 @@ export default function AgentNotifications() {
   const [filteredNotifs, setFilteredNotifs] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "unread" | "read" | "action" | "decision" | "message">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "unread" | "read" | "action" | "decision" | "message" | "staff_message">("all");
   const [agent, setAgent] = useState<{ name?: string; email?: string } | null>(null);
   const [readIds, setReadIds] = useState<string[]>([]);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
@@ -226,7 +226,7 @@ export default function AgentNotifications() {
           });
         }
 
-        // 5. New Messages from Policy Holder (Non-Agent messages)
+        // 5. New Messages from Policy Holder/Office Staff (Non-Agent messages)
         const userMessages = (claim.messages || []).filter(m => m.sender !== "Agent" && m.sender !== "Agent (You)");
         if (userMessages.length > 0) {
           const lastMsg = userMessages[userMessages.length - 1];
@@ -252,18 +252,36 @@ export default function AgentNotifications() {
               claim
             });
           } else {
-            compiled.push({
-              id: `${claim._id}-msg-${lastMsg.sentAt}`,
-              type: "message",
-              title: `Message from Policy Holder`,
-              description: `Message regarding claim ${claim.claimNumber}: "${lastMsg.message}"`,
-              date: formatDate(lastMsg.sentAt),
-              isUrgent: false,
-              link: `/Agent/Dashboard?claimId=${claim.claimNumber}`,
-              actionLabel: "View",
-              createdAtRaw: lastMsg.sentAt,
-              claim
-            });
+            const senderLower = (lastMsg.sender || "").toLowerCase();
+            const isStaff = senderLower.includes("staff") || senderLower.includes("office") || senderLower.includes("admin");
+
+            if (isStaff) {
+              compiled.push({
+                id: `${claim._id}-staff-msg-${lastMsg.sentAt}`,
+                type: "staff_message",
+                title: `Message from Office Staff`,
+                description: `Message regarding claim ${claim.claimNumber}: "${lastMsg.message}"`,
+                date: formatDate(lastMsg.sentAt),
+                isUrgent: false,
+                link: `/Agent/Dashboard?claimId=${claim.claimNumber}`,
+                actionLabel: "View",
+                createdAtRaw: lastMsg.sentAt,
+                claim
+              });
+            } else {
+              compiled.push({
+                id: `${claim._id}-msg-${lastMsg.sentAt}`,
+                type: "message",
+                title: `Message from Policy Holder`,
+                description: `Message regarding claim ${claim.claimNumber}: "${lastMsg.message}"`,
+                date: formatDate(lastMsg.sentAt),
+                isUrgent: false,
+                link: `/Agent/Dashboard?claimId=${claim.claimNumber}`,
+                actionLabel: "View",
+                createdAtRaw: lastMsg.sentAt,
+                claim
+              });
+            }
           }
         }
       });
@@ -351,6 +369,8 @@ export default function AgentNotifications() {
       result = notifications.filter((n) => n.type === "decision");
     } else if (activeTab === "message") {
       result = notifications.filter((n) => n.type === "message");
+    } else if (activeTab === "staff_message") {
+      result = notifications.filter((n) => n.type === "staff_message");
     }
 
     if (searchQuery.trim() !== "") {
@@ -519,6 +539,16 @@ export default function AgentNotifications() {
           >
             Client Messages ({notifications.filter((n) => n.type === "message").length})
           </button>
+          <button
+            onClick={() => setActiveTab("staff_message")}
+            className={`font-bold text-sm px-6 py-2.5 rounded-full border border-solid transition-all cursor-pointer ${
+              activeTab === "staff_message"
+                ? "bg-purple-600 border-purple-600 text-white shadow-sm"
+                : "bg-white hover:bg-slate-50 border-slate-200 text-slate-600"
+            }`}
+          >
+            Staff Messages ({notifications.filter((n) => n.type === "staff_message").length})
+          </button>
         </div>
 
         {/* Notifications Container */}
@@ -559,6 +589,14 @@ export default function AgentNotifications() {
                   iconSvg = (
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  );
+                } else if (n.type === "staff_message") {
+                  borderLeft = "border-l-[6px] border-l-purple-500";
+                  iconStyle = "bg-purple-50 text-purple-500";
+                  iconSvg = (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501c1.153-.086 2.294-.213 3.423-.379 1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v5.018z" />
                     </svg>
                   );
                 }
