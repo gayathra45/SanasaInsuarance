@@ -11,7 +11,7 @@ export default function Footer() {
         <div className="flex-shrink-0 flex justify-start items-start">
           <Link href="/Agent/Home">
             <Image
-              src="/footer logo.svg"
+              src="/footer_logo.svg"
               alt="Sanasa General Insurance"
               width={150}
               height={60}

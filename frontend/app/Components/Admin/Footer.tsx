@@ -14,9 +14,9 @@ export default function AdminFooter() {
           
           {/* Logo */}
           <div className="flex-shrink-0 flex items-center md:items-start flex-col">
-            <div className="relative w-44 h-20 brightness-0 invert">
+            <div className="relative w-44 h-20">
               <Image
-                src="/logo.png"
+                src="/footer_logo.svg"
                 alt="Sanasa General Logo"
                 fill
                 className="object-contain"
