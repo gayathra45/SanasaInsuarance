@@ -317,6 +317,13 @@ export default function AgentDashboard() {
   const [glassDmg, setGlassDmg] = useState("None");
   const [wheelsDmg, setWheelsDmg] = useState("None");
 
+  const closeDetailModal = () => {
+    if (activeInspectionStep === 5) {
+      setActiveTab("activity");
+    }
+    setSelectedClaim(null);
+  };
+
   // Synchronize wizard activeInspectionStep on claim selection
   useEffect(() => {
     if (selectedClaim) {
@@ -1180,7 +1187,7 @@ ${inspectionReportText.trim()}
         <View style={{ width: "100%", gap: 10, marginTop: 10 }}>
           <TouchableOpacity
             style={{ width: "100%", height: 46, borderRadius: 12, backgroundColor: "#1e3a8a", justifyContent: "center", alignItems: "center" }}
-            onPress={() => setSelectedClaim(null)}
+            onPress={closeDetailModal}
             activeOpacity={0.8}
           >
             <Text style={{ color: "#fff", fontSize: 14, fontWeight: "800" }}>Back to Dashboard</Text>
@@ -1466,6 +1473,15 @@ ${inspectionReportText.trim()}
     return () => clearInterval(interval);
   }, [agentEmail]);
 
+  // Poll claims in background for real-time updates
+  useEffect(() => {
+    if (!agentEmail || selectedClaim !== null) return;
+    const pollInterval = setInterval(() => {
+      fetchClaims(agentEmail);
+    }, 7000);
+    return () => clearInterval(pollInterval);
+  }, [agentEmail, selectedClaim, fetchClaims]);
+
   // Auto-open claim details when claimId is passed via params
   useEffect(() => {
     if (claimId && claims.length > 0) {
@@ -1509,7 +1525,7 @@ ${inspectionReportText.trim()}
 
   // ── Derived data ──────────────────────────────────────────────────────
   const activeClaims = claims
-    .filter(c => c.status !== "Approved" && c.status !== "Rejected")
+    .filter(c => c.status !== "Approved" && c.status !== "Rejected" && !c.inspectionSubmitted)
     .sort((a, b) => {
       const aS = getSeverity(a.damageType);
       const bS = getSeverity(b.damageType);
@@ -1534,7 +1550,7 @@ ${inspectionReportText.trim()}
   );
 
   const completedClaims = claims
-    .filter(c => c.status === "Approved" || c.status === "Rejected")
+    .filter(c => c.status === "Approved" || c.status === "Rejected" || c.inspectionSubmitted)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 10);
   const urgentCount   = activeClaims.filter(c => getSeverity(c.damageType) === "Urgent").length;
@@ -1663,6 +1679,7 @@ ${inspectionReportText.trim()}
       if (!res.ok) throw new Error("Failed to submit");
       showAlert("Success", "Inspection report submitted successfully!");
       setSelectedClaim(null);
+      setActiveTab("activity");
       fetchClaims(agentEmail);
       setInspectionReportText("");
     } catch (e) {
@@ -2239,7 +2256,7 @@ ${inspectionReportText.trim()}
         visible={selectedClaim !== null}
         animationType="slide"
         transparent
-        onRequestClose={() => setSelectedClaim(null)}
+        onRequestClose={closeDetailModal}
       >
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
@@ -2271,7 +2288,7 @@ ${inspectionReportText.trim()}
                 </View>
                 <TouchableOpacity
                   style={styles.popupCloseBtn}
-                  onPress={() => setSelectedClaim(null)}
+                  onPress={closeDetailModal}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="close" size={18} color="#475569" />
@@ -2698,7 +2715,7 @@ ${inspectionReportText.trim()}
                       <View style={styles.modalActions}>
                         <TouchableOpacity
                           style={[styles.closeBtn, { flex: 1, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center", backgroundColor: "#f1f5f9", borderWidth: 1, borderColor: "#cbd5e1" }]}
-                          onPress={() => setSelectedClaim(null)}
+                          onPress={closeDetailModal}
                         >
                           <Text style={[styles.closeBtnText, { color: "#475569" }]}>Close</Text>
                         </TouchableOpacity>

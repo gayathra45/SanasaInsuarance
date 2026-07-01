@@ -126,7 +126,26 @@ router.get("/claims", async (req, res) => {
       return res.status(400).json({ error: "Branch query parameter is required." });
     }
     const claims = await Claim.find({ branch: branch.trim() }).sort({ createdAt: -1 });
-    res.json({ claims });
+
+    const nics = claims.map(c => c.userNic);
+    const users = await User.find({ nic: { $in: nics } }, { nic: 1, bankDetails: 1 });
+    const bankDetailsMap = {};
+    users.forEach(u => {
+      bankDetailsMap[u.nic] = u.bankDetails;
+    });
+
+    const claimsWithBankDetails = claims.map(c => {
+      const plainObj = c.toObject();
+      plainObj.policyHolderBankDetails = bankDetailsMap[c.userNic] || {
+        bankName: "",
+        branchName: "",
+        accountNumber: "",
+        accountHolderName: ""
+      };
+      return plainObj;
+    });
+
+    res.json({ claims: claimsWithBankDetails });
   } catch (err) {
     console.error("Fetch office staff claims error:", err);
     res.status(500).json({ error: "An internal server error occurred." });
@@ -337,7 +356,17 @@ router.patch("/claims/:claimNumber", async (req, res) => {
     }
 
     await claim.save();
-    res.json({ message: "Claim updated successfully", claim });
+
+    const user = await User.findOne({ nic: claim.userNic }, { bankDetails: 1 });
+    const claimWithBankDetails = claim.toObject();
+    claimWithBankDetails.policyHolderBankDetails = user ? user.bankDetails : {
+      bankName: "",
+      branchName: "",
+      accountNumber: "",
+      accountHolderName: ""
+    };
+
+    res.json({ message: "Claim updated successfully", claim: claimWithBankDetails });
   } catch (err) {
     console.error("Update claim error:", err);
     res.status(500).json({ error: "An internal server error occurred." });

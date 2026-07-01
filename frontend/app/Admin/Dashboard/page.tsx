@@ -64,6 +64,8 @@ export default function AdminDashboard() {
       }
     }
     fetchStats();
+    const intervalId = setInterval(fetchStats, 8000);
+    return () => clearInterval(intervalId);
   }, []);
 
   // Calculate dynamic max height for bar chart to accommodate any data volume

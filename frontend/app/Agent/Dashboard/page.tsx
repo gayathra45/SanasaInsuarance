@@ -48,12 +48,256 @@ interface Claim {
   documentsRequested?: boolean;
   requestedDocuments?: string[];
   documentRequestTo?: string;
+  accidentPhotos?: {
+    front: string[];
+    rear: string[];
+    side: string[];
+  };
+  drivingLicense?: {
+    front: string[];
+    rear: string[];
+  };
+  rejectionReason?: string;
 }
+
+const parseInspectionReport = (reportText: string) => {
+  if (!reportText) return null;
+  if (!reportText.includes("[1. VEHICLE CONDITION DETAILS]")) {
+    return { isRaw: true, rawText: reportText };
+  }
+
+  try {
+    const lines = reportText.split("\n");
+    let odometer = "";
+    let fuelLevel = "";
+    let recommendedAction = "";
+    let estimatedCost = "";
+    let preExistingDamage = "";
+    let physicalInspectionNotes = "";
+    const checklist: { [key: string]: string } = {};
+
+    let currentSection = "";
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      if (trimmed.startsWith("• Odometer:")) {
+        odometer = trimmed.replace("• Odometer:", "").trim();
+      } else if (trimmed.startsWith("• Fuel Level:")) {
+        fuelLevel = trimmed.replace("• Fuel Level:", "").trim();
+      } else if (trimmed.startsWith("• Recommended Action:")) {
+        recommendedAction = trimmed.replace("• Recommended Action:", "").trim();
+      } else if (trimmed.startsWith("• Estimated Cost:")) {
+        estimatedCost = trimmed.replace("• Estimated Cost:", "").trim();
+      } else if (trimmed.includes("[3. PRE-EXISTING DAMAGE NOTES]")) {
+        currentSection = "pre-existing";
+      } else if (trimmed.includes("[4. PHYSICAL INSPECTION NOTES]")) {
+        currentSection = "physical-notes";
+      } else if (trimmed.includes("==================================") || trimmed.includes("VEHICLE CLAIM INSPECTION")) {
+        // skip
+      } else if (trimmed.includes("[2. COMPONENT DAMAGE CHECKLIST]")) {
+        currentSection = "checklist";
+      } else if (currentSection === "checklist" && trimmed.startsWith("• ")) {
+        const parts = trimmed.substring(2).split(":");
+        if (parts.length >= 2) {
+          const compName = parts[0].trim();
+          const compVal = parts[1].replace("[", "").replace("]", "").trim();
+          checklist[compName] = compVal;
+        }
+      } else if (currentSection === "pre-existing") {
+        if (!trimmed.startsWith("[")) {
+          preExistingDamage += (preExistingDamage ? "\n" : "") + trimmed;
+        }
+      } else if (currentSection === "physical-notes") {
+        if (!trimmed.startsWith("[")) {
+          physicalInspectionNotes += (physicalInspectionNotes ? "\n" : "") + trimmed;
+        }
+      }
+    });
+
+    return {
+      isRaw: false,
+      odometer,
+      fuelLevel,
+      recommendedAction,
+      estimatedCost,
+      checklist,
+      preExistingDamage: preExistingDamage || "None reported.",
+      physicalInspectionNotes: physicalInspectionNotes || "None reported."
+    };
+  } catch (err) {
+    console.error("Error parsing inspection report:", err);
+    return { isRaw: true, rawText: reportText };
+  }
+};
+
+const renderPremiumInspectionReport = (reportText: string) => {
+  const parsed = parseInspectionReport(reportText);
+  if (!parsed) return null;
+
+  if (parsed.isRaw) {
+    return (
+      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 shadow-inner select-text">
+        <div className="flex items-center gap-2 mb-3 text-slate-400 select-none">
+          <svg className="w-5 h-5 text-slate-455" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Raw Inspection Report Text</span>
+        </div>
+        <p className="text-slate-700 text-xs font-semibold whitespace-pre-wrap leading-relaxed">
+          {parsed.rawText}
+        </p>
+      </div>
+    );
+  }
+
+  const renderBadge = (val: string) => {
+    let color = "text-slate-500 bg-slate-55 border-slate-200";
+    let icon = null;
+    
+    if (val === "None") {
+      color = "text-emerald-600 bg-emerald-50/40 border-emerald-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      );
+    } else if (val === "Minor") {
+      color = "text-amber-600 bg-amber-50/40 border-amber-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      );
+    } else if (val === "Major") {
+      color = "text-rose-600 bg-rose-50/40 border-rose-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3m0 0a8.001 8.001 0 00-7.797 6.138m15.594 0A8.001 8.001 0 0012 3M3.243 9.75a8.002 8.002 0 008.757 8.757m0 0A8.002 8.002 0 0020.757 9.75" />
+        </svg>
+      );
+    }
+
+    return (
+      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border flex items-center gap-1.5 select-none ${color}`}>
+        {icon}
+        {val}
+      </span>
+    );
+  };
+
+  return (
+    <div className="border border-slate-200/80 rounded-[32px] overflow-hidden bg-slate-50/20 p-6 space-y-6 shadow-sm select-text text-left font-sans w-full">
+      {/* Dashboard Title */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4 select-none">
+        <div className="flex items-center gap-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div>
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider leading-none">Vehicle Inspection Report</h4>
+            <span className="text-[10px] font-bold text-slate-400 block mt-1 tracking-wider">OFFICIAL PHYSICAL ASSESSMENT SUMMARY</span>
+          </div>
+        </div>
+        <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-extrabold tracking-wider uppercase px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+          </svg>
+          Verified By Agent
+        </span>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Odometer */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-blue-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Odometer</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-slate-800">{parsed.odometer || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Total Distance Travelled</span>
+        </div>
+
+        {/* Card 2: Fuel Level */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-indigo-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Fuel Level</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-slate-800">{parsed.fuelLevel || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Current Tank Level</span>
+        </div>
+
+        {/* Card 3: Estimated Cost */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-emerald-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Estimated Cost</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-emerald-600">{parsed.estimatedCost || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Assessment Valuation</span>
+        </div>
+
+        {/* Card 4: Recommendation */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-violet-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Recommendation</span>
+          <div className="flex items-baseline gap-1 mt-2 overflow-hidden">
+            <span className="text-[13px] font-black text-slate-800 truncate" title={parsed.recommendedAction}>{parsed.recommendedAction || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Suggested Action Payout</span>
+        </div>
+      </div>
+
+      {/* Checklist & Notes Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Component Damage Checklist */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-5 space-y-4 shadow-sm">
+          <div>
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block border-b border-slate-100 pb-2.5 mb-3 select-none">Component Damage Checklist</span>
+            <div className="space-y-2">
+              {Object.entries(parsed.checklist || {}).map(([key, value]) => (
+                <div key={key} className="flex justify-between items-center py-1.5 border-b border-slate-50 last:border-0">
+                  <span className="text-slate-655 font-bold text-xs">{key}</span>
+                  {renderBadge(value)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Remarks Column */}
+        <div className="flex flex-col gap-4">
+          {parsed.preExistingDamage && parsed.preExistingDamage !== "None reported." && (
+            <div className="bg-amber-50/20 border border-amber-200/50 rounded-2xl p-5 shadow-sm space-y-2.5 flex-1">
+              <span className="text-[10px] text-amber-800 font-black uppercase tracking-wider flex items-center gap-1.5 select-none">
+                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3m0 0a8.001 8.001 0 00-7.797 6.138m15.594 0A8.001 8.001 0 0012 3M3.243 9.75a8.002 8.002 0 008.757 8.757m0 0A8.002 8.002 0 0020.757 9.75" />
+                </svg>
+                Pre-Existing Damage Remarks
+              </span>
+              <p className="text-slate-700 text-xs font-semibold leading-relaxed whitespace-pre-wrap">{parsed.preExistingDamage}</p>
+            </div>
+          )}
+
+          <div className="bg-slate-50/50 border border-slate-200/70 rounded-2xl p-5 shadow-sm space-y-2.5 flex-1">
+            <span className="text-[10px] text-slate-555 font-black uppercase tracking-wider flex items-center gap-1.5 select-none">
+              <svg className="w-4 h-4 text-slate-505" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+              Physical Inspection Remarks
+            </span>
+            <p className="text-slate-700 text-xs font-semibold leading-relaxed whitespace-pre-wrap">{parsed.physicalInspectionNotes}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function AgentDashboard() {
   const router = useRouter();
   const [agentName, setAgentName] = useState("");
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
+  const [activeSubModal, setActiveSubModal] = useState<"documents" | null>(null);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [policyHolders, setPolicyHolders] = useState<any[]>([]);
   const [showSupportChat, setShowSupportChat] = useState(false);
   const [chatMessage, setChatMessage] = useState("");
   const [chatLogs, setChatLogs] = useState<{ sender: string; text: string }[]>([]);
@@ -90,6 +334,52 @@ export default function AgentDashboard() {
       console.error("Error updating availability:", e);
       alert("Failed to update status. Please try again.");
     }
+  };
+
+  const fetchPolicyHolders = async (branchName: string) => {
+    try {
+      const phRes = await fetch(`${API_URL}/office-staff/policy-holders?branch=${encodeURIComponent(branchName.trim())}`);
+      const regsRes = await fetch(`${API_URL}/office-staff/registrations?branch=${encodeURIComponent(branchName.trim())}`);
+      let allUsers: any[] = [];
+      if (phRes.ok) {
+        const phData = await phRes.json();
+        allUsers = [...allUsers, ...(phData.policyHolders || [])];
+      }
+      if (regsRes.ok) {
+        const regsData = await regsRes.json();
+        allUsers = [...allUsers, ...(regsData.registrations || [])];
+      }
+      setPolicyHolders(allUsers);
+    } catch (e) {
+      console.error("Fetch policy holders error:", e);
+    }
+  };
+
+  const getPolicyHolderName = (nic: string) => {
+    if (!nic) return "-";
+    const user = policyHolders.find(u => u.nic.toLowerCase().trim() === nic.toLowerCase().trim());
+    return user ? `${user.firstName} ${user.lastName}` : "Unknown Policy Holder";
+  };
+
+  const getPolicyHolderContact = (nic: string) => {
+    if (!nic) return "-";
+    const user = policyHolders.find(u => u.nic.toLowerCase().trim() === nic.toLowerCase().trim());
+    return user ? user.mobile : "No Contact Info";
+  };
+
+  const getPolicyHolderEmail = (nic: string) => {
+    if (!nic) return "-";
+    const user = policyHolders.find(u => u.nic.toLowerCase().trim() === nic.toLowerCase().trim());
+    return user ? user.email : "-";
+  };
+
+  const formatPlate = (plate: string) => {
+    if (!plate) return "-";
+    const cleaned = plate.trim();
+    if (cleaned.includes("-")) return cleaned.toUpperCase();
+    const m = cleaned.match(/^(.*[A-Za-z]+)(\d+)$/);
+    if (m) return `${m[1].trim().toUpperCase()} - ${m[2]}`;
+    return cleaned.toUpperCase();
   };
 
   const [assessmentAmount, setAssessmentAmount] = useState<string>("");
@@ -153,6 +443,9 @@ export default function AgentDashboard() {
         setAgentEmail(parsed.email);
         fetchClaims(parsed.email);
         fetchAvailability(parsed.email);
+        if (parsed.branch) {
+          fetchPolicyHolders(parsed.branch);
+        }
       }
     } catch (e) {
       console.error(e);
@@ -892,99 +1185,576 @@ export default function AgentDashboard() {
         </div>
 
       </main>
-
-      {/* MongoDB Data Inspector / Claim Details Modal */}
+      {/* Detailed Claim Modal & Sub-modals (Matching Branch Claims Portal layout) */}
       {selectedClaim && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm transition-all duration-300 animate-in fade-in">
-          <div className="bg-white rounded-[2rem] w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] border border-slate-100 animate-in zoom-in-95 duration-200">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white p-6 flex justify-between items-center border-b border-slate-800">
-              <div>
-                <h3 className="text-xl font-bold tracking-tight">Claim Details - {selectedClaim.claimNumber}</h3>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all duration-300 animate-in fade-in">
+          
+          {/* SUB-MODAL 1: DOCUMENTS */}
+          {activeSubModal === "documents" && (
+            <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[800px] h-[650px] max-h-[90vh] shadow-2xl flex flex-col relative animate-fade-in overflow-hidden">
+              {/* Header */}
+              <div className="px-8 pt-6 pb-2 select-none bg-white">
+                <h2 className="text-[24px] font-black text-slate-900 tracking-tight leading-none">
+                  Documents - {selectedClaim.claimNumber}
+                </h2>
               </div>
+              <div className="border-b border-black mx-8 mb-6" />
+
+              {/* Body */}
+              <div className="px-8 pb-8 flex-1 overflow-y-auto space-y-6">
+                <div className="text-left font-bold text-slate-800 space-y-1.5 text-[13px] select-none leading-relaxed">
+                  <p>Vehicle No : <span className="font-medium text-slate-600">{formatPlate(selectedClaim.vehiclePlate)}</span></p>
+                </div>
+
+                {/* Categorized Document Lists */}
+                <div className="space-y-6">
+                  {/* Category 1: Policy Holder Documents */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <h3 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2 uppercase tracking-wider flex items-center gap-2 select-none">
+                      <svg className="w-4 h-4 text-[#0f2d4a]" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
+                      </svg>
+                      Policy Holder Documents
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {(() => {
+                        const phDocs: { name: string; url: string }[] = [];
+                        
+                        // License & Accident Photos
+                        const dlFront = selectedClaim.drivingLicense?.front?.[0];
+                        const dlRear = selectedClaim.drivingLicense?.rear?.[0];
+                        if (dlFront) phDocs.push({ name: "Driving License (Front)", url: dlFront });
+                        if (dlRear) phDocs.push({ name: "Driving License (Rear)", url: dlRear });
+                        
+                        let photoIndex = 1;
+                        const fPhotos = selectedClaim.accidentPhotos?.front || [];
+                        const rPhotos = selectedClaim.accidentPhotos?.rear || [];
+                        const sPhotos = selectedClaim.accidentPhotos?.side || [];
+                        
+                        fPhotos.forEach((url: string) => {
+                          phDocs.push({ name: `Accident Photo ${photoIndex++} (Front)`, url });
+                        });
+                        rPhotos.forEach((url: string) => {
+                          phDocs.push({ name: `Accident Photo ${photoIndex++} (Rear)`, url });
+                        });
+                        sPhotos.forEach((url: string) => {
+                          phDocs.push({ name: `Accident Photo ${photoIndex++} (Side)`, url });
+                        });
+                        
+                        (selectedClaim.additionalDocuments || []).forEach((doc) => {
+                          const uploadedBy = doc.uploadedBy || "Policy Holder";
+                          if (uploadedBy === "Policy Holder") {
+                            phDocs.push({ name: doc.name, url: doc.url });
+                          }
+                        });
+
+                        if (phDocs.length === 0) {
+                          return <p className="text-xs text-slate-400 font-bold italic select-none col-span-2 py-2">No policy holder documents.</p>;
+                        }
+
+                        return phDocs.map((doc, idx) => {
+                          let docUrl = doc.url;
+                          if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                            docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                          }
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setPreviewImage(docUrl || null)}
+                              className="bg-white border border-slate-200 hover:bg-slate-50 transition-all p-3.5 rounded-[15px] flex items-center justify-start gap-3 cursor-pointer outline-none shadow-sm active:scale-98 text-left"
+                            >
+                              <svg className="w-5 h-5 text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                              </svg>
+                              <span className="text-xs font-extrabold text-slate-700 truncate">{doc.name}</span>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Category 2: Agent Documents & Upload Panel */}
+                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 space-y-4">
+                    <h3 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2 uppercase tracking-wider flex items-center gap-2 select-none">
+                      <svg className="w-4 h-4 text-cyan-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" />
+                      </svg>
+                      Agent Documents
+                    </h3>
+
+                    {/* Uploaded Agent Docs List */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {(() => {
+                        const agentDocs: { name: string; url?: string; textContent?: string }[] = [];
+                        
+                        if (selectedClaim.inspectionSubmitted && selectedClaim.inspectionReport) {
+                          agentDocs.push({
+                            name: "Inspection Report (Text)",
+                            textContent: selectedClaim.inspectionReport
+                          });
+                        }
+
+                        (selectedClaim.additionalDocuments || []).forEach((doc) => {
+                          const uploadedBy = doc.uploadedBy || "Policy Holder";
+                          if (uploadedBy === "Agent") {
+                            agentDocs.push({ name: doc.name, url: doc.url });
+                          }
+                        });
+
+                        if (agentDocs.length === 0) {
+                          return <p className="text-xs text-slate-400 font-bold italic select-none col-span-2 py-2">No agent documents uploaded.</p>;
+                        }
+
+                        return agentDocs.map((doc, idx) => {
+                          if (doc.textContent) {
+                            return (
+                              <button
+                                key={idx}
+                                type="button"
+                                onClick={() => {
+                                  alert(`--- Inspection Report ---\n\n${doc.textContent}`);
+                                }}
+                                className="bg-white border border-slate-200 hover:bg-slate-50 transition-all p-3.5 rounded-[15px] flex items-center justify-start gap-3 cursor-pointer outline-none shadow-sm active:scale-98 text-left"
+                              >
+                                <svg className="w-5 h-5 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                </svg>
+                                <span className="text-xs font-extrabold text-slate-700 truncate">{doc.name}</span>
+                              </button>
+                            );
+                          }
+                          let docUrl = doc.url;
+                          if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                            docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                          }
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => setPreviewImage(docUrl || null)}
+                              className="bg-white border border-slate-200 hover:bg-slate-50 transition-all p-3.5 rounded-[15px] flex items-center justify-start gap-3 cursor-pointer outline-none shadow-sm active:scale-98 text-left"
+                            >
+                              <svg className="w-5 h-5 text-cyan-600 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                              </svg>
+                              <span className="text-xs font-extrabold text-slate-700 truncate">{doc.name}</span>
+                            </button>
+                          );
+                        });
+                      })()}
+                    </div>
+
+                    {/* Agent File Upload Panel */}
+                    {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && (
+                      <div className="border-t border-slate-200/60 pt-4 flex flex-col gap-4">
+                        <span className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider select-none">Upload Claim Document</span>
+                        
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider select-none">Document Type</label>
+                          <div className="flex flex-wrap gap-2">
+                            {["Repair Estimate", "Inspection Photos", "Damage Assessment", "Other"].map((type) => {
+                              const isSelected = agentUploadDocName === type;
+                              return (
+                                <button
+                                  key={type}
+                                  type="button"
+                                  onClick={() => setAgentUploadDocName(type)}
+                                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer select-none ${
+                                    isSelected
+                                      ? "bg-red-650 border-red-650 text-white shadow-sm"
+                                      : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                                  }`}
+                                >
+                                  {type}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2">
+                          <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider select-none">File Attachment</label>
+                          
+                          <input
+                            type="file"
+                            ref={agentFileInputRef}
+                            accept="image/*,application/pdf"
+                            onChange={(e) => {
+                              if (e.target.files && e.target.files[0]) {
+                                handleFileChange(e.target.files[0]);
+                              }
+                            }}
+                            className="hidden"
+                          />
+
+                          {!agentUploadFile ? (
+                            <div
+                              onClick={() => agentFileInputRef.current?.click()}
+                              className="w-full border-2 border-dashed border-slate-300 hover:border-red-500 rounded-2xl py-6 px-4 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-red-50/5 cursor-pointer transition-all duration-150 group"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-8 h-8 text-slate-400 mb-2 group-hover:text-red-500 transition-colors">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                              </svg>
+                              <span className="text-slate-800 text-[13px] font-bold">Select document file</span>
+                              <span className="text-slate-400 text-[10px] font-semibold mt-1">Image or PDF (Max 5MB)</span>
+                            </div>
+                          ) : (
+                            <div className="w-full border-2 border-emerald-500 bg-emerald-50/5 rounded-2xl p-4 flex items-center justify-between relative shadow-sm">
+                              <div className="flex items-center gap-3">
+                                {agentUploadFile.type.startsWith("image/") && agentUploadPreview ? (
+                                  <img
+                                    src={agentUploadPreview}
+                                    alt="preview"
+                                    className="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm"
+                                  />
+                                ) : (
+                                  <div className="w-11 h-11 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-600 flex items-center justify-center">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                    </svg>
+                                  </div>
+                                )}
+                                <div className="flex flex-col min-w-0 max-w-[200px] md:max-w-[280px]">
+                                  <span className="text-emerald-800 text-[13px] font-bold truncate">
+                                    {agentUploadFile.name}
+                                  </span>
+                                  <span className="text-slate-400 text-[10px] font-semibold mt-0.5">
+                                    {(agentUploadFile.size / 1024 / 1024).toFixed(2)} MB
+                                  </span>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleFileChange(null)}
+                                className="bg-red-550 hover:bg-red-100 text-red-500 border border-red-200 rounded-full p-2 transition-colors cursor-pointer border-none"
+                                title="Remove file"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="w-4.5 h-4.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {agentUploadFile && (
+                          <button
+                            onClick={handleAgentUpload}
+                            disabled={isAgentUploading}
+                            className="w-full bg-red-650 hover:bg-red-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl border-none cursor-pointer active:scale-[0.98] transition-all disabled:opacity-50 mt-1 shadow-md flex items-center justify-center gap-2"
+                          >
+                            {isAgentUploading ? "Uploading..." : "Upload Document to Claim"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-8 py-4 bg-white border-t border-slate-200 flex justify-end flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setActiveSubModal(null)}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-bold text-sm px-6 py-2 rounded-full transition-all border-none cursor-pointer flex items-center shadow-sm active:scale-95"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* MAIN DETAILS MODAL */}
+          {activeSubModal === null && (
+            <div className="bg-white border border-slate-200 rounded-[32px] w-full max-w-[780px] max-h-[90vh] p-8 shadow-2xl relative flex flex-col animate-fade-in select-none">
+              
+              {/* Close Button X */}
               <button
+                type="button"
                 onClick={() => setSelectedClaim(null)}
-                className="text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 p-2 rounded-full transition-all duration-200 cursor-pointer"
-                aria-label="Close modal"
+                className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 p-1.5 rounded-full hover:bg-slate-100 transition-all cursor-pointer border-none bg-transparent"
+                title="Close"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-            </div>
 
-            {/* Content Scroll Area */}
-            <div className="p-6 overflow-y-auto flex-1 flex flex-col gap-6 text-sm text-slate-800">
-              {/* Document Overview Section */}
-              <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-3 shadow-[inset_0_2px_4px_rgba(0,0,0,0.01)]">
-                <h4 className="font-extrabold text-slate-800 uppercase tracking-wider text-xs border-b pb-2.5 border-slate-200/80">
-                  Claim Information
-                </h4>
-                <div className="grid grid-cols-2 gap-y-3.5 gap-x-6">
-                  <div>
-                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">User NIC</span>
-                    <span className="font-bold text-slate-900 text-sm">{selectedClaim.userNic}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Vehicle Plate</span>
-                    <span className="font-bold text-slate-900 text-sm">{selectedClaim.vehiclePlate}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Damage Type</span>
-                    <span className="font-bold text-slate-900 text-sm">{selectedClaim.damageType}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Severity</span>
-                    <span className="font-bold text-slate-900 text-sm">{getSeverity(selectedClaim.damageType)}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Status</span>
-                    <span className="font-bold text-slate-900 text-sm">{selectedClaim.status}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Claim Amount</span>
-                    {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" ? (
-                      <div className="flex flex-col gap-1 mt-1">
-                        <input
-                          type="number"
-                          value={assessmentAmount}
-                          onChange={(e) => setAssessmentAmount(e.target.value)}
-                          placeholder="Enter LKR amount"
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-bold max-w-[150px]"
-                        />
-                      </div>
-                    ) : (
-                      <span className="font-bold text-slate-900 text-sm">
-                        {selectedClaim.amount ? `LKR ${selectedClaim.amount.toLocaleString()}` : "Not Evaluated"}
-                      </span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Assigned Agent</span>
-                    <span className="font-bold text-slate-900 text-sm" title={selectedClaim.assignedAgent}>
-                      {agentName || selectedClaim.assignedAgent}
+              {/* Header: Title, Tags & Avatar */}
+              <div className="flex items-start justify-between gap-4">
+                <div className="overflow-hidden">
+                  <h2 className="font-black text-slate-800 text-xl tracking-tight truncate">
+                    {getPolicyHolderName(selectedClaim.userNic)}
+                  </h2>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className="border border-amber-300 text-amber-700 bg-amber-50/50 rounded-lg px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider">
+                      ID: {selectedClaim.claimNumber}
                     </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block font-bold text-[10px] uppercase tracking-wider">Created At</span>
-                    <span className="font-bold text-slate-900 text-sm">
-                      {new Date(selectedClaim.createdAt).toLocaleString()}
+                    <span className={`border rounded-lg px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                      selectedClaim.status.toLowerCase() === "pending"
+                        ? "border-amber-300 text-amber-700 bg-amber-50/50"
+                        : selectedClaim.status.toLowerCase() === "in progress"
+                        ? "border-blue-300 text-blue-700 bg-blue-50/50"
+                        : selectedClaim.status.toLowerCase() === "approved"
+                        ? "border-emerald-300 text-emerald-700 bg-emerald-50/50"
+                        : "border-red-300 text-red-700 bg-red-50/50"
+                    }`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${
+                        selectedClaim.status.toLowerCase() === "pending"
+                          ? "bg-amber-500 animate-pulse"
+                          : selectedClaim.status.toLowerCase() === "in progress"
+                          ? "bg-blue-500"
+                          : selectedClaim.status.toLowerCase() === "approved"
+                          ? "bg-emerald-500"
+                          : "bg-red-500"
+                      }`} />
+                      {selectedClaim.status}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Description */}
-              <div>
-                <h4 className="font-bold text-slate-800 mb-1.5 text-sm uppercase tracking-wider">Incident Description</h4>
-                <p className="text-slate-700 bg-slate-50 border border-slate-100 p-4 rounded-2xl leading-relaxed font-medium">
-                  {selectedClaim.description}
-                </p>
+              {/* Divider */}
+              <div className="border-t border-slate-100 my-5" />
+
+              {/* Details Columns */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs md:text-sm font-semibold select-none leading-relaxed flex-1 overflow-y-auto pr-1">
+                {/* Column 1: Policy Holder Details */}
+                <div className="space-y-3.5 bg-slate-50 border border-slate-200 p-5 rounded-2xl">
+                  <h3 className="text-slate-800 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200 pb-2 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-[#0f2d4a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                    </svg>
+                    Policy Holder Details
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Email</span>
+                      <span className="text-slate-700 font-black truncate">: {getPolicyHolderEmail(selectedClaim.userNic)}</span>
+                    </div>
+                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">NIC</span>
+                      <span className="text-slate-700 font-black truncate">: {selectedClaim.userNic}</span>
+                    </div>
+                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Contact</span>
+                      <span className="text-slate-700 font-black truncate">: {getPolicyHolderContact(selectedClaim.userNic)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Column 2: Vehicle Details */}
+                <div className="space-y-3.5 bg-slate-50 border border-slate-200 p-5 rounded-2xl">
+                  <h3 className="text-slate-800 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200 pb-2 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-[#0f2d4a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124l-.847-13.486c-.035-.56-1.178-.941-1.745-.941H3.66c-.567 0-1.71.381-1.745.941l-.847 13.486c-.04.62.469 1.124 1.09 1.124H4.5m12-5.25a2.25 2.25 0 00-2.25-2.25H9.75A2.25 2.25 0 007.5 12.75V15h9v-2.25z" />
+                    </svg>
+                    Vehicle Details
+                  </h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Vehicle No</span>
+                      <span className="text-slate-700 font-black truncate">: {formatPlate(selectedClaim.vehiclePlate)}</span>
+                    </div>
+                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Branch</span>
+                      <span className="text-slate-700 font-black truncate">: {selectedClaim.branch || "-"}</span>
+                    </div>
+                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Assigned Agent</span>
+                      <span className="text-slate-700 font-black truncate">: {agentName || selectedClaim.assignedAgent || "-"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Large Dedicated Section: Incident Details */}
+                <div className="col-span-1 md:col-span-2 space-y-4 bg-slate-50 border border-slate-200 p-6 rounded-2xl">
+                  <h3 className="text-slate-800 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200 pb-2 mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                    </svg>
+                    Incident Details & Assessment
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-[110px_1fr] gap-2">
+                        <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Damage Type</span>
+                        <span className="text-slate-700 font-black truncate">: {selectedClaim.damageType || "-"}</span>
+                      </div>
+                      <div className="grid grid-cols-[110px_1fr] gap-2">
+                        <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Incident Date</span>
+                        <span className="text-slate-700 font-black truncate">: {formatDate(selectedClaim.incidentDate)} @ {selectedClaim.incidentTime}</span>
+                      </div>
+                      <div className="grid grid-cols-[110px_1fr] gap-2">
+                        <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Est. Amount</span>
+                        {selectedClaim.amount ? (
+                          <span className="text-slate-700 font-black truncate">: LKR {selectedClaim.amount.toLocaleString()}</span>
+                        ) : (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <input
+                              type="number"
+                              value={assessmentAmount}
+                              onChange={(e) => setAssessmentAmount(e.target.value)}
+                              placeholder="Enter LKR amount"
+                              className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-slate-800 font-bold focus:outline-none max-w-[150px]"
+                            />
+                            <button
+                              onClick={() => handleApproveAssessment(selectedClaim._id)}
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-[11px] px-3.5 py-1.5 rounded-lg border-none cursor-pointer transition-colors active:scale-95 whitespace-nowrap"
+                            >
+                              Approve
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-[110px_1fr] gap-2 items-start">
+                        <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Location</span>
+                        <span className="text-slate-700 font-black whitespace-normal break-words leading-relaxed">: {selectedClaim.location || "-"}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-200 pt-3 flex flex-col gap-1">
+                    <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Incident Description</span>
+                    <span className="text-slate-900 font-semibold break-words leading-relaxed whitespace-pre-wrap mt-1">
+                      {selectedClaim.description || "No description provided."}
+                    </span>
+                  </div>
+
+                  {selectedClaim.rejectionReason && (
+                    <div className="flex flex-col gap-1 border-t border-slate-200/60 pt-3 mt-3">
+                      <span className="text-red-500 font-bold uppercase tracking-wider text-[10px]">Rejection Reason</span>
+                      <span className="text-red-650 font-extrabold mt-1 text-sm">
+                        {selectedClaim.rejectionReason}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Documents & Contact Info Actions Row */}
+                  <div className="border-t border-slate-200 pt-4 flex items-center justify-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setActiveSubModal("documents")}
+                      className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-extrabold text-xs py-2.5 px-5 rounded-xl cursor-pointer shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                      </svg>
+                      Dossier Documents ({selectedClaim.additionalDocuments?.length || 0})
+                    </button>
+                  </div>
+                </div>
+
+                {/* Policy Holder Attachments / Photos Section */}
+                {(() => {
+                  const attachments: { name: string; url: string }[] = [];
+                  
+                  const dlFront = selectedClaim.drivingLicense?.front?.[0];
+                  const dlRear = selectedClaim.drivingLicense?.rear?.[0];
+                  if (dlFront) attachments.push({ name: "License (Front)", url: dlFront });
+                  if (dlRear) attachments.push({ name: "License (Rear)", url: dlRear });
+                  
+                  let photoIndex = 1;
+                  const fPhotos = selectedClaim.accidentPhotos?.front || [];
+                  const rPhotos = selectedClaim.accidentPhotos?.rear || [];
+                  const sPhotos = selectedClaim.accidentPhotos?.side || [];
+                  
+                  fPhotos.forEach((url: string) => {
+                    attachments.push({ name: `Accident Front #${photoIndex++}`, url });
+                  });
+                  rPhotos.forEach((url: string) => {
+                    attachments.push({ name: `Accident Rear #${photoIndex++}`, url });
+                  });
+                  sPhotos.forEach((url: string) => {
+                    attachments.push({ name: `Accident Side #${photoIndex++}`, url });
+                  });
+
+                  return (
+                    <div className="col-span-1 md:col-span-2 space-y-4 bg-slate-50 border border-slate-200 p-6 rounded-2xl">
+                      <h3 className="text-slate-800 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200 pb-2 mb-3 flex items-center gap-2">
+                        <svg className="w-4.5 h-4.5 text-[#0f2d4a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                        </svg>
+                        Policy Holder Attachments & Photos
+                      </h3>
+
+                      {attachments.length === 0 ? (
+                        <p className="text-xs text-slate-450 font-black italic select-none py-2">
+                          No driving license or accident photos attached to this claim dossier.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                          {attachments.map((doc, idx) => {
+                            let docUrl = doc.url;
+                            if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                              docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                            }
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => setPreviewImage(docUrl || null)}
+                                className="group cursor-pointer flex flex-col items-center"
+                              >
+                                <div className="w-full h-24 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm group-hover:shadow transition-all relative">
+                                  <img
+                                    src={docUrl}
+                                    alt={doc.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                                  />
+                                </div>
+                                <span className="text-[9px] text-slate-500 font-black text-center mt-2 uppercase tracking-wider truncate w-full px-1">
+                                  {doc.name}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Submit Inspection Report Section */}
+                {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && selectedClaim.currentStep === 3 && !selectedClaim.inspectionSubmitted && (
+                  <div className="col-span-1 md:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-2.5">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b pb-2 border-slate-200">
+                      Submit Inspection Report
+                    </h4>
+                    <textarea
+                      value={inspectionReportText}
+                      onChange={(e) => setInspectionReportText(e.target.value)}
+                      placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)...."
+                      rows={4}
+                      className="w-full p-3 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-cyan-500 bg-white"
+                    />
+                    <button
+                      onClick={() => handleSubmitInspectionReport(selectedClaim._id)}
+                      disabled={!inspectionReportText.trim() || isSubmittingReport}
+                      className="bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold text-xs py-2.5 rounded-xl border-none cursor-pointer self-end px-4 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSubmittingReport ? "Submitting..." : "Submit Inspection Report"}
+                    </button>
+                  </div>
+                )}
+
+                {selectedClaim.inspectionSubmitted && selectedClaim.inspectionReport && (
+                  <div className="col-span-1 md:col-span-2">
+                    {renderPremiumInspectionReport(selectedClaim.inspectionReport)}
+                  </div>
+                )}
+
               </div>
 
-              {/* Action Buttons: Accept / Reject */}
-              {selectedClaim.status.toLowerCase() === "pending" && (
-                <div className="flex items-center gap-4 mt-6">
+              {/* Action Buttons: Accept / Decline */}
+              {selectedClaim.status.toLowerCase() === "pending" && selectedClaim.currentStep === 2 && (
+                <div className="flex items-center gap-4 mt-6 flex-shrink-0">
                   <button
                     type="button"
                     onClick={() => handleAcceptClaim(selectedClaim._id)}
@@ -994,25 +1764,25 @@ export default function AgentDashboard() {
                     <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
-                    Accept
+                    Accept Assignment
                   </button>
                   <button
                     type="button"
                     onClick={() => handleDeclineClaim(selectedClaim._id, selectedClaim.claimNumber)}
                     disabled={isAcceptingClaim}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white font-black text-sm py-3.5 rounded-full flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all disabled:opacity-50 border-none"
+                    className="flex-1 bg-red-650 hover:bg-red-750 text-white font-black text-sm py-3.5 rounded-full flex items-center justify-center gap-2 cursor-pointer shadow-sm active:scale-95 transition-all disabled:opacity-50 border-none"
                   >
                     <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Reject
+                    Decline Assignment
                   </button>
                 </div>
               )}
 
               {/* Status Banner for Accepted (In Progress / Approved) Claims */}
-              {(selectedClaim.status.toLowerCase() === "in progress" || selectedClaim.status.toLowerCase() === "approved") && (
-                <div className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mt-6 text-center select-none animate-fade-in">
+              {(selectedClaim.status.toLowerCase() === "in progress" || selectedClaim.currentStep === 3) && !selectedClaim.inspectionSubmitted && (
+                <div className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mt-6 text-center select-none animate-fade-in flex-shrink-0 animate-in slide-in-from-bottom-5">
                   <p className="text-emerald-800 text-xs md:text-sm font-black flex items-center justify-center gap-2">
                     <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
@@ -1024,360 +1794,29 @@ export default function AgentDashboard() {
                   </p>
                 </div>
               )}
-
-              {/* Status Banner for Rejected Claims */}
-              {selectedClaim.status.toLowerCase() === "rejected" && (
-                <div className="w-full bg-red-50 border border-red-200 rounded-2xl p-4 mt-6 flex flex-col items-center text-center select-none gap-3 animate-fade-in">
-                  <p className="text-red-800 text-xs md:text-sm font-black flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Claim Assignment Declined
-                  </p>
-                  <p className="text-red-650 text-xs font-semibold leading-relaxed">
-                    This claim dossier assignment has been rejected. If this was a mistake or you need to re-verify details, please contact branch support.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedClaim(null);
-                      router.push("/Agent/Contact");
-                    }}
-                    className="bg-red-600 hover:bg-red-700 text-white font-black text-xs py-2.5 px-6 rounded-xl cursor-pointer shadow-sm active:scale-95 transition-all text-center border-none"
-                  >
-                    Contact Branch Support
-                  </button>
-                </div>
-              )}
-
-              {/* Inspection Report Section */}
-              {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && selectedClaim.currentStep === 3 && !selectedClaim.inspectionSubmitted && (
-                <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-5 flex flex-col gap-2.5">
-                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b pb-2 border-slate-200">
-                    Submit Inspection Report
-                  </h4>
-                  <textarea
-                    value={inspectionReportText}
-                    onChange={(e) => setInspectionReportText(e.target.value)}
-                    placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)...."
-                    rows={4}
-                    className="w-full p-3 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-cyan-500 bg-white"
-                  />
-                  <button
-                    onClick={() => handleSubmitInspectionReport(selectedClaim._id)}
-                    disabled={!inspectionReportText.trim() || isSubmittingReport}
-                    className="bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold text-xs py-2.5 rounded-xl border-none cursor-pointer self-end px-4 active:scale-95 transition-all disabled:opacity-50"
-                  >
-                    {isSubmittingReport ? "Submitting..." : "Submit Inspection Report"}
-                  </button>
-                </div>
-              )}
-
-              {selectedClaim.inspectionSubmitted && (
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5">
-                  <div className="flex items-center justify-between border-b pb-2 mb-2 border-slate-200">
-                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Inspection Report</h4>
-                    <span className="text-[9px] font-black uppercase bg-emerald-50 text-emerald-600 border border-emerald-200 px-2 py-0.5 rounded">Submitted</span>
-                  </div>
-                  <p className="text-xs text-slate-600 font-medium whitespace-pre-wrap">{selectedClaim.inspectionReport}</p>
-                </div>
-              )}
-
-              {/* Requested Documents Status Section */}
-              {selectedClaim && selectedClaim.requestedDocuments && selectedClaim.requestedDocuments.length > 0 && (() => {
-                const requestedDocsList = [
-                  ...(selectedClaim.requestedDocuments || []).map((name) => ({
-                    name,
-                    status: "Pending" as const,
-                    url: null,
-                    recipient: getRecipientForDoc(selectedClaim, name),
-                  })),
-                  ...(selectedClaim.additionalDocuments || []).map((doc) => ({
-                    name: doc.name,
-                    status: "Submitted" as const,
-                    url: doc.url,
-                    recipient: doc.uploadedBy === "Agent" ? "Agent" : "User",
-                  })),
-                ];
-
-                const policyHolderDocs = requestedDocsList.filter((d) => d.recipient === "User");
-                const agentDocs = requestedDocsList.filter((d) => d.recipient === "Agent");
-                const hasPending = requestedDocsList.some((d) => d.status === "Pending");
-
-                return (
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 flex flex-col gap-4">
-                    <h3 className="text-sm font-black text-slate-800 border-b border-slate-200 pb-2 uppercase tracking-wider flex items-center gap-2 select-none">
-                      {hasPending ? (
-                        <svg className="w-4.5 h-4.5 text-amber-500 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                        </svg>
-                      ) : (
-                        <svg className="w-4.5 h-4.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                        </svg>
-                      )}
-                      Requested Documents Status
-                    </h3>
-
-                    {/* Policy Holder Docs */}
-                    <div className="space-y-2">
-                      <span className="text-[10px] bg-blue-100 text-blue-800 font-black tracking-wider uppercase px-2 py-0.5 rounded border border-blue-200">
-                        Policy Holder Documents
-                      </span>
-                      {policyHolderDocs.length > 0 ? (
-                        <div className="flex flex-col gap-2">
-                          {policyHolderDocs.map((item, idx) => {
-                            const { requestedAt, submittedAt, sender } = getDocDetails(selectedClaim, item.name, item.status);
-                            return (
-                              <div key={idx} className="flex items-center justify-between py-2 px-3 bg-white border border-slate-100 rounded-xl">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${item.status === "Pending" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-xs font-bold text-slate-700 truncate">{item.name}</span>
-                                    <span className="text-[9px] text-slate-400 font-bold">
-                                      {item.status === "Pending" ? `Requested: ${requestedAt} by ${sender}` : `Requested: ${requestedAt} by ${sender} · Uploaded: ${submittedAt || "Recent"}`}
-                                    </span>
-                                  </div>
-                                </div>
-                                <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${item.status === "Pending" ? "bg-amber-500/10 text-amber-600 border-amber-200" : "bg-emerald-500/10 text-emerald-600 border-emerald-200"}`}>
-                                  {item.status}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 font-bold italic pl-1">No requests for policy holder.</p>
-                      )}
-                    </div>
-
-                    {/* Agent Docs */}
-                    <div className="space-y-2 pt-2 border-t border-slate-200/60">
-                      <span className="text-[10px] bg-cyan-100 text-cyan-800 font-black tracking-wider uppercase px-2 py-0.5 rounded border border-cyan-200">
-                        Agent Documents
-                      </span>
-                      {agentDocs.length > 0 ? (
-                        <div className="flex flex-col gap-2">
-                          {agentDocs.map((item, idx) => {
-                            const { requestedAt, submittedAt, sender } = getDocDetails(selectedClaim, item.name, item.status);
-                            return (
-                              <div key={idx} className="flex items-center justify-between py-2 px-3 bg-white border border-slate-100 rounded-xl">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className={`w-1.5 h-1.5 rounded-full ${item.status === "Pending" ? "bg-amber-500 animate-pulse" : "bg-emerald-500"}`} />
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="text-xs font-bold text-slate-700 truncate">{item.name}</span>
-                                    <span className="text-[9px] text-slate-400 font-bold">
-                                      {item.status === "Pending" ? `Requested: ${requestedAt} by ${sender}` : `Requested: ${requestedAt} by ${sender} · Uploaded: ${submittedAt || "Recent"}`}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${item.status === "Pending" ? "bg-amber-500/10 text-amber-600 border-amber-200" : "bg-emerald-500/10 text-emerald-600 border-emerald-200"}`}>
-                                    {item.status}
-                                  </span>
-                                  {item.status === "Submitted" && item.url && (
-                                    <a
-                                      href={item.url.startsWith("http") || item.url.startsWith("data:") ? item.url : `${API_URL.replace("/api", "")}/uploads/${item.url}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="text-[10px] font-black text-cyan-600 hover:text-cyan-700 hover:underline"
-                                    >
-                                      View
-                                    </a>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-slate-400 font-bold italic pl-1">No requests for agent.</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Agent Documents Section */}
-              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-4">
-                <div className="flex items-center justify-between border-b pb-2 border-slate-200">
-                  <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider">Agent Documents</h4>
-                </div>
-                
-                {/* List already uploaded agent docs */}
-                {(() => {
-                  const agentDocs = (selectedClaim.additionalDocuments || []).filter(
-                    doc => doc.uploadedBy === "Agent"
-                  );
-                  if (agentDocs.length === 0) {
-                    return <p className="text-xs text-slate-400 font-bold italic">No agent documents uploaded yet.</p>;
-                  }
-                  return (
-                    <div className="flex flex-col gap-2">
-                      {agentDocs.map((doc, idx) => {
-                        let docUrl = doc.url;
-                        if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
-                          docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
-                        }
-                        return (
-                          <div key={idx} className="flex items-center justify-between bg-white border border-slate-100 p-2.5 rounded-xl">
-                            <span className="text-xs font-bold text-slate-700">{doc.name}</span>
-                            <a
-                              href={docUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-xs font-extrabold text-cyan-600 hover:text-cyan-700 select-none"
-                            >
-                              View File
-                            </a>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-
-                {/* Upload new agent doc */}
-                {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && (
-                  <div className="border-t border-slate-200 pt-4 flex flex-col gap-4">
-                    <span className="text-[11px] text-slate-500 font-extrabold uppercase tracking-wider">Upload Claim Document</span>
-                    
-                    {/* Select Doc Type Pills */}
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Document Type</label>
-                      <div className="flex flex-wrap gap-2">
-                        {["Repair Estimate", "Inspection Photos", "Damage Assessment", "Other"].map((type) => {
-                          const isSelected = agentUploadDocName === type;
-                          return (
-                            <button
-                              key={type}
-                              type="button"
-                              onClick={() => setAgentUploadDocName(type)}
-                              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all border cursor-pointer select-none ${
-                                isSelected
-                                  ? "bg-red-600 border-red-600 text-white shadow-sm"
-                                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                              }`}
-                            >
-                              {type}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Drag and drop / file selector zones */}
-                    <div className="flex flex-col gap-2">
-                      <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">File Attachment</label>
-                      
-                      <input
-                        type="file"
-                        ref={agentFileInputRef}
-                        accept="image/*,application/pdf"
-                        onChange={(e) => {
-                          if (e.target.files && e.target.files[0]) {
-                            handleFileChange(e.target.files[0]);
-                          }
-                        }}
-                        className="hidden"
-                      />
-
-                      {!agentUploadFile ? (
-                        <div
-                          onClick={() => agentFileInputRef.current?.click()}
-                          className="w-full border-2 border-dashed border-slate-300 hover:border-red-500 rounded-2xl py-6 px-4 flex flex-col items-center justify-center bg-slate-50/50 hover:bg-red-50/5 cursor-pointer transition-all duration-150 group"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.8" stroke="currentColor" className="w-8 h-8 text-slate-400 mb-2 group-hover:text-red-500 transition-colors">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                          </svg>
-                          <span className="text-slate-800 text-[13px] font-bold">Select document file</span>
-                          <span className="text-slate-400 text-[10px] font-semibold mt-1">Image or PDF (Max 5MB)</span>
-                        </div>
-                      ) : (
-                        <div className="w-full border-2 border-emerald-500 bg-emerald-50/5 rounded-2xl p-4 flex items-center justify-between relative shadow-sm">
-                          <div className="flex items-center gap-3">
-                            {agentUploadFile.type.startsWith("image/") && agentUploadPreview ? (
-                              <img
-                                src={agentUploadPreview}
-                                alt="preview"
-                                className="w-12 h-12 rounded-lg object-cover border border-slate-200 shadow-sm"
-                              />
-                            ) : (
-                              <div className="w-11 h-11 rounded-lg bg-emerald-100 border border-emerald-300 text-emerald-600 flex items-center justify-center">
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                                </svg>
-                              </div>
-                            )}
-                            <div className="flex flex-col min-w-0 max-w-[200px] md:max-w-[280px]">
-                              <span className="text-emerald-800 text-[13px] font-bold truncate">
-                                {agentUploadFile.name}
-                              </span>
-                              <span className="text-slate-400 text-[10px] font-semibold mt-0.5">
-                                {(agentUploadFile.size / 1024 / 1024).toFixed(2)} MB
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleFileChange(null)}
-                            className="bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-full p-2 transition-colors cursor-pointer"
-                            title="Remove file"
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2.2" stroke="currentColor" className="w-4.5 h-4.5">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                            </svg>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {agentUploadFile && (
-                      <button
-                        onClick={handleAgentUpload}
-                        disabled={isAgentUploading}
-                        className="w-full bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs py-3 px-4 rounded-xl border-none cursor-pointer active:scale-[0.98] transition-all disabled:opacity-50 mt-1 shadow-md hover:shadow-red-500/25 flex items-center justify-center gap-2"
-                      >
-                        {isAgentUploading ? (
-                          <>
-                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            <span>Uploading...</span>
-                          </>
-                        ) : (
-                          <>
-                            <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-                            </svg>
-                            <span>Upload to Claim</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Actions / Operations */}
-              <div className="flex gap-3 justify-end pt-4 border-t border-slate-100 mt-2">
-                {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && (
-                  <button
-                    onClick={() => handleApproveAssessment(selectedClaim._id)}
-                    className="bg-red-600 hover:bg-red-700 text-white text-sm font-bold py-2.5 px-6 rounded-xl cursor-pointer hover:shadow-lg transition-all duration-300"
-                  >
-                    Approve Assessment
-                  </button>
-                )}
-                <button
-                  onClick={() => setSelectedClaim(null)}
-                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-bold py-2.5 px-6 rounded-xl cursor-pointer transition-colors"
-                >
-                  Close
-                </button>
-              </div>
             </div>
+          )}
+
+        </div>
+      )}
+
+      {/* Preview Image Modal Overlay */}
+      {previewImage && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
+          <div className="relative max-w-4xl max-h-[90vh] bg-white rounded-2xl p-2 overflow-hidden shadow-2xl flex flex-col items-center animate-in zoom-in-95">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-3 right-3 text-white bg-slate-900/60 hover:bg-slate-900 p-2 rounded-full border border-slate-700/50 transition-all select-none cursor-pointer z-10"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            {previewImage.toLowerCase().endsWith(".pdf") ? (
+              <iframe src={previewImage} className="w-[80vw] h-[80vh] border-none rounded-xl" title="PDF Document Preview" />
+            ) : (
+              <img src={previewImage} className="max-w-full max-h-[85vh] object-contain rounded-xl shadow" alt="Document Preview" />
+            )}
           </div>
         </div>
       )}

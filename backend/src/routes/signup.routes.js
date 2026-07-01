@@ -48,10 +48,14 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Missing required signup sections." });
     }
 
-    const { firstName, lastName, nic, mobile, email, dob, address, province, city, password } = personal;
+    const { firstName, lastName, nic, mobile, email, dob, address, province, city, password, bankDetails } = personal;
 
     if (!firstName || !lastName || !nic || !mobile || !email || !dob || !address || !province || !city || !password) {
       return res.status(400).json({ error: "All personal detail fields are required." });
+    }
+
+    if (!bankDetails || !bankDetails.bankName || !bankDetails.branchName || !bankDetails.accountNumber || !bankDetails.accountHolderName) {
+      return res.status(400).json({ error: "All bank account detail fields are required." });
     }
 
     const cleanNic = nic.trim();
@@ -167,6 +171,12 @@ router.post("/", async (req, res) => {
         nicBack: uploadedNicBack,
         vehicleReg: uploadedVehicleReg,
         revenueLicense: uploadedRevenueLicense
+      },
+      bankDetails: {
+        bankName: bankDetails.bankName,
+        branchName: bankDetails.branchName,
+        accountNumber: bankDetails.accountNumber,
+        accountHolderName: bankDetails.accountHolderName
       },
       branch: getNearestBranch(city),
       referenceNumber: nextRefNum,

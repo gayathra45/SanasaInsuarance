@@ -113,107 +113,115 @@ export default function MyClaims() {
   };
 
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const fetchClaims = async () => {
-        setIsLoading(true);
-        let userNic = "";
-        
-        // 1. Get Logged In User
-        const userStr = sessionStorage.getItem("logged_in_user");
-        if (userStr) {
-          try {
-            const parsedUser = JSON.parse(userStr);
-            setUser(parsedUser);
-            if (parsedUser.nic) {
-              userNic = parsedUser.nic;
-            }
-          } catch (err) {
-            console.error("Error parsing logged_in_user session", err);
-          }
+  const fetchClaims = async (showLoading = true) => {
+    if (typeof window === "undefined") return;
+    if (showLoading) setIsLoading(true);
+    let userNic = "";
+    
+    // 1. Get Logged In User
+    const userStr = sessionStorage.getItem("logged_in_user");
+    if (userStr) {
+      try {
+        const parsedUser = JSON.parse(userStr);
+        setUser(parsedUser);
+        if (parsedUser.nic) {
+          userNic = parsedUser.nic;
         }
-
-        let databaseClaims: Claim[] = [];
-
-        // 2. Fetch Claims from MongoDB API (if NIC exists)
-        if (userNic) {
-          try {
-            const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}&includeDocs=true`, {
-              cache: "no-store"
-            });
-            if (res.ok) {
-              const data = await res.json();
-              if (Array.isArray(data.claims)) {
-                databaseClaims = data.claims.map((claim: any) => ({
-                  claimNumber: claim.claimNumber,
-                  vehiclePlate: claim.vehiclePlate,
-                  incidentDate: formatDateString(claim.incidentDate),
-                  incidentTime: claim.incidentTime,
-                  damageType: claim.damageType,
-                  amount: claim.amount ? `Rs. ${Number(claim.amount).toLocaleString()}` : "Pending",
-                  status: claim.status || "Pending",
-                  description: claim.description,
-                  location: claim.location,
-                  officer: claim.assignedAgent || "Not Assigned",
-                  documentsRequested: claim.documentsRequested || false,
-                  requestedDocuments: claim.requestedDocuments || [],
-                  currentStep: claim.currentStep || 1,
-                  messages: claim.messages || [],
-                  accidentPhotos: claim.accidentPhotos || {},
-                  drivingLicense: claim.drivingLicense || {},
-                  additionalDocuments: claim.additionalDocuments || [],
-                  createdAt: claim.createdAt || claim.incidentDate
-                }));
-              }
-            }
-          } catch (err) {
-            console.error("Error fetching claims from backend API", err);
-          }
-        }
-
-        // 3. Fallback to check if a claim was recently submitted in current session
-        let localClaims: Claim[] = [];
-        try {
-          const lastSubmitted = sessionStorage.getItem("last_submitted_claim");
-          if (lastSubmitted) {
-            const parsed = JSON.parse(lastSubmitted);
-            // Verify if it is already in database claims to prevent duplication
-            const exists = databaseClaims.some(c => c.claimNumber === parsed.claimNumber);
-            if (!exists) {
-              localClaims.push({
-                claimNumber: parsed.claimNumber,
-                vehiclePlate: parsed.vehiclePlate,
-                incidentDate: formatDateString(parsed.incidentDate),
-                incidentTime: parsed.incidentTime,
-                damageType: parsed.damageType,
-                amount: "Pending",
-                status: "Pending",
-                description: parsed.description,
-                location: parsed.location,
-                officer: "Not Assigned",
-                documentsRequested: false,
-                requestedDocuments: [],
-                currentStep: 1,
-                messages: [],
-                accidentPhotos: {},
-                drivingLicense: {},
-                additionalDocuments: [],
-                createdAt: parsed.createdAt || parsed.incidentDate || new Date().toISOString()
-              });
-            }
-          }
-        } catch (err) {
-          console.error("Error parsing local claim draft", err);
-        }
-
-        // 4. Combine recently submitted claims with database claims
-        setClaims([...localClaims, ...databaseClaims]);
-        setIsLoading(false);
-      };
-
-      fetchClaims();
+      } catch (err) {
+        console.error("Error parsing logged_in_user session", err);
+      }
     }
+
+    let databaseClaims: Claim[] = [];
+
+    // 2. Fetch Claims from MongoDB API (if NIC exists)
+    if (userNic) {
+      try {
+        const res = await fetch(`${API_URL}/policy-holder/user-claims?nic=${encodeURIComponent(userNic)}&includeDocs=true`, {
+          cache: "no-store"
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.claims)) {
+            databaseClaims = data.claims.map((claim: any) => ({
+              claimNumber: claim.claimNumber,
+              vehiclePlate: claim.vehiclePlate,
+              incidentDate: formatDateString(claim.incidentDate),
+              incidentTime: claim.incidentTime,
+              damageType: claim.damageType,
+              amount: claim.amount ? `Rs. ${Number(claim.amount).toLocaleString()}` : "Pending",
+              status: claim.status || "Pending",
+              description: claim.description,
+              location: claim.location,
+              officer: claim.assignedAgent || "Not Assigned",
+              documentsRequested: claim.documentsRequested || false,
+              requestedDocuments: claim.requestedDocuments || [],
+              currentStep: claim.currentStep || 1,
+              messages: claim.messages || [],
+              accidentPhotos: claim.accidentPhotos || {},
+              drivingLicense: claim.drivingLicense || {},
+              additionalDocuments: claim.additionalDocuments || [],
+              createdAt: claim.createdAt || claim.incidentDate
+            }));
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching claims from backend API", err);
+      }
+    }
+
+    // 3. Fallback to check if a claim was recently submitted in current session
+    let localClaims: Claim[] = [];
+    try {
+      const lastSubmitted = sessionStorage.getItem("last_submitted_claim");
+      if (lastSubmitted) {
+        const parsed = JSON.parse(lastSubmitted);
+        // Verify if it is already in database claims to prevent duplication
+        const exists = databaseClaims.some(c => c.claimNumber === parsed.claimNumber);
+        if (!exists) {
+          localClaims.push({
+            claimNumber: parsed.claimNumber,
+            vehiclePlate: parsed.vehiclePlate,
+            incidentDate: formatDateString(parsed.incidentDate),
+            incidentTime: parsed.incidentTime,
+            damageType: parsed.damageType,
+            amount: "Pending",
+            status: "Pending",
+            description: parsed.description,
+            location: parsed.location,
+            officer: "Not Assigned",
+            documentsRequested: false,
+            requestedDocuments: [],
+            currentStep: 1,
+            messages: [],
+            accidentPhotos: {},
+            drivingLicense: {},
+            additionalDocuments: [],
+            createdAt: parsed.createdAt || parsed.incidentDate || new Date().toISOString()
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Error parsing local claim draft", err);
+    }
+
+    // 4. Combine recently submitted claims with database claims
+    setClaims([...localClaims, ...databaseClaims]);
+    if (showLoading) setIsLoading(false);
+  };
+
+  useEffect(() => {
+    fetchClaims(true);
   }, []);
+
+  // Poll database claims periodically in the background
+  useEffect(() => {
+    if (selectedClaim !== null) return;
+    const pollInterval = setInterval(() => {
+      fetchClaims(false);
+    }, 7000);
+    return () => clearInterval(pollInterval);
+  }, [selectedClaim]);
 
   // Lock background scroll when modal is open
   useEffect(() => {

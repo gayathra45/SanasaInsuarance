@@ -31,6 +31,12 @@ const userSchema = new mongoose.Schema({
     revenueLicense: { type: String }
   },
   branch: { type: String, default: "Galle" },
+  bankDetails: {
+    bankName: { type: String, default: "" },
+    branchName: { type: String, default: "" },
+    accountNumber: { type: String, default: "" },
+    accountHolderName: { type: String, default: "" }
+  },
   referenceNumber: { type: String, required: true, unique: true },
   status: { type: String, default: "Pending" },
   resetOtp: { type: String },

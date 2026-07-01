@@ -83,6 +83,12 @@ export default function MobileSignup() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [activeVehicleTypeIndex, setActiveVehicleTypeIndex] = useState<number | null>(null);
 
+  // STEP 1 Bank details States
+  const [bankName, setBankName] = useState("");
+  const [branchName, setBranchName] = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [accountHolderName, setAccountHolderName] = useState("");
+
   // STEP 2 State: Vehicles Loop
   const [vehicles, setVehicles] = useState<Vehicle[]>([
     {
@@ -262,6 +268,11 @@ export default function MobileSignup() {
         return;
       }
 
+      if (!bankName.trim() || !branchName.trim() || !accountNumber.trim() || !accountHolderName.trim()) {
+        showAlert("Validation Error", "All bank account details for settlement are required.");
+        return;
+      }
+
       const nicRegex = /^\d{8,11}[0-9vVxX]$/;
       if (!nicRegex.test(nic.trim())) {
         showAlert("Validation Error", "Invalid NIC Number (Must be 9-12 characters, ending with V or X).");
@@ -386,7 +397,13 @@ export default function MobileSignup() {
         address,
         province,
         city,
-        password
+        password,
+        bankDetails: {
+          bankName: bankName.trim(),
+          branchName: branchName.trim(),
+          accountNumber: accountNumber.trim(),
+          accountHolderName: accountHolderName.trim()
+        }
       },
       vehicles,
       documents: {
@@ -670,6 +687,34 @@ export default function MobileSignup() {
                     <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)} style={styles.toggleIcon}>
                       <Ionicons name={showConfirmPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#64748b" />
                     </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Bank Details section */}
+                <View style={{ marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: "rgba(255,255,255,0.15)" }}>
+                  <View style={[styles.stepHeader, { marginBottom: 15 }]}>
+                    <Ionicons name="card-outline" size={22} color="#ff9800" />
+                    <Text style={styles.stepTitle}>Bank Details (For Payouts)</Text>
+                  </View>
+
+                  <View style={styles.inputBox}>
+                    <Text style={styles.inputLabel}>Bank Name *</Text>
+                    <TextInput style={styles.textInput} placeholder="e.g. Bank of Ceylon" placeholderTextColor="#94a3b8" value={bankName} onChangeText={setBankName} />
+                  </View>
+
+                  <View style={styles.inputBox}>
+                    <Text style={styles.inputLabel}>Branch Name *</Text>
+                    <TextInput style={styles.textInput} placeholder="e.g. Galle Fort" placeholderTextColor="#94a3b8" value={branchName} onChangeText={setBranchName} />
+                  </View>
+
+                  <View style={styles.inputBox}>
+                    <Text style={styles.inputLabel}>Account Number *</Text>
+                    <TextInput style={styles.textInput} placeholder="e.g. 84110295" placeholderTextColor="#94a3b8" value={accountNumber} onChangeText={setAccountNumber} keyboardType="numeric" />
+                  </View>
+
+                  <View style={styles.inputBox}>
+                    <Text style={styles.inputLabel}>Account Holder Name *</Text>
+                    <TextInput style={styles.textInput} placeholder="e.g. A. H. Amal Perera" placeholderTextColor="#94a3b8" value={accountHolderName} onChangeText={setAccountHolderName} />
                   </View>
                 </View>
               </View>

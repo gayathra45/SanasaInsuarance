@@ -62,6 +62,237 @@ interface Claim {
   rejectionReason?: string;
 }
 
+const parseInspectionReport = (reportText: string) => {
+  if (!reportText) return null;
+  if (!reportText.includes("[1. VEHICLE CONDITION DETAILS]")) {
+    return { isRaw: true, rawText: reportText };
+  }
+
+  try {
+    const lines = reportText.split("\n");
+    let odometer = "";
+    let fuelLevel = "";
+    let recommendedAction = "";
+    let estimatedCost = "";
+    let preExistingDamage = "";
+    let physicalInspectionNotes = "";
+    const checklist: { [key: string]: string } = {};
+
+    let currentSection = "";
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      if (trimmed.startsWith("• Odometer:")) {
+        odometer = trimmed.replace("• Odometer:", "").trim();
+      } else if (trimmed.startsWith("• Fuel Level:")) {
+        fuelLevel = trimmed.replace("• Fuel Level:", "").trim();
+      } else if (trimmed.startsWith("• Recommended Action:")) {
+        recommendedAction = trimmed.replace("• Recommended Action:", "").trim();
+      } else if (trimmed.startsWith("• Estimated Cost:")) {
+        estimatedCost = trimmed.replace("• Estimated Cost:", "").trim();
+      } else if (trimmed.includes("[3. PRE-EXISTING DAMAGE NOTES]")) {
+        currentSection = "pre-existing";
+      } else if (trimmed.includes("[4. PHYSICAL INSPECTION NOTES]")) {
+        currentSection = "physical-notes";
+      } else if (trimmed.includes("==================================") || trimmed.includes("VEHICLE CLAIM INSPECTION")) {
+        // skip
+      } else if (trimmed.includes("[2. COMPONENT DAMAGE CHECKLIST]")) {
+        currentSection = "checklist";
+      } else if (currentSection === "checklist" && trimmed.startsWith("• ")) {
+        const parts = trimmed.substring(2).split(":");
+        if (parts.length >= 2) {
+          const compName = parts[0].trim();
+          const compVal = parts[1].replace("[", "").replace("]", "").trim();
+          checklist[compName] = compVal;
+        }
+      } else if (currentSection === "pre-existing") {
+        if (!trimmed.startsWith("[")) {
+          preExistingDamage += (preExistingDamage ? "\n" : "") + trimmed;
+        }
+      } else if (currentSection === "physical-notes") {
+        if (!trimmed.startsWith("[")) {
+          physicalInspectionNotes += (physicalInspectionNotes ? "\n" : "") + trimmed;
+        }
+      }
+    });
+
+    return {
+      isRaw: false,
+      odometer,
+      fuelLevel,
+      recommendedAction,
+      estimatedCost,
+      checklist,
+      preExistingDamage: preExistingDamage || "None reported.",
+      physicalInspectionNotes: physicalInspectionNotes || "None reported."
+    };
+  } catch (err) {
+    console.error("Error parsing inspection report:", err);
+    return { isRaw: true, rawText: reportText };
+  }
+};
+
+const renderPremiumInspectionReport = (reportText: string) => {
+  const parsed = parseInspectionReport(reportText);
+  if (!parsed) return null;
+
+  if (parsed.isRaw) {
+    return (
+      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 shadow-inner select-text">
+        <div className="flex items-center gap-2 mb-3 text-slate-400 select-none">
+          <svg className="w-5 h-5 text-slate-455" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Raw Inspection Report Text</span>
+        </div>
+        <p className="text-slate-700 text-xs font-semibold whitespace-pre-wrap leading-relaxed">
+          {parsed.rawText}
+        </p>
+      </div>
+    );
+  }
+
+  const renderBadge = (val: string) => {
+    let color = "text-slate-500 bg-slate-50 border-slate-200";
+    let icon = null;
+    
+    if (val === "None") {
+      color = "text-emerald-600 bg-emerald-50/40 border-emerald-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      );
+    } else if (val === "Minor") {
+      color = "text-amber-600 bg-amber-50/40 border-amber-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-amber-550 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      );
+    } else if (val === "Major") {
+      color = "text-rose-600 bg-rose-50/40 border-rose-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-rose-505 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3m0 0a8.001 8.001 0 00-7.797 6.138m15.594 0A8.001 8.001 0 0012 3M3.243 9.75a8.002 8.002 0 008.757 8.757m0 0A8.002 8.002 0 0020.757 9.75" />
+        </svg>
+      );
+    }
+
+    return (
+      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border flex items-center gap-1.5 select-none ${color}`}>
+        {icon}
+        {val}
+      </span>
+    );
+  };
+
+  return (
+    <div className="border border-slate-200/80 rounded-[32px] overflow-hidden bg-slate-50/20 p-6 space-y-6 shadow-sm select-text text-left font-sans w-full">
+      {/* Dashboard Title */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4 select-none">
+        <div className="flex items-center gap-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div>
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider leading-none">Vehicle Inspection Report</h4>
+            <span className="text-[10px] font-bold text-slate-400 block mt-1 tracking-wider">OFFICIAL PHYSICAL ASSESSMENT SUMMARY</span>
+          </div>
+        </div>
+        <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-extrabold tracking-wider uppercase px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+          </svg>
+          Verified By Agent
+        </span>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Odometer */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-blue-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Odometer</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-slate-800">{parsed.odometer || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Total Distance Travelled</span>
+        </div>
+
+        {/* Card 2: Fuel Level */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-indigo-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Fuel Level</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-slate-800">{parsed.fuelLevel || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Current Tank Level</span>
+        </div>
+
+        {/* Card 3: Estimated Cost */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-emerald-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Estimated Cost</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-emerald-600">{parsed.estimatedCost || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Assessment Valuation</span>
+        </div>
+
+        {/* Card 4: Recommendation */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-violet-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Recommendation</span>
+          <div className="flex items-baseline gap-1 mt-2 overflow-hidden">
+            <span className="text-[13px] font-black text-slate-800 truncate" title={parsed.recommendedAction}>{parsed.recommendedAction || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Suggested Action Payout</span>
+        </div>
+      </div>
+
+      {/* Checklist & Notes Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Component Damage Checklist */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-5 space-y-4 shadow-sm">
+          <div>
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block border-b border-slate-100 pb-2.5 mb-3 select-none">Component Damage Checklist</span>
+            <div className="space-y-2">
+              {Object.entries(parsed.checklist || {}).map(([key, value]) => (
+                <div key={key} className="flex justify-between items-center py-1.5 border-b border-slate-50 last:border-0">
+                  <span className="text-slate-655 font-bold text-xs">{key}</span>
+                  {renderBadge(value)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Remarks Column */}
+        <div className="flex flex-col gap-4">
+          {parsed.preExistingDamage && parsed.preExistingDamage !== "None reported." && (
+            <div className="bg-amber-50/20 border border-amber-200/50 rounded-2xl p-5 shadow-sm space-y-2.5 flex-1">
+              <span className="text-[10px] text-amber-800 font-black uppercase tracking-wider flex items-center gap-1.5 select-none">
+                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3m0 0a8.001 8.001 0 00-7.797 6.138m15.594 0A8.001 8.001 0 0012 3M3.243 9.75a8.002 8.002 0 008.757 8.757m0 0A8.002 8.002 0 0020.757 9.75" />
+                </svg>
+                Pre-Existing Damage Remarks
+              </span>
+              <p className="text-slate-700 text-xs font-semibold leading-relaxed whitespace-pre-wrap">{parsed.preExistingDamage}</p>
+            </div>
+          )}
+
+          <div className="bg-slate-50/50 border border-slate-200/70 rounded-2xl p-5 shadow-sm space-y-2.5 flex-1">
+            <span className="text-[10px] text-slate-555 font-black uppercase tracking-wider flex items-center gap-1.5 select-none">
+              <svg className="w-4 h-4 text-slate-505" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+              Physical Inspection Remarks
+            </span>
+            <p className="text-slate-700 text-xs font-semibold leading-relaxed whitespace-pre-wrap">{parsed.physicalInspectionNotes}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function AgentMyClaims() {
   const router = useRouter();
   const [agentName, setAgentName] = useState("");
@@ -101,7 +332,7 @@ export default function AgentMyClaims() {
       const res = await fetch(`${API_URL}/agent/claims?email=${email}`);
       if (!res.ok) throw new Error("Failed to fetch claims");
       const data = await res.json();
-      const active = (data || []).filter((c: Claim) => c.status !== "Approved" && c.status !== "Rejected");
+      const active = (data || []).filter((c: Claim) => c.status !== "Approved" && c.status !== "Rejected" && !c.inspectionSubmitted);
       setClaims(active);
     } catch (e) {
       console.error("Fetch agent claims error:", e);
@@ -357,14 +588,8 @@ export default function AgentMyClaims() {
         return;
       }
       alert("Inspection report submitted successfully!");
-      // Refresh claim details
-      await fetchClaims(agentEmail);
-      const updatedRes = await fetch(`${API_URL}/agent/claims?email=${agentEmail}`);
-      if (updatedRes.ok) {
-        const data = await updatedRes.json();
-        const freshClaim = data.find((c: Claim) => c._id === claimId);
-        if (freshClaim) setSelectedClaim(freshClaim);
-      }
+      setSelectedClaim(null);
+      router.push("/Agent/MyActivity");
       setInspectionReportText("");
     } catch (e) {
       console.error("Submit inspection report error:", e);
@@ -1282,6 +1507,35 @@ export default function AgentMyClaims() {
                   );
                 })()}
 
+                {/* Submit Inspection Report Section */}
+                {selectedClaim.status !== "Approved" && selectedClaim.status !== "Rejected" && selectedClaim.currentStep === 3 && !selectedClaim.inspectionSubmitted && (
+                  <div className="col-span-1 md:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-5 flex flex-col gap-2.5">
+                    <h4 className="font-bold text-slate-800 text-xs uppercase tracking-wider border-b pb-2 border-slate-200">
+                      Submit Inspection Report
+                    </h4>
+                    <textarea
+                      value={inspectionReportText}
+                      onChange={(e) => setInspectionReportText(e.target.value)}
+                      placeholder="Type the inspection report details (vehicle condition, damage evaluation, etc.)...."
+                      rows={4}
+                      className="w-full p-3 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:ring-1 focus:ring-cyan-500 bg-white"
+                    />
+                    <button
+                      onClick={() => handleSubmitInspectionReport(selectedClaim._id)}
+                      disabled={!inspectionReportText.trim() || isSubmittingReport}
+                      className="bg-cyan-500 hover:bg-cyan-600 text-white font-extrabold text-xs py-2.5 rounded-xl border-none cursor-pointer self-end px-4 active:scale-95 transition-all disabled:opacity-50"
+                    >
+                      {isSubmittingReport ? "Submitting..." : "Submit Inspection Report"}
+                    </button>
+                  </div>
+                )}
+
+                {selectedClaim.inspectionSubmitted && selectedClaim.inspectionReport && (
+                  <div className="col-span-1 md:col-span-2">
+                    {renderPremiumInspectionReport(selectedClaim.inspectionReport)}
+                  </div>
+                )}
+
               </div>
 
               {/* Action Buttons: Accept / Decline */}
@@ -1313,7 +1567,7 @@ export default function AgentMyClaims() {
               )}
 
               {/* Status Banner for Accepted (In Progress / Approved) Claims */}
-              {(selectedClaim.status.toLowerCase() === "in progress" || selectedClaim.currentStep === 3) && (
+              {(selectedClaim.status.toLowerCase() === "in progress" || selectedClaim.currentStep === 3) && !selectedClaim.inspectionSubmitted && (
                 <div className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mt-6 text-center select-none animate-fade-in flex-shrink-0">
                   <p className="text-emerald-800 text-xs md:text-sm font-black flex items-center justify-center gap-2">
                     <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">

@@ -365,7 +365,7 @@ export default function AgentClaimsPage() {
       if (Array.isArray(data)) {
         setClaims(data);
         const activeCount = data.filter(
-          (c: Claim) => c.status !== "Approved" && c.status !== "Rejected"
+          (c: Claim) => c.status !== "Approved" && c.status !== "Rejected" && !c.inspectionSubmitted
         ).length;
         if (activeCount > 0) {
           setActiveSubTab("active");
@@ -408,7 +408,7 @@ export default function AgentClaimsPage() {
           if (Array.isArray(data) && data.length > 0) {
             setClaims(data);
             const activeCount = data.filter(
-              (c: Claim) => c.status !== "Approved" && c.status !== "Rejected"
+              (c: Claim) => c.status !== "Approved" && c.status !== "Rejected" && !c.inspectionSubmitted
             ).length;
             if (activeCount > 0) {
               setActiveSubTab("active");
@@ -445,6 +445,9 @@ export default function AgentClaimsPage() {
   // Auto-open claim details when claimId is passed via params
 
   const closeClaimDetailModal = () => {
+    if (activeInspectionStep === 5) {
+      setActiveSubTab("activity");
+    }
     setSelectedClaim(null);
     AsyncStorage.removeItem("notification_claim_data").catch(() => {});
     if (from === "notifications") {
@@ -465,6 +468,15 @@ export default function AgentClaimsPage() {
       }
     }
   }, [claimId, claims, step]);
+
+  // Poll claims in background for real-time updates
+  useEffect(() => {
+    if (!agentEmail || selectedClaim !== null) return;
+    const pollInterval = setInterval(() => {
+      fetchClaims(agentEmail);
+    }, 7000);
+    return () => clearInterval(pollInterval);
+  }, [agentEmail, selectedClaim, fetchClaims]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -1247,7 +1259,7 @@ ${inspectionReportText.trim()}
         <View style={{ width: "100%", gap: 10, marginTop: 10 }}>
           <TouchableOpacity
             style={{ width: "100%", height: 46, borderRadius: 12, backgroundColor: "#1e3a8a", justifyContent: "center", alignItems: "center" }}
-            onPress={() => setSelectedClaim(null)}
+            onPress={closeClaimDetailModal}
             activeOpacity={0.8}
           >
             <Text style={{ color: "#fff", fontSize: 14, fontWeight: "800" }}>Back to Dashboard</Text>
@@ -1503,6 +1515,7 @@ ${inspectionReportText.trim()}
       if (!res.ok) throw new Error("Failed to submit");
       Alert.alert("Success", "Inspection report submitted successfully!");
       closeClaimDetailModal();
+      setActiveSubTab("activity");
       fetchClaims(agentEmail);
       setInspectionReportText("");
     } catch (e) {
@@ -1514,10 +1527,10 @@ ${inspectionReportText.trim()}
 
   // Search Filter
   const activeClaims = claims.filter(
-    (c) => c.status !== "Approved" && c.status !== "Rejected"
+    (c) => c.status !== "Approved" && c.status !== "Rejected" && !c.inspectionSubmitted
   );
   const completedClaims = claims.filter(
-    (c) => c.status === "Approved" || c.status === "Rejected"
+    (c) => c.status === "Approved" || c.status === "Rejected" || c.inspectionSubmitted
   );
 
   const currentTabClaims = activeSubTab === "active" ? activeClaims : completedClaims;
@@ -2160,7 +2173,7 @@ ${inspectionReportText.trim()}
                       <View style={styles.modalActions}>
                         <TouchableOpacity
                           style={[styles.closeBtn, { flex: 1, height: 40, borderRadius: 10, justifyContent: "center", alignItems: "center", backgroundColor: "#f1f5f9", borderWidth: 1, borderColor: "#cbd5e1" }]}
-                          onPress={() => setSelectedClaim(null)}
+                          onPress={closeClaimDetailModal}
                         >
                           <Text style={[styles.closeBtnText, { color: "#475569" }]}>Close</Text>
                         </TouchableOpacity>

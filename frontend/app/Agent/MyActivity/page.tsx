@@ -67,6 +67,7 @@ interface Claim {
     front: string[];
     rear: string[];
   };
+  severity?: string;
 }
 
 interface PolicyHolder {
@@ -87,6 +88,238 @@ interface Activity {
   claimNumber: string;
   vehiclePlate: string;
 }
+
+const parseInspectionReport = (reportText: string) => {
+  if (!reportText) return null;
+  
+  if (!reportText.includes("[1. VEHICLE CONDITION DETAILS]")) {
+    return { isRaw: true, rawText: reportText };
+  }
+
+  try {
+    const lines = reportText.split("\n");
+    let odometer = "";
+    let fuelLevel = "";
+    let recommendedAction = "";
+    let estimatedCost = "";
+    let preExistingDamage = "";
+    let physicalInspectionNotes = "";
+    const checklist: { [key: string]: string } = {};
+
+    let currentSection = "";
+
+    lines.forEach(line => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      if (trimmed.startsWith("• Odometer:")) {
+        odometer = trimmed.replace("• Odometer:", "").trim();
+      } else if (trimmed.startsWith("• Fuel Level:")) {
+        fuelLevel = trimmed.replace("• Fuel Level:", "").trim();
+      } else if (trimmed.startsWith("• Recommended Action:")) {
+        recommendedAction = trimmed.replace("• Recommended Action:", "").trim();
+      } else if (trimmed.startsWith("• Estimated Cost:")) {
+        estimatedCost = trimmed.replace("• Estimated Cost:", "").trim();
+      } else if (trimmed.includes("[3. PRE-EXISTING DAMAGE NOTES]")) {
+        currentSection = "pre-existing";
+      } else if (trimmed.includes("[4. PHYSICAL INSPECTION NOTES]")) {
+        currentSection = "physical-notes";
+      } else if (trimmed.includes("==================================") || trimmed.includes("VEHICLE CLAIM INSPECTION")) {
+        // skip
+      } else if (trimmed.includes("[2. COMPONENT DAMAGE CHECKLIST]")) {
+        currentSection = "checklist";
+      } else if (currentSection === "checklist" && trimmed.startsWith("• ")) {
+        const parts = trimmed.substring(2).split(":");
+        if (parts.length >= 2) {
+          const compName = parts[0].trim();
+          const compVal = parts[1].replace("[", "").replace("]", "").trim();
+          checklist[compName] = compVal;
+        }
+      } else if (currentSection === "pre-existing") {
+        if (!trimmed.startsWith("[")) {
+          preExistingDamage += (preExistingDamage ? "\n" : "") + trimmed;
+        }
+      } else if (currentSection === "physical-notes") {
+        if (!trimmed.startsWith("[")) {
+          physicalInspectionNotes += (physicalInspectionNotes ? "\n" : "") + trimmed;
+        }
+      }
+    });
+
+    return {
+      isRaw: false,
+      odometer,
+      fuelLevel,
+      recommendedAction,
+      estimatedCost,
+      checklist,
+      preExistingDamage: preExistingDamage || "None reported.",
+      physicalInspectionNotes: physicalInspectionNotes || "None reported."
+    };
+  } catch (err) {
+    console.error("Error parsing inspection report:", err);
+    return { isRaw: true, rawText: reportText };
+  }
+};
+
+const renderPremiumInspectionReport = (reportText: string) => {
+  const parsed = parseInspectionReport(reportText);
+  if (!parsed) return null;
+
+  if (parsed.isRaw) {
+    return (
+      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 shadow-inner select-text">
+        <div className="flex items-center gap-2 mb-3 text-slate-400 select-none">
+          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Raw Inspection Report Text</span>
+        </div>
+        <p className="text-slate-700 text-xs font-semibold whitespace-pre-wrap leading-relaxed">
+          {parsed.rawText}
+        </p>
+      </div>
+    );
+  }
+
+  const renderBadge = (val: string) => {
+    let color = "text-slate-500 bg-slate-50 border-slate-200";
+    let icon = null;
+    
+    if (val === "None") {
+      color = "text-emerald-600 bg-emerald-50/40 border-emerald-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      );
+    } else if (val === "Minor") {
+      color = "text-amber-600 bg-amber-50/40 border-amber-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      );
+    } else if (val === "Major") {
+      color = "text-rose-600 bg-rose-50/40 border-rose-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3m0 0a8.001 8.001 0 00-7.797 6.138m15.594 0A8.001 8.001 0 0012 3M3.243 9.75a8.002 8.002 0 008.757 8.757m0 0A8.002 8.002 0 0020.757 9.75" />
+        </svg>
+      );
+    }
+
+    return (
+      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border flex items-center gap-1.5 select-none ${color}`}>
+        {icon}
+        {val}
+      </span>
+    );
+  };
+
+  return (
+    <div className="border border-slate-200/80 rounded-[32px] overflow-hidden bg-slate-50/20 p-6 space-y-6 shadow-sm select-text text-left font-sans w-full">
+      {/* Dashboard Title */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4 select-none">
+        <div className="flex items-center gap-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div>
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider leading-none">Vehicle Inspection Report</h4>
+            <span className="text-[10px] font-bold text-slate-400 block mt-1 tracking-wider">OFFICIAL PHYSICAL ASSESSMENT SUMMARY</span>
+          </div>
+        </div>
+        <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-extrabold tracking-wider uppercase px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+          </svg>
+          Verified By Agent
+        </span>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Odometer */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-blue-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Odometer</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-slate-800">{parsed.odometer || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Total Distance Travelled</span>
+        </div>
+
+        {/* Card 2: Fuel Level */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-indigo-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Fuel Level</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-slate-800">{parsed.fuelLevel || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Current Tank Level</span>
+        </div>
+
+        {/* Card 3: Estimated Cost */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-emerald-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Estimated Cost</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-emerald-600">{parsed.estimatedCost || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Assessment Valuation</span>
+        </div>
+
+        {/* Card 4: Recommendation */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-violet-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Recommendation</span>
+          <div className="flex items-baseline gap-1 mt-2 overflow-hidden">
+            <span className="text-[13px] font-black text-slate-800 truncate" title={parsed.recommendedAction}>{parsed.recommendedAction || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Suggested Action Payout</span>
+        </div>
+      </div>
+
+      {/* Checklist & Notes Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Component Damage Checklist */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-5 space-y-4 shadow-sm">
+          <div>
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block border-b border-slate-100 pb-2.5 mb-3 select-none">Component Damage Checklist</span>
+            <div className="space-y-2">
+              {Object.entries(parsed.checklist || {}).map(([key, value]) => (
+                <div key={key} className="flex justify-between items-center py-1.5 border-b border-slate-50 last:border-0">
+                  <span className="text-slate-600 font-bold text-xs">{key}</span>
+                  {renderBadge(value)}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Remarks Column */}
+        <div className="flex flex-col gap-4">
+          {parsed.preExistingDamage && parsed.preExistingDamage !== "None reported." && (
+            <div className="bg-amber-50/20 border border-amber-200/50 rounded-2xl p-5 shadow-sm space-y-2.5 flex-1">
+              <span className="text-[10px] text-amber-800 font-black uppercase tracking-wider flex items-center gap-1.5 select-none">
+                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3m0 0a8.001 8.001 0 00-7.797 6.138m15.594 0A8.001 8.001 0 0012 3M3.243 9.75a8.002 8.002 0 008.757 8.757m0 0A8.002 8.002 0 0020.757 9.75" />
+                </svg>
+                Pre-Existing Damage Remarks
+              </span>
+              <p className="text-slate-700 text-xs font-semibold leading-relaxed whitespace-pre-wrap">{parsed.preExistingDamage}</p>
+            </div>
+          )}
+
+          <div className="bg-slate-50/50 border border-slate-200/70 rounded-2xl p-5 shadow-sm space-y-2.5 flex-1">
+            <span className="text-[10px] text-slate-500 font-black uppercase tracking-wider flex items-center gap-1.5 select-none">
+              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+              Physical Inspection Remarks
+            </span>
+            <p className="text-slate-700 text-xs font-semibold leading-relaxed whitespace-pre-wrap">{parsed.physicalInspectionNotes}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default function AgentActivityPage() {
   const router = useRouter();
@@ -236,14 +469,39 @@ export default function AgentActivityPage() {
     }
   };
 
-  // Poll availability status
+  const fetchClaimsData = async (email: string) => {
+    try {
+      const claimsRes = await fetch(`${API_URL}/agent/claims?email=${email}`);
+      if (claimsRes.ok) {
+        const claimsData = await claimsRes.json();
+        setClaims(claimsData || []);
+      }
+    } catch (err) {
+      console.error("Error background syncing claims:", err);
+    }
+  };
+
+  // Poll availability and claims status
   useEffect(() => {
     if (!agent || !agent.email) return;
     const interval = setInterval(() => {
       fetchAvailability(agent.email);
-    }, 5000);
+      fetchClaimsData(agent.email);
+    }, 7000);
     return () => clearInterval(interval);
   }, [agent]);
+
+  // Keep selectedClaim in sync with claims list updates
+  useEffect(() => {
+    if (selectedClaim) {
+      const updated = claims.find(c => c._id === selectedClaim._id || c.claimNumber === selectedClaim.claimNumber);
+      if (updated) {
+        if (JSON.stringify(updated) !== JSON.stringify(selectedClaim)) {
+          setSelectedClaim(updated);
+        }
+      }
+    }
+  }, [claims, selectedClaim]);
 
   const getPolicyHolderName = (nic: string) => {
     if (!nic) return "-";
@@ -953,7 +1211,11 @@ export default function AgentActivityPage() {
                         setAssessmentAmount(typeof claim.amount === "number" ? claim.amount.toString() : "");
                       }}
                       className={`bg-white border border-slate-200 hover:border-[#0f2d4a] rounded-xl px-5 py-3.5 flex flex-col md:grid md:grid-cols-[minmax(0,1.5fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.7fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.7fr)] md:items-center gap-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md relative overflow-hidden ${
-                        isUrgent ? "border-l-4 border-l-red-500" : "border-l-4 border-l-[#0f2d4a]"
+                        claim.inspectionSubmitted || claim.status === "Approved" || claim.status === "Rejected"
+                          ? "border-l-4 border-l-emerald-500"
+                          : isUrgent
+                          ? "border-l-4 border-l-red-500"
+                          : "border-l-4 border-l-[#0f2d4a]"
                       }`}
                     >
                       {/* Claim Info */}
@@ -1941,26 +2203,30 @@ export default function AgentActivityPage() {
 
               {/* Details Columns */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs md:text-sm font-semibold select-none leading-relaxed flex-1 overflow-y-auto pr-1">
-                                {/* Column 1: Policy Holder Details */}
+                {/* Column 1: Agent Assignment & Info */}
                 <div className="space-y-3.5 bg-slate-50 border border-slate-200 p-5 rounded-2xl">
                   <h3 className="text-slate-800 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200 pb-2 mb-3 flex items-center gap-2">
-                    <svg className="w-4 h-4 text-[#0f2d4a]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <svg className="w-4 h-4 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
                     </svg>
-                    Policy Holder Details
+                    Agent Assignment Info
                   </h3>
                   <div className="space-y-3">
-                    <div className="grid grid-cols-[100px_1fr] gap-2">
-                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Email</span>
-                      <span className="text-slate-700 font-black truncate">: {getPolicyHolderEmail(selectedClaim.userNic)}</span>
+                    <div className="grid grid-cols-[125px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Assigned Agent</span>
+                      <span className="text-slate-700 font-black truncate">: {selectedClaim.assignedAgent || "-"}</span>
                     </div>
-                    <div className="grid grid-cols-[100px_1fr] gap-2">
-                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">NIC</span>
+                    <div className="grid grid-cols-[125px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Branch Office</span>
+                      <span className="text-slate-700 font-black truncate">: {selectedClaim.branch || "-"}</span>
+                    </div>
+                    <div className="grid grid-cols-[125px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Assignment Date</span>
+                      <span className="text-slate-700 font-black truncate">: {formatDate(selectedClaim.createdAt)}</span>
+                    </div>
+                    <div className="grid grid-cols-[125px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Policyholder NIC</span>
                       <span className="text-slate-700 font-black truncate">: {selectedClaim.userNic}</span>
-                    </div>
-                    <div className="grid grid-cols-[100px_1fr] gap-2">
-                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Contact</span>
-                      <span className="text-slate-700 font-black truncate">: {getPolicyHolderContact(selectedClaim.userNic)}</span>
                     </div>
                   </div>
                 </div>
@@ -1974,17 +2240,17 @@ export default function AgentActivityPage() {
                     Vehicle Details
                   </h3>
                   <div className="space-y-3">
-                    <div className="grid grid-cols-[100px_1fr] gap-2">
+                    <div className="grid grid-cols-[110px_1fr] gap-2">
                       <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Vehicle No</span>
                       <span className="text-slate-700 font-black truncate">: {formatPlate(selectedClaim.vehiclePlate)}</span>
                     </div>
-                    <div className="grid grid-cols-[100px_1fr] gap-2">
-                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Branch</span>
-                      <span className="text-slate-700 font-black truncate">: {selectedClaim.branch || "-"}</span>
+                    <div className="grid grid-cols-[110px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Severity</span>
+                      <span className="text-slate-700 font-black truncate">: {selectedClaim.severity || getSeverity(selectedClaim.damageType)}</span>
                     </div>
-                    <div className="grid grid-cols-[100px_1fr] gap-2">
-                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Assigned Agent</span>
-                      <span className="text-slate-700 font-black truncate">: {selectedClaim.assignedAgent || "-"}</span>
+                    <div className="grid grid-cols-[110px_1fr] gap-2">
+                      <span className="text-slate-500 font-bold uppercase tracking-wider text-[10px]">Priority</span>
+                      <span className="text-slate-700 font-black truncate">: {selectedClaim.priority || "Medium"}</span>
                     </div>
                   </div>
                 </div>
@@ -2035,6 +2301,13 @@ export default function AgentActivityPage() {
                       <span className="text-red-650 font-extrabold mt-1 text-sm">
                         {selectedClaim.rejectionReason}
                       </span>
+                    </div>
+                  )}
+
+                  {/* Submitted Agent Inspection Report Section */}
+                  {selectedClaim.inspectionSubmitted && selectedClaim.inspectionReport && (
+                    <div className="flex flex-col gap-2 border-t border-slate-200/60 pt-4 mt-4">
+                      {renderPremiumInspectionReport(selectedClaim.inspectionReport)}
                     </div>
                   )}
                 </div>
@@ -2108,6 +2381,98 @@ export default function AgentActivityPage() {
                   );
                 })()}
 
+                {/* Agent Uploaded Documents Section */}
+                {(() => {
+                  const agentDocs = (selectedClaim.additionalDocuments || []).filter(doc => doc.uploadedBy === "Agent");
+                  return (
+                    <div className="col-span-1 md:col-span-2 space-y-4 bg-slate-50 border border-slate-200 p-6 rounded-2xl">
+                      <h3 className="text-slate-800 font-extrabold uppercase tracking-wider text-[11px] border-b border-slate-200 pb-2 mb-3 flex items-center gap-2">
+                        <svg className="w-4.5 h-4.5 text-cyan-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                        Agent Uploaded Documents
+                      </h3>
+
+                      {agentDocs.length === 0 ? (
+                        <p className="text-xs text-slate-450 font-black italic select-none py-2">
+                          No repair estimates or assessment documents uploaded by the agent.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
+                          {agentDocs.map((doc, idx) => {
+                            let docUrl = doc.url;
+                            if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                              docUrl = `${API_URL.replace("/api", "")}/uploads/${docUrl}`;
+                            }
+                            const isPdf = docUrl.toLowerCase().endsWith(".pdf");
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => setPreviewImage(docUrl)}
+                                className="group cursor-pointer flex flex-col items-center"
+                              >
+                                <div className="w-full h-24 rounded-xl overflow-hidden border border-slate-200 bg-white shadow-sm group-hover:shadow transition-all relative flex items-center justify-center">
+                                  {isPdf ? (
+                                    <div className="flex flex-col items-center gap-1 text-red-505">
+                                      <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                      </svg>
+                                      <span className="text-[8px] font-black uppercase tracking-wider text-red-500">PDF Document</span>
+                                    </div>
+                                  ) : (
+                                    <img
+                                      src={docUrl}
+                                      alt={doc.name}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                                    />
+                                  )}
+                                </div>
+                                <span className="text-[9px] text-slate-500 font-black text-center mt-2 uppercase tracking-wider truncate w-full px-1">
+                                  {doc.name}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+              </div>
+
+              {/* Action Buttons Row */}
+              <div className="border-t border-slate-200 pt-4 flex flex-wrap items-center justify-start gap-3 select-none mt-4">
+                <button
+                  type="button"
+                  onClick={() => setActiveSubModal("documents")}
+                  className="bg-[#0f2d4a] hover:bg-[#1a3d5e] text-white font-black text-xs py-3 px-6 rounded-full cursor-pointer shadow-sm active:scale-95 transition-all flex items-center gap-2 border-none"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  Upload Documents
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubModal("add_note")}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs py-3 px-6 rounded-full cursor-pointer shadow-sm active:scale-95 transition-all flex items-center gap-2 border-none"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                  </svg>
+                  Add Note
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveSubModal("contact")}
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-black text-xs py-3 px-6 rounded-full cursor-pointer shadow-sm active:scale-95 transition-all flex items-center gap-2 border-none"
+                >
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 9.75a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 01.778-.332 48.294 48.294 0 005.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
+                  </svg>
+                  Chat / Contact
+                </button>
               </div>
 
               {/* Action Buttons: Accept / Reject */}
@@ -2139,7 +2504,7 @@ export default function AgentActivityPage() {
               )}
 
               {/* Status Banner for Accepted (In Progress / Approved) Claims */}
-              {(selectedClaim.status.toLowerCase() === "in progress" || selectedClaim.status.toLowerCase() === "approved") && (
+              {(selectedClaim.status.toLowerCase() === "in progress" || selectedClaim.status.toLowerCase() === "approved") && !selectedClaim.inspectionSubmitted && (
                 <div className="w-full bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mt-6 text-center select-none animate-fade-in">
                   <p className="text-emerald-800 text-xs md:text-sm font-black flex items-center justify-center gap-2">
                     <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">

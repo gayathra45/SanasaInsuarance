@@ -21,6 +21,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
+import * as ImagePicker from "expo-image-picker";
 import AgentNavbar from "../../Components/Agent/page";
 import { API_BASE_URL } from "../../config";
 
@@ -53,6 +54,17 @@ interface Claim {
     front: string[];
     rear: string[];
   };
+  additionalDocuments?: {
+    name: string;
+    url: string;
+    uploadedAt: string;
+    uploadedBy?: string;
+  }[];
+  notes?: {
+    text: string;
+    addedBy: string;
+    addedAt: string;
+  }[];
 }
 
 export default function AgentActivityPage() {
@@ -63,6 +75,90 @@ export default function AgentActivityPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedClaim, setSelectedClaim] = useState<Claim | null>(null);
+
+  const [noteText, setNoteText] = useState("");
+  const [isSubmittingNote, setIsSubmittingNote] = useState(false);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [selectedDocName, setSelectedDocName] = useState("Repair Estimate");
+
+  const handleAddNote = async () => {
+    if (!selectedClaim || !noteText.trim()) return;
+    setIsSubmittingNote(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/office-staff/claims/${selectedClaim.claimNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          noteText: noteText.trim(),
+          messageSender: "Agent"
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        Alert.alert("Success", "Internal note added successfully!");
+        setNoteText("");
+        if (agentEmail) fetchClaims(agentEmail);
+        setSelectedClaim(data.claim);
+      } else {
+        Alert.alert("Error", "Failed to add internal note.");
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Network error. Failed to add note.");
+    } finally {
+      setIsSubmittingNote(false);
+    }
+  };
+
+  const handleUploadDocument = async () => {
+    if (!selectedClaim) return;
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "Library access is needed to select files.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      quality: 0.6,
+      base64: true,
+    });
+    if (result.canceled || !result.assets || result.assets.length === 0) return;
+    
+    setIsUploadingDoc(true);
+    try {
+      const asset = result.assets[0];
+      const prefix = "data:image/jpeg;base64,";
+      const base64Data = asset.base64 ? `${prefix}${asset.base64}` : "";
+      
+      const res = await fetch(`${API_BASE_URL}/api/policy-holder/update-claim/${selectedClaim.claimNumber}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          uploadedDocuments: [
+            {
+              documentName: selectedDocName,
+              fileData: base64Data,
+              uploadedBy: "Agent"
+            }
+          ]
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        Alert.alert("Success", "Document uploaded successfully!");
+        if (agentEmail) fetchClaims(agentEmail);
+        setSelectedClaim(data.claim);
+      } else {
+        Alert.alert("Error", "Failed to upload document.");
+      }
+    } catch (e) {
+      console.error(e);
+      Alert.alert("Error", "Network error. Failed to upload document.");
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  };
 
   const fetchClaims = useCallback(async (email: string) => {
     try {
@@ -145,7 +241,7 @@ export default function AgentActivityPage() {
 
   // Filter for completed activities
   const completedClaims = claims
-    .filter(c => c.status === "Approved" || c.status === "Rejected")
+    .filter(c => c.status === "Approved" || c.status === "Rejected" || c.inspectionSubmitted)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const filteredClaims = completedClaims.filter(
@@ -497,6 +593,173 @@ export default function AgentActivityPage() {
                       </View>
                     );
                   })()}
+
+                  {/* Agent Upload Documents Section */}
+                  <View style={styles.descriptionContainer}>
+                    <Text style={styles.descriptionHeader}>Agent Uploaded Documents</Text>
+                    
+                    {/* Display existing agent docs */}
+                    {(() => {
+                      const agentDocs = (selectedClaim.additionalDocuments || []).filter(
+                        (d: any) => d.uploadedBy === "Agent"
+                      );
+                      if (agentDocs.length > 0) {
+                        return (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12, marginTop: 8, marginBottom: 12 }}>
+                            {agentDocs.map((item: any, idx: number) => {
+                              let docUrl = item.url;
+                              if (docUrl && !docUrl.startsWith("http") && !docUrl.startsWith("data:")) {
+                                docUrl = `${API_BASE_URL.replace("/api", "")}/uploads/${docUrl}`;
+                              }
+                              return (
+                                <TouchableOpacity
+                                  key={idx}
+                                  onPress={() => handleViewDocument(docUrl)}
+                                  style={{ alignItems: "center", width: 90 }}
+                                  activeOpacity={0.7}
+                                >
+                                  <View style={{ width: 90, height: 70, borderRadius: 10, overflow: "hidden", borderColor: "#0284c7", borderStyle: "solid", borderWidth: 1, backgroundColor: "#f0f9ff", justifyContent: "center", alignItems: "center" }}>
+                                    {docUrl.toLowerCase().endsWith(".pdf") ? (
+                                      <Ionicons name="document-text" size={32} color="#ef4444" />
+                                    ) : (
+                                      <Image source={{ uri: docUrl }} style={{ width: "100%", height: "100%" }} resizeMode="cover" />
+                                    )}
+                                  </View>
+                                  <Text style={{ fontSize: 9, color: "#0f172a", fontWeight: "700", textAlign: "center", marginTop: 4 }} numberOfLines={1}>
+                                    {item.name}
+                                  </Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </ScrollView>
+                        );
+                      }
+                      return (
+                        <Text style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic", marginTop: 4 }}>
+                          No agent documents uploaded yet.
+                        </Text>
+                      );
+                    })()}
+
+                    {/* Upload Actions */}
+                    <Text style={{ fontSize: 11, fontWeight: "800", color: "#64748b", textTransform: "uppercase", marginTop: 10 }}>Doc Type</Text>
+                    <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                      {["Repair Estimate", "Inspection Photos", "Damage Assessment", "Other"].map((type) => (
+                        <TouchableOpacity
+                          key={type}
+                          style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 6,
+                            borderRadius: 20,
+                            borderWidth: 1.5,
+                            borderColor: selectedDocName === type ? "#1e3a8a" : "#e2e8f0",
+                            backgroundColor: selectedDocName === type ? "#1e3a8a" : "#ffffff",
+                          }}
+                          onPress={() => setSelectedDocName(type)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{ fontSize: 10, fontWeight: "800", color: selectedDocName === type ? "#ffffff" : "#64748b" }}>
+                            {type}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    <TouchableOpacity
+                      onPress={handleUploadDocument}
+                      disabled={isUploadingDoc}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        backgroundColor: "#1e3a8a",
+                        borderRadius: 12,
+                        height: 44,
+                        marginTop: 12,
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      {isUploadingDoc ? (
+                        <ActivityIndicator size="small" color="#ffffff" />
+                      ) : (
+                        <>
+                          <Ionicons name="cloud-upload-outline" size={18} color="#ffffff" />
+                          <Text style={{ color: "#ffffff", fontSize: 13, fontWeight: "800" }}>Upload Claim Document</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Agent Notes Section */}
+                  <View style={styles.descriptionContainer}>
+                    <Text style={styles.descriptionHeader}>Agent Internal Notes</Text>
+                    
+                    {/* Display existing notes */}
+                    {(() => {
+                      const notesList = selectedClaim.notes || [];
+                      if (notesList.length > 0) {
+                        return (
+                          <View style={{ gap: 8, marginTop: 8, marginBottom: 12 }}>
+                            {notesList.map((item: any, idx: number) => (
+                              <View key={idx} style={{ backgroundColor: "#f8fafc", borderWidth: 1, borderColor: "#e2e8f0", borderRadius: 12, padding: 12 }}>
+                                <Text style={{ fontSize: 12, color: "#334155", fontWeight: "600" }}>{item.text}</Text>
+                                <Text style={{ fontSize: 9, color: "#94a3b8", fontWeight: "700", marginTop: 4 }}>
+                                  By: {item.addedBy} · {formatDate(item.addedAt)}
+                                </Text>
+                              </View>
+                            ))}
+                          </View>
+                        );
+                      }
+                      return (
+                        <Text style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic", marginTop: 4, marginBottom: 8 }}>
+                          No internal notes recorded.
+                        </Text>
+                      );
+                    })()}
+
+                    {/* Add note input & btn */}
+                    <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                      <TextInput
+                        style={{
+                          flex: 1,
+                          height: 40,
+                          borderWidth: 1.5,
+                          borderColor: "#e2e8f0",
+                          borderRadius: 12,
+                          paddingHorizontal: 12,
+                          backgroundColor: "#ffffff",
+                          fontSize: 12.5,
+                          fontWeight: "600",
+                          color: "#0f172a"
+                        }}
+                        placeholder="Add an internal note..."
+                        placeholderTextColor="#94a3b8"
+                        value={noteText}
+                        onChangeText={setNoteText}
+                      />
+                      <TouchableOpacity
+                        onPress={handleAddNote}
+                        disabled={noteText.trim() === "" || isSubmittingNote}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 12,
+                          backgroundColor: noteText.trim() ? "#00b050" : "#cbd5e1",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        {isSubmittingNote ? (
+                          <ActivityIndicator size="small" color="#ffffff" />
+                        ) : (
+                          <Ionicons name="send" size={16} color="#ffffff" />
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                  </View>
                 </ScrollView>
 
                 {/* Close Button */}

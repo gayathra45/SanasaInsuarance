@@ -60,6 +60,12 @@ interface Claim {
   bankName?: string;
   bankBranch?: string;
   bankAccount?: string;
+  policyHolderBankDetails?: {
+    bankName: string;
+    branchName: string;
+    accountNumber: string;
+    accountHolderName: string;
+  };
   rejectionReason?: string;
   notes?: ClaimNote[];
   isManuallyUpdated?: boolean;
@@ -177,22 +183,50 @@ const renderParsedInspection = (
 
   if (parsed.isRaw) {
     return (
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 select-text">
-        <pre className="text-xs font-mono text-slate-700 whitespace-pre-wrap leading-relaxed">
+      <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 shadow-inner select-text">
+        <div className="flex items-center gap-2 mb-3 text-slate-405 select-none">
+          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+          </svg>
+          <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Raw Inspection Report Text</span>
+        </div>
+        <p className="text-slate-705 text-xs font-semibold whitespace-pre-wrap leading-relaxed">
           {parsed.rawText}
-        </pre>
+        </p>
       </div>
     );
   }
 
   const renderChecklistBadge = (val: string) => {
-    let color = "text-slate-600 bg-slate-50 border-slate-100";
-    if (val === "None") color = "text-emerald-700 bg-emerald-50/50 border-emerald-100";
-    else if (val === "Minor") color = "text-amber-700 bg-amber-50/50 border-amber-100";
-    else if (val === "Major") color = "text-rose-700 bg-rose-50/50 border-rose-100";
+    let color = "text-slate-500 bg-slate-50 border-slate-200";
+    let icon = null;
+    
+    if (val === "None") {
+      color = "text-emerald-600 bg-emerald-50/40 border-emerald-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      );
+    } else if (val === "Minor") {
+      color = "text-amber-600 bg-amber-50/40 border-amber-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+        </svg>
+      );
+    } else if (val === "Major") {
+      color = "text-rose-600 bg-rose-50/40 border-rose-200/60";
+      icon = (
+        <svg className="w-3.5 h-3.5 text-rose-500 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3m0 0a8.001 8.001 0 00-7.797 6.138m15.594 0A8.001 8.001 0 0012 3M3.243 9.75a8.002 8.002 0 008.757 8.757m0 0A8.002 8.002 0 0020.757 9.75" />
+        </svg>
+      );
+    }
 
     return (
-      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${color}`}>
+      <span className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border flex items-center gap-1.5 select-none ${color}`}>
+        {icon}
         {val}
       </span>
     );
@@ -209,53 +243,118 @@ const renderParsedInspection = (
     });
 
   return (
-    <div className="space-y-6 text-left select-text text-slate-700 font-sans text-xs">
-      {/* 1. Condition details section */}
-      <div className="space-y-2 pb-4 border-b border-slate-100">
-        <h4 className="text-[11px] font-bold text-slate-900 uppercase tracking-wider">Vehicle Condition Details</h4>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-          <div className="flex justify-between py-1 border-b border-slate-50">
-            <span className="text-slate-400 font-medium">Odometer Mileage:</span>
-            <span className="font-semibold text-slate-800">{(parsed.odometer || "").trim()}</span>
+    <div className="border border-slate-200/80 rounded-[32px] overflow-hidden bg-slate-50/20 p-6 space-y-6 shadow-sm select-text text-left font-sans w-full">
+      {/* Dashboard Title */}
+      <div className="flex items-center justify-between border-b border-slate-200 pb-4 select-none">
+        <div className="flex items-center gap-3">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div>
+            <h4 className="text-sm font-black text-slate-800 uppercase tracking-wider leading-none">Vehicle Inspection Report</h4>
+            <span className="text-[10px] font-bold text-slate-400 block mt-1 tracking-wider">OFFICIAL PHYSICAL ASSESSMENT SUMMARY</span>
           </div>
-          <div className="flex justify-between py-1 border-b border-slate-50">
-            <span className="text-slate-400 font-medium">Fuel Level:</span>
-            <span className="font-semibold text-slate-800">{parsed.fuelLevel}</span>
+        </div>
+        <span className="bg-emerald-50 border border-emerald-200/60 text-emerald-700 text-[10px] font-extrabold tracking-wider uppercase px-3.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" />
+          </svg>
+          Verified By Agent
+        </span>
+      </div>
+
+      {/* Metrics Row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Odometer */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-blue-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Odometer</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-slate-800">{parsed.odometer || "N/A"}</span>
           </div>
-          <div className="flex justify-between py-1 border-b border-slate-50">
-            <span className="text-slate-400 font-medium">Estimated Cost:</span>
-            <span className="font-semibold text-emerald-600">{parsed.estimatedCost}</span>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Total Distance Travelled</span>
+        </div>
+
+        {/* Card 2: Fuel Level */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-indigo-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Fuel Level</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-slate-800">{parsed.fuelLevel || "N/A"}</span>
           </div>
-          <div className="flex justify-between py-1 border-b border-slate-50">
-            <span className="text-slate-400 font-medium">Recommendation:</span>
-            <span className="font-semibold text-slate-800">{parsed.recommendedAction}</span>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Current Tank Level</span>
+        </div>
+
+        {/* Card 3: Estimated Cost */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-emerald-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Estimated Cost</span>
+          <div className="flex items-baseline gap-1 mt-2">
+            <span className="text-[17px] font-black text-emerald-600">{parsed.estimatedCost || "N/A"}</span>
           </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Assessment Valuation</span>
+        </div>
+
+        {/* Card 4: Recommendation */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-4.5 flex flex-col justify-between shadow-sm relative overflow-hidden h-[95px] border-t-4 border-t-violet-500">
+          <span className="text-[9px] text-slate-400 font-extrabold uppercase tracking-widest leading-none select-none">Recommendation</span>
+          <div className="flex items-baseline gap-1 mt-2 overflow-hidden">
+            <span className="text-[13px] font-black text-slate-800 truncate" title={parsed.recommendedAction}>{parsed.recommendedAction || "N/A"}</span>
+          </div>
+          <span className="text-[9px] text-slate-400 font-semibold select-none">Suggested Action Payout</span>
         </div>
       </div>
 
-      {/* 2. Component checklist section */}
-      <div className="space-y-2 pb-4 border-b border-slate-100">
-        <h4 className="text-[11px] font-bold text-slate-900 uppercase tracking-wider">Component Damage Checklist</h4>
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-          {Object.entries(parsed.checklist || {}).map(([key, value]) => (
-            <div key={key} className="flex justify-between items-center py-1 border-b border-slate-50">
-              <span className="text-slate-500 font-medium">{key}:</span>
-              {renderChecklistBadge(value)}
+      {/* Checklist & Notes Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        {/* Component Damage Checklist */}
+        <div className="bg-white border border-slate-150 rounded-2xl p-5 space-y-4 shadow-sm">
+          <div>
+            <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block border-b border-slate-100 pb-2.5 mb-3 select-none">Component Damage Checklist</span>
+            <div className="space-y-2">
+              {Object.entries(parsed.checklist || {}).map(([key, value]) => (
+                <div key={key} className="flex justify-between items-center py-1.5 border-b border-slate-50 last:border-0">
+                  <span className="text-slate-655 font-bold text-xs">{key}</span>
+                  {renderChecklistBadge(value)}
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+        </div>
+
+        {/* Remarks Column */}
+        <div className="flex flex-col gap-4">
+          {parsed.preExistingDamage && parsed.preExistingDamage !== "None reported." && (
+            <div className="bg-amber-50/20 border border-amber-200/50 rounded-2xl p-5 shadow-sm space-y-2.5 flex-1">
+              <span className="text-[10px] text-amber-800 font-black uppercase tracking-wider flex items-center gap-1.5 select-none">
+                <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.03V3m0 0a8.001 8.001 0 00-7.797 6.138m15.594 0A8.001 8.001 0 0012 3M3.243 9.75a8.002 8.002 0 008.757 8.757m0 0A8.002 8.002 0 0020.757 9.75" />
+                </svg>
+                Pre-Existing Damage Remarks
+              </span>
+              <p className="text-slate-700 text-xs font-semibold leading-relaxed whitespace-pre-wrap">{parsed.preExistingDamage}</p>
+            </div>
+          )}
+
+          <div className="bg-slate-50/50 border border-slate-200/70 rounded-2xl p-5 shadow-sm space-y-2.5 flex-1">
+            <span className="text-[10px] text-slate-555 font-black uppercase tracking-wider flex items-center gap-1.5 select-none">
+              <svg className="w-4 h-4 text-slate-505" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+              </svg>
+              Physical Inspection Remarks
+            </span>
+            <p className="text-slate-700 text-xs font-semibold leading-relaxed whitespace-pre-wrap">{parsed.physicalInspectionNotes}</p>
+          </div>
         </div>
       </div>
 
-      {/* 3. Photos section */}
+      {/* Inspection Photos Grid */}
       {agentPhotos.length > 0 && (
-        <div className="space-y-2 pb-4 border-b border-slate-100">
-          <h4 className="text-[11px] font-bold text-slate-900 uppercase tracking-wider">Inspection Photos ({agentPhotos.length})</h4>
-          <div className="flex flex-wrap gap-2 pt-1">
+        <div className="bg-white border border-slate-150 rounded-2xl p-5 shadow-sm space-y-3 select-none">
+          <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-widest block border-b border-slate-100 pb-2.5">
+            Inspection Photos ({agentPhotos.length})
+          </span>
+          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3 pt-1">
             {agentPhotos.map((photo, index) => (
               <div
                 key={index}
                 onClick={() => onPhotoClick && onPhotoClick(photo.url)}
-                className="w-16 h-16 rounded border border-slate-200 overflow-hidden cursor-zoom-in hover:border-slate-400 transition-colors"
+                className="aspect-square rounded-xl border border-slate-200 overflow-hidden cursor-zoom-in hover:scale-105 transition-all shadow-sm"
                 title={photo.name}
               >
                 <img src={photo.url} alt={photo.name} className="w-full h-full object-cover" />
@@ -264,21 +363,6 @@ const renderParsedInspection = (
           </div>
         </div>
       )}
-
-      {/* 4. Notes sections */}
-      <div className="space-y-3">
-        {parsed.preExistingDamage && parsed.preExistingDamage !== "None reported." && (
-          <div className="space-y-1">
-            <span className="text-[10px] text-amber-700 font-bold uppercase tracking-wider">Pre-Existing Damage Notes</span>
-            <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{parsed.preExistingDamage}</p>
-          </div>
-        )}
-
-        <div className="space-y-1">
-          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Agent Inspection Notes</span>
-          <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{parsed.physicalInspectionNotes}</p>
-        </div>
-      </div>
     </div>
   );
 };
@@ -444,6 +528,23 @@ export default function OfficeStaffClaimsPage() {
     }
   }, [router]);
 
+  // Poll claims in background for real-time updates
+  useEffect(() => {
+    if (!branch || selectedClaim !== null || showAssignModal) return;
+    const pollInterval = setInterval(async () => {
+      try {
+        const claimsRes = await fetch(`${API_URL}/office-staff/claims?branch=${branch}`);
+        if (claimsRes.ok) {
+          const claimsData = await claimsRes.json();
+          setClaims(claimsData.claims || []);
+        }
+      } catch (err) {
+        console.warn("Background claims polling failed:", err);
+      }
+    }, 7000);
+    return () => clearInterval(pollInterval);
+  }, [branch, selectedClaim, showAssignModal]);
+
   useEffect(() => {
     if (claimId && claims.length > 0) {
       const matched = claims.find(c => c._id === claimId || c.claimNumber === claimId);
@@ -469,9 +570,9 @@ export default function OfficeStaffClaimsPage() {
   useEffect(() => {
     if (selectedClaim) {
       setAssessmentAmount(selectedClaim.amount !== null ? selectedClaim.amount.toString() : "");
-      setBankName(selectedClaim.bankName || "");
-      setBankBranch(selectedClaim.bankBranch || "");
-      setBankAccount(selectedClaim.bankAccount || "");
+      setBankName(selectedClaim.bankName || selectedClaim.policyHolderBankDetails?.bankName || "");
+      setBankBranch(selectedClaim.bankBranch || selectedClaim.policyHolderBankDetails?.branchName || "");
+      setBankAccount(selectedClaim.bankAccount || selectedClaim.policyHolderBankDetails?.accountNumber || "");
       setRejectionReasonText(selectedClaim.rejectionReason || "");
       setDecisionAction(null);
       setPaymentReceiptFile(null);
@@ -2019,9 +2120,38 @@ export default function OfficeStaffClaimsPage() {
 
                     {selectedClaim.currentStep === 6 && (
                       <div className="space-y-4">
+                        {selectedClaim.policyHolderBankDetails && (
+                          <div className="bg-emerald-50/50 border border-emerald-100 rounded-2xl p-5 space-y-3">
+                            <div className="flex items-center gap-2 text-emerald-800">
+                              <svg className="w-4.5 h-4.5 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.3m-15 0V21M3 21h18" />
+                              </svg>
+                              <span className="text-[10px] font-black uppercase tracking-wider select-none">Registered Bank Settlement Profile</span>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 pt-1">
+                              <div>
+                                <span className="block text-[9px] text-slate-400 font-extrabold uppercase tracking-wider select-none">Account Holder Name</span>
+                                <span className="block text-slate-800 text-xs font-bold mt-0.5">{selectedClaim.policyHolderBankDetails.accountHolderName || "N/A"}</span>
+                              </div>
+                              <div>
+                                <span className="block text-[9px] text-slate-400 font-extrabold uppercase tracking-wider select-none">Bank Name</span>
+                                <span className="block text-slate-800 text-xs font-bold mt-0.5">{selectedClaim.policyHolderBankDetails.bankName || "N/A"}</span>
+                              </div>
+                              <div>
+                                <span className="block text-[9px] text-slate-400 font-extrabold uppercase tracking-wider select-none">Branch Name</span>
+                                <span className="block text-slate-800 text-xs font-bold mt-0.5">{selectedClaim.policyHolderBankDetails.branchName || "N/A"}</span>
+                              </div>
+                              <div>
+                                <span className="block text-[9px] text-slate-400 font-extrabold uppercase tracking-wider select-none">Account Number</span>
+                                <span className="block text-slate-800 text-xs font-bold mt-0.5">{selectedClaim.policyHolderBankDetails.accountNumber || "N/A"}</span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
                           <h3 className="text-sm font-black text-slate-800 border-b pb-2 uppercase tracking-wide">
-                            Policy Holder Bank Details
+                            Confirm Payout Details
                           </h3>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="flex flex-col gap-1.5">
