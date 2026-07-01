@@ -4,14 +4,14 @@ import Link from "next/link";
 
 export default function Footer() {
   return (
-    <footer className="bg-[#ffa500] text-white pt-12 pb-6 px-6 md:px-16 w-full">
+    <footer className="bg-[#102A43] text-white pt-12 pb-6 px-6 md:px-16 w-full">
       <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row justify-between gap-8 md:gap-4">
         
         {/* Left Column - Logo */}
         <div className="flex-shrink-0 flex justify-start items-start">
-          <Link href="/Agent/Dashboard">
+          <Link href="/Agent/Home">
             <Image
-              src="/footer_logo.svg"
+              src="/footer logo.svg"
               alt="Sanasa General Insurance"
               width={150}
               height={60}
@@ -23,10 +23,10 @@ export default function Footer() {
 
         {/* Center Navigation Column 1 */}
         <div className="flex flex-col gap-3 font-semibold text-lg md:pl-8">
-          <Link href="/Agent/Dashboard" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
+          <Link href="/Agent/Home" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
             Home
           </Link>
-          <Link href="/Agent/Dashboard" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
+          <Link href="/Agent/MyClaims" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
             My Claims
           </Link>
           <Link href="/Agent/MyActivity" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
@@ -41,9 +41,6 @@ export default function Footer() {
         <div className="flex flex-col gap-3 font-semibold text-lg md:pl-8">
           <Link href="/Agent/Notifications" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
             Notifications
-          </Link>
-          <Link href="/Agent/Documents" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
-            Documents
           </Link>
           <Link href="/Login" className="hover:text-white/80 transition-colors duration-150 no-underline text-white">
             My Profile

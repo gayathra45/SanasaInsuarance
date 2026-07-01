@@ -4,14 +4,14 @@ import Link from "next/link";
 
 export default function PolicyHolderFooter() {
   return (
-    <footer className="bg-[#ffa500] text-white pt-12 pb-6 px-6 md:px-16 w-full">
+    <footer className="bg-[#102A43] text-white pt-12 pb-6 px-6 md:px-16 w-full">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-10">
         
         {/* Left Section - Logo */}
         <div className="flex-shrink-0 flex justify-center md:justify-start">
           <Link href="/Policy_Holder/Home">
             <Image
-              src="/footer_logo.svg"
+              src="/footer logo.svg"
               alt="Sanasa General Insurance"
               width={130}
               height={52}
@@ -56,7 +56,7 @@ export default function PolicyHolderFooter() {
             <Link href="/Policy_Holder/HelpCentre" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
               Help Centre
             </Link>
-            <Link href="/Login" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
+            <Link href="/Policy_Holder/Profile" className="hover:text-white/80 transition-colors duration-150 no-underline text-white font-semibold">
               My Profile
             </Link>
           </div>
