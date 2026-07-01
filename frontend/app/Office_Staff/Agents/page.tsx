@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import OfficeStaffNavbar from "@/app/Components/Office Staff/Navbar";
-import OfficeStaffFooter from "@/app/Components/Office Staff/Footer";
 
 export default function AgentsPage() {
   const router = useRouter();
@@ -102,9 +101,9 @@ export default function AgentsPage() {
         <OfficeStaffNavbar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="bg-[#f59e0b] text-white px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
-            <h1 className="text-xl font-bold tracking-wide">{branch} Branch — Insurance Agents</h1>
-            <div className="text-sm font-semibold bg-white/10 px-4 py-1.5 rounded-full">
+          <header className="bg-white border-b border-slate-100 text-slate-800 px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
+            <h1 className="text-xl font-semibold text-slate-800 flex items-center gap-2"><span className="bg-[#102A43] text-white text-base px-3.5 py-1.5 rounded-xl font-black shadow-sm tracking-wide">{branch} Branch</span> — Insurance Agents</h1>
+            <div className="text-sm font-semibold bg-slate-100 px-4 py-1.5 rounded-full text-slate-600 border border-slate-200">
               Staff Portal
             </div>
           </header>
@@ -289,7 +288,6 @@ export default function AgentsPage() {
         </div>
       )}
 
-      <OfficeStaffFooter />
     </div>
   );
 }

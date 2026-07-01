@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import AdminNavbar from "@/app/Components/Admin/Navbar";
-import AdminFooter from "@/app/Components/Admin/Footer";
 
 export default function AdminStaffPage() {
   // Modal / Form states
@@ -83,9 +82,9 @@ export default function AdminStaffPage() {
         <AdminNavbar />
 
         <div className="flex-1 flex flex-col min-w-0">
-          <header className="bg-[#f59e0b] text-white px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
-            <h1 className="text-xl font-bold tracking-wide">Admin Portal — Office Staff Management</h1>
-            <div className="text-sm font-semibold bg-white/10 px-4 py-1.5 rounded-full">
+          <header className="bg-white border-b border-slate-100 text-slate-800 px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
+            <h1 className="text-xl font-semibold text-slate-800 flex items-center gap-2">Admin Portal — <span className="bg-[#102A43] text-white text-base px-3.5 py-1.5 rounded-xl font-black shadow-sm tracking-wide">Office Staff Management</span></h1>
+            <div className="text-sm font-semibold bg-slate-100 px-4 py-1.5 rounded-full text-slate-600 border border-slate-200">
               System Admin
             </div>
           </header>
@@ -300,7 +299,6 @@ export default function AdminStaffPage() {
         </div>
       )}
 
-      <AdminFooter />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function PolicyHolderFooter() {
   return (
-    <footer className="bg-[#ffa500] text-white pt-12 pb-6 px-6 md:px-16 w-full">
+    <footer className="bg-[#102A43] text-white pt-12 pb-6 px-6 md:px-16 w-full">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-10">
         
         {/* Left Section - Logo */}

@@ -6,7 +6,7 @@ import Image from "next/image";
 
 export default function AdminFooter() {
   return (
-    <footer className="bg-[#f59e0b] w-full text-white py-12 px-6 md:px-16 select-none relative z-10">
+    <footer className="bg-[#102A43] w-full text-white py-12 px-6 md:px-16 select-none relative z-10">
       <div className="max-w-7xl mx-auto flex flex-col gap-10">
         
         {/* Top Section */}
