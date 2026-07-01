@@ -79,8 +79,8 @@ export default function OfficeStaffNavbar() {
   return (
     <aside className="w-[280px] bg-[#102A43] min-h-screen flex flex-col text-white shadow-xl flex-shrink-0 select-none">
       {/* Logo Section */}
-      <div className="pt-8 pb-4 px-6 flex flex-col items-center">
-        <div className="relative w-44 h-16 mb-4">
+      <div className="py-8 px-6 flex flex-col items-center border-b border-white/5">
+        <div className="relative w-44 h-16">
           <Image
             src="/logo.png"
             alt="Sanasa General Insurance Logo"
@@ -89,11 +89,7 @@ export default function OfficeStaffNavbar() {
             priority
           />
         </div>
-        <div className="w-full px-4 py-2 bg-white/10 rounded-xl text-center border border-white/5 select-none">
-          <span className="text-xs uppercase font-black tracking-widest text-[#00ddff]">Branch Staff</span>
-        </div>
       </div>
-      <div className="w-full border-b border-white/5" />
 
       {/* Menu Navigation Links */}
       <nav className="flex-1 mt-6 flex flex-col">
