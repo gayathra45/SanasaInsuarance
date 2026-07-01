@@ -187,7 +187,7 @@ export default function Home() {
         <section className={motorSection}>
           <div className={motorImageContainer}>
             <Image
-              src="/home2 h.png"
+              src="/home2_h.png"
               alt="Motor Insurance Features"
               fill
               className="z-[1]"
@@ -210,7 +210,7 @@ export default function Home() {
             </div>
             <div className={motorImage}>
               <Image
-                src="/Home 2.1.png"
+                src="/Home_2.1.png"
                 alt="Vehicles Covered"
                 width={1000}
                 height={400}
@@ -225,7 +225,7 @@ export default function Home() {
         <section className={appSection}>
           <div className={appBg}>
             <Image
-              src="/Home 3.jpg"
+              src="/Home_3.jpg"
               alt="Insurance App background"
               fill
               style={{ objectFit: "cover" }}
@@ -235,7 +235,7 @@ export default function Home() {
           <div className={appContent}>
             <div className={appImageContainer}>
               <Image
-                src="/Home 3.1.png"
+                src="/Home_3.1.png"
                 alt="Insurance app with phone, car and shield"
                 width={400}
                 height={500}

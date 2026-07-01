@@ -4,11 +4,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, usePathname } from "expo-router";
 
 const NAV_ITEMS = [
-  { label: "Home",     icon: "home-outline" as const,          iconActive: "home" as const,          route: "/Policy Holder/page" },
-  { label: "Claims",   icon: "document-text-outline" as const, iconActive: "document-text" as const, route: "/Policy Holder/My_claims" },
-  { label: "New",      icon: "add" as const,                   iconActive: "add" as const,            route: "/Policy Holder/New_Claim", isCenter: true },
-  { label: "Vehicles", icon: "car-outline" as const,           iconActive: "car" as const,            route: "/Policy Holder/MyVehicles" },
-  { label: "Track",    icon: "search-outline" as const,        iconActive: "search" as const,         route: "/Policy Holder/TrackClaims" },
+  { label: "Home",     icon: "home-outline" as const,          iconActive: "home" as const,          route: "/PolicyHolder/page" },
+  { label: "Claims",   icon: "document-text-outline" as const, iconActive: "document-text" as const, route: "/PolicyHolder/My_claims" },
+  { label: "New",      icon: "add" as const,                   iconActive: "add" as const,            route: "/PolicyHolder/New_Claim", isCenter: true },
+  { label: "Vehicles", icon: "car-outline" as const,           iconActive: "car" as const,            route: "/PolicyHolder/MyVehicles" },
+  { label: "Track",    icon: "search-outline" as const,        iconActive: "search" as const,         route: "/PolicyHolder/TrackClaims" },
 ] as const;
 
 interface PolicyHolderNavbarProps {

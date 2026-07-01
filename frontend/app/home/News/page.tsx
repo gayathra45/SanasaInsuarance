@@ -31,7 +31,7 @@ export default function News() {
       {/* Left Side - Image */}
       <div className="flex-1 flex justify-center items-center">
         <Image
-          src="/Home 3.1.png"
+          src="/Home_3.1.png"
           alt="Insurance App Introduction"
           width={400}
           height={500}

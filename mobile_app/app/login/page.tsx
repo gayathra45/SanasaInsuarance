@@ -64,7 +64,7 @@ export default function MobileLogin() {
           return;
         }
         await AsyncStorage.setItem("logged_in_user", JSON.stringify(data.user));
-        router.replace("/Policy Holder/page");
+        router.replace("/PolicyHolder/page" as any);
 
       // ── Insurance Agent ────────────────────────────────────────
       } else if (activeRole === "insurance_agent") {

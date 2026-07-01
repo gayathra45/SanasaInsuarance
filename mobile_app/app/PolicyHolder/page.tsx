@@ -21,7 +21,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router, useNavigation } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import PolicyHolderNavbar from "../Components/policy holder/page";
+import PolicyHolderNavbar from "../Components/PolicyHolder/page";
 import { API_BASE_URL } from "../config";
 
 const { width: SCREEN_W } = Dimensions.get("window");
@@ -89,11 +89,11 @@ function vehicleIcon(type: string) {
 
 /* Quick actions — moved to bottom, clean minimal design */
 const QUICK_ACTIONS = [
-  { label: "New Claim",   icon: "add-circle-outline",   route: "/Policy Holder/New_Claim",   color: "#0f172a" },
-  { label: "My Claims",   icon: "document-text-outline", route: "/Policy Holder/My_claims",   color: "#0f172a" },
-  { label: "Track Claim", icon: "locate-outline",        route: "/Policy Holder/TrackClaims", color: "#0f172a" },
-  { label: "My Vehicles", icon: "car-outline",           route: "/Policy Holder/MyVehicles",  color: "#0f172a" },
-  { label: "My Docs",     icon: "folder-open-outline",   route: "/Policy Holder/MyDocs",      color: "#0f172a" },
+  { label: "New Claim",   icon: "add-circle-outline",   route: "/PolicyHolder/New_Claim",   color: "#0f172a" },
+  { label: "My Claims",   icon: "document-text-outline", route: "/PolicyHolder/My_claims",   color: "#0f172a" },
+  { label: "Track Claim", icon: "locate-outline",        route: "/PolicyHolder/TrackClaims", color: "#0f172a" },
+  { label: "My Vehicles", icon: "car-outline",           route: "/PolicyHolder/MyVehicles",  color: "#0f172a" },
+  { label: "My Docs",     icon: "folder-open-outline",   route: "/PolicyHolder/MyDocs",      color: "#0f172a" },
   { label: "Support",     icon: "headset-outline",       route: "support",                    color: "#0f172a" },
 ];
 
@@ -173,8 +173,8 @@ export default function PolicyHolderDashboard() {
             isUrgent: true,
             createdAt: claim.createdAt,
             actions: [
-              { label: "Upload", route: "/Policy Holder/MyDocs", primary: true },
-              { label: "View",   route: "/Policy Holder/TrackClaims" },
+              { label: "Upload", route: "/PolicyHolder/MyDocs", primary: true },
+              { label: "View",   route: "/PolicyHolder/TrackClaims" },
             ],
             claim: claim
           });
@@ -189,7 +189,7 @@ export default function PolicyHolderDashboard() {
             date: dateFormatted,
             isUrgent: false,
             createdAt: claim.createdAt,
-            actions: [{ label: "View", route: "/Policy Holder/TrackClaims" }],
+            actions: [{ label: "View", route: "/PolicyHolder/TrackClaims" }],
             claim: claim
           });
         } else if (!claim.documentsRequested) {
@@ -201,7 +201,7 @@ export default function PolicyHolderDashboard() {
             date: dateFormatted,
             isUrgent: false,
             createdAt: claim.createdAt,
-            actions: [{ label: "View", route: "/Policy Holder/TrackClaims" }],
+            actions: [{ label: "View", route: "/PolicyHolder/TrackClaims" }],
             claim: claim
           });
         }
@@ -478,7 +478,7 @@ export default function PolicyHolderDashboard() {
       Animated.timing(bellScale, { toValue: 0.8, duration: 70, useNativeDriver: true }),
       Animated.timing(bellScale, { toValue: 1.15, duration: 90, useNativeDriver: true }),
       Animated.timing(bellScale, { toValue: 1,   duration: 70, useNativeDriver: true }),
-    ]).start(() => router.push("/Policy Holder/Notifications" as any));
+    ]).start(() => router.push("/PolicyHolder/Notifications" as any));
   };
 
   const handleQuickAction = (route: string) => {
@@ -589,7 +589,7 @@ export default function PolicyHolderDashboard() {
               <View style={styles.neonButtonsContainer}>
                 <TouchableOpacity
                   style={[styles.neonButton, styles.neonButtonRed]}
-                  onPress={() => router.push("/Policy Holder/New_Claim")}
+                  onPress={() => router.push("/PolicyHolder/New_Claim" as any)}
                   activeOpacity={0.9}
                 >
                   <Ionicons name="add" size={20} color="#ffffff" style={{ marginRight: 6 }} />
@@ -598,7 +598,7 @@ export default function PolicyHolderDashboard() {
 
                 <TouchableOpacity
                   style={[styles.neonButton, styles.neonButtonCyan]}
-                  onPress={() => router.push("/Policy Holder/TrackClaims")}
+                  onPress={() => router.push("/PolicyHolder/TrackClaims" as any)}
                   activeOpacity={0.9}
                 >
                   <Ionicons name="search" size={18} color="#ffffff" style={{ marginRight: 6 }} />
@@ -611,7 +611,7 @@ export default function PolicyHolderDashboard() {
 
         {/* ── STAT CARDS ── */}
         <View style={styles.statsCardRow}>
-          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => router.push("/Policy Holder/My_claims")}>
+          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => router.push("/PolicyHolder/My_claims" as any)}>
             <View style={[styles.statIconWrap, { backgroundColor: "#fff7ed" }]}>
               <Ionicons name="stats-chart" size={20} color="#f97316" />
             </View>
@@ -621,7 +621,7 @@ export default function PolicyHolderDashboard() {
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => router.push("/Policy Holder/My_claims")}>
+          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => router.push("/PolicyHolder/My_claims" as any)}>
             <View style={[styles.statIconWrap, { backgroundColor: "#ecfeff" }]}>
               <Ionicons name="time" size={20} color="#06b6d4" />
             </View>
@@ -631,7 +631,7 @@ export default function PolicyHolderDashboard() {
 
           <View style={styles.divider} />
 
-          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => router.push("/Policy Holder/My_claims")}>
+          <TouchableOpacity style={styles.statItem} activeOpacity={0.7} onPress={() => router.push("/PolicyHolder/My_claims" as any)}>
             <View style={[styles.statIconWrap, { backgroundColor: "#f0fdf4" }]}>
               <Ionicons name="checkmark-circle" size={20} color="#22c55e" />
             </View>
@@ -646,7 +646,7 @@ export default function PolicyHolderDashboard() {
           <View style={{ paddingHorizontal: 16, marginTop: 22 }}>
             <TouchableOpacity
               style={styles.myDocsCard}
-              onPress={() => router.push("/Policy Holder/MyDocs")}
+              onPress={() => router.push("/PolicyHolder/MyDocs" as any)}
               activeOpacity={0.88}
             >
               <LinearGradient
@@ -749,7 +749,7 @@ export default function PolicyHolderDashboard() {
                                 markAsRead(n.id);
                                 if (act.route.includes("TrackClaims")) {
                                   router.push({
-                                    pathname: "/Policy Holder/TrackClaims",
+                                    pathname: "/PolicyHolder/TrackClaims",
                                     params: { id: n.claim.claimNumber }
                                   } as any);
                                 } else {
@@ -786,7 +786,7 @@ export default function PolicyHolderDashboard() {
           <View style={{ paddingHorizontal: 16, marginTop: 24 }}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>My Vehicles</Text>
-              <TouchableOpacity onPress={() => router.push("/Policy Holder/MyVehicles")}>
+              <TouchableOpacity onPress={() => router.push("/PolicyHolder/MyVehicles" as any)}>
                 <Ionicons name="chevron-forward" size={18} color="#64748b" />
               </TouchableOpacity>
             </View>
@@ -804,7 +804,7 @@ export default function PolicyHolderDashboard() {
                     </View>
                     <TouchableOpacity
                       style={styles.vehicleViewBtn}
-                      onPress={() => router.push("/Policy Holder/MyVehicles")}
+                      onPress={() => router.push("/PolicyHolder/MyVehicles" as any)}
                     >
                       <Text style={styles.vehicleViewBtnText}>View</Text>
                     </TouchableOpacity>
@@ -1098,7 +1098,7 @@ export default function PolicyHolderDashboard() {
                       style={styles.uploadDocBtn}
                       onPress={() => {
                         setSelectedClaim(null);
-                        router.push("/Policy Holder/MyDocs" as any);
+                        router.push("/PolicyHolder/MyDocs" as any);
                       }}
                     >
                       <Text style={styles.uploadDocBtnText}>Go to Documents</Text>
@@ -1117,7 +1117,7 @@ export default function PolicyHolderDashboard() {
                   setSelectedClaim(null);
                   if (claimNum) {
                     router.push({
-                      pathname: "/Policy Holder/TrackClaims",
+                      pathname: "/PolicyHolder/TrackClaims",
                       params: { id: claimNum }
                     } as any);
                   }

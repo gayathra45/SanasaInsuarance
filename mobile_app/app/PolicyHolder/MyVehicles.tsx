@@ -19,7 +19,7 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useNavigation } from "expo-router";
-import PolicyHolderNavbar from "../Components/policy holder/page";
+import PolicyHolderNavbar from "../Components/PolicyHolder/page";
 import { API_BASE_URL } from "../config";
 
 interface Vehicle {
@@ -300,7 +300,7 @@ export default function MyVehicles() {
 
   const handleFileClaim = (vehicle: Vehicle) => {
     router.push({
-      pathname: "/Policy Holder/New_Claim" as any,
+      pathname: "/PolicyHolder/New_Claim" as any,
       params: { plate: vehicle.numberPlate }
     });
   };

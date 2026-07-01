@@ -55,7 +55,7 @@ export default function About() {
         {/* Right Side - Image */}
         <div className="flex-1 flex justify-center items-center">
           <Image
-            src="/about 1.jpg"
+            src="/about_1.jpg"
             alt="Founder Dr. P.A. Kiriwandeniya"
             width={350}
             height={400}

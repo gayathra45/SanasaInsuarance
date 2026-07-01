@@ -19,7 +19,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
-import PolicyHolderNavbar from "../Components/policy holder/page";
+import PolicyHolderNavbar from "../Components/PolicyHolder/page";
 import { API_BASE_URL } from "../config";
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
@@ -489,7 +489,7 @@ export default function MyClaims() {
                       style={styles.uploadDocBtn}
                       onPress={() => {
                         setSelectedClaim(null);
-                        router.push("/Policy Holder/MyDocs" as any);
+                        router.push("/PolicyHolder/MyDocs" as any);
                       }}
                     >
                       <Text style={styles.uploadDocBtnText}>Go to My Documents to Upload</Text>

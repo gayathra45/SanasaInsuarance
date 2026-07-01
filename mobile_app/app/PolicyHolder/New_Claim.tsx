@@ -21,10 +21,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import PolicyHolderNavbar from "../Components/policy holder/page";
+import PolicyHolderNavbar from "../Components/PolicyHolder/page";
 import { API_BASE_URL } from "../config";
-import MapDisplay from "../Components/policy holder/MapDisplay";
-import MapSelectorModal from "../Components/policy holder/MapSelectorModal";
+import MapDisplay from "../Components/PolicyHolder/MapDisplay";
+import MapSelectorModal from "../Components/PolicyHolder/MapSelectorModal";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 
@@ -960,7 +960,7 @@ export default function FileNewClaim() {
 
             {/* Action Row */}
             <View style={styles.actionsRow}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => router.push("/Policy Holder/page")}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => router.push("/PolicyHolder/page" as any)}>
                 <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.primaryBtn} onPress={handleNextStep}>
@@ -1038,7 +1038,7 @@ export default function FileNewClaim() {
               style={styles.returnBtn}
               onPress={() => {
                 setShowSuccessModal(false);
-                router.replace("/Policy Holder/page");
+                router.replace("/PolicyHolder/page" as any);
               }}
             >
               <Ionicons name="home" size={16} color="#ffffff" style={{ marginRight: 6 }} />

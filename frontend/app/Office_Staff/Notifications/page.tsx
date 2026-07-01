@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import OfficeStaffNavbar from "@/app/Components/Office Staff/Navbar";
-import OfficeStaffFooter from "@/app/Components/Office Staff/Footer";
+import OfficeStaffNavbar from "@/app/Components/Office_Staff/Navbar";
+import OfficeStaffFooter from "@/app/Components/Office_Staff/Footer";
 import Link from "next/link";
 import { API_URL } from "@/app/config";
 

@@ -11,7 +11,7 @@ export default function PolicyHolderFooter() {
         <div className="flex-shrink-0 flex justify-center md:justify-start">
           <Link href="/Policy_Holder/Home">
             <Image
-              src="/footer logo.svg"
+              src="/footer_logo.svg"
               alt="Sanasa General Insurance"
               width={130}
               height={52}

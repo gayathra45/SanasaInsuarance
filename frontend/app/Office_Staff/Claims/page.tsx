@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import OfficeStaffNavbar from "@/app/Components/Office Staff/Navbar";
-import OfficeStaffFooter from "@/app/Components/Office Staff/Footer";
+import OfficeStaffNavbar from "@/app/Components/Office_Staff/Navbar";
+import OfficeStaffFooter from "@/app/Components/Office_Staff/Footer";
 import { API_URL } from "@/app/config";
 
 interface ClaimMessage {

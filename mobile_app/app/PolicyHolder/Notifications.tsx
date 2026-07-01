@@ -144,7 +144,7 @@ export default function NotificationsPage() {
             date: dateFormatted,
             isUrgent: true,
             createdAt: claim.createdAt,
-            route: "/Policy Holder/MyDocs",
+            route: "/PolicyHolder/MyDocs",
             actionLabel: "Upload Documents",
             claim: claim
           });
@@ -161,7 +161,7 @@ export default function NotificationsPage() {
             date: dateFormatted,
             isUrgent: false,
             createdAt: claim.createdAt,
-            route: "/Policy Holder/My_claims",
+            route: "/PolicyHolder/My_claims",
             actionLabel: "View",
             claim: claim
           });
@@ -175,7 +175,7 @@ export default function NotificationsPage() {
             date: dateFormatted,
             isUrgent: false,
             createdAt: claim.createdAt,
-            route: "/Policy Holder/TrackClaims",
+            route: "/PolicyHolder/TrackClaims",
             actionLabel: "View",
             claim: claim
           });
@@ -556,7 +556,7 @@ export default function NotificationsPage() {
                              } else {
                                if (n.route.includes("TrackClaims")) {
                                  router.push({
-                                   pathname: "/Policy Holder/TrackClaims",
+                                    pathname: "/PolicyHolder/TrackClaims",
                                    params: { id: n.claim.claimNumber }
                                  } as any);
                                } else {
@@ -714,7 +714,7 @@ export default function NotificationsPage() {
                       style={styles.uploadDocBtn}
                       onPress={() => {
                         setSelectedClaim(null);
-                        router.push("/Policy Holder/MyDocs" as any);
+                         router.push("/PolicyHolder/MyDocs" as any);
                       }}
                     >
                       <Text style={styles.uploadDocBtnText}>Go to Documents</Text>
@@ -733,7 +733,7 @@ export default function NotificationsPage() {
                   setSelectedClaim(null);
                   if (claimNum) {
                     router.push({
-                      pathname: "/Policy Holder/TrackClaims",
+                      pathname: "/PolicyHolder/TrackClaims",
                       params: { id: claimNum }
                     } as any);
                   }
