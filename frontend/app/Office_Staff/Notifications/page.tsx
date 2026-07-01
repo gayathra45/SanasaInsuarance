@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import OfficeStaffNavbar from "@/app/Components/Office_Staff/Navbar";
-import OfficeStaffFooter from "@/app/Components/Office_Staff/Footer";
 import Link from "next/link";
 import { API_URL } from "@/app/config";
 
@@ -345,11 +344,11 @@ export default function OfficeStaffNotifications() {
         <div className="flex-1 flex flex-col min-w-0">
           
           {/* Header styled matching the Portal color themes */}
-          <header className="bg-[#f59e0b] text-white px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
-            <h1 className="text-xl font-bold tracking-wide">{branch} Branch — Notifications Center</h1>
+          <header className="bg-white border-b border-slate-100 text-slate-800 px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
+            <h1 className="text-xl font-semibold text-slate-800 flex items-center gap-2"><span className="bg-[#102A43] text-white text-base px-3.5 py-1.5 rounded-xl font-black shadow-sm tracking-wide">{branch} Branch</span> — Notifications Center</h1>
             <div className="flex items-center gap-5">
               {/* Active notifications indicator count badge */}
-              <div className="text-sm font-semibold bg-white/10 px-4 py-1.5 rounded-full select-none">
+              <div className="text-sm font-semibold bg-slate-100 px-4 py-1.5 rounded-full select-none text-slate-600 border border-slate-200">
                 {notifications.filter(n => !readIds.includes(n.id)).length} unread alerts
               </div>
             </div>
@@ -734,7 +733,6 @@ export default function OfficeStaffNotifications() {
         );
       })()}
 
-      <OfficeStaffFooter />
     </div>
   );
 }

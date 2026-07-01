@@ -4,7 +4,6 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import OfficeStaffNavbar from "@/app/Components/Office_Staff/Navbar";
-import OfficeStaffFooter from "@/app/Components/Office_Staff/Footer";
 import { API_URL } from "@/app/config";
 
 function getVehicleIconSvg(type: string, className = "w-9 h-9 text-slate-800") {
@@ -528,18 +527,18 @@ export default function AddVehiclesPage() {
 
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
-          <header className="bg-[#f59e0b] text-white px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
-            <h1 className="text-xl font-bold tracking-wide">Welcome back, {branch} Branch</h1>
+          <header className="bg-white border-b border-slate-100 text-slate-800 px-8 py-4 flex justify-between items-center select-none shadow-sm flex-shrink-0 h-[80px]">
+            <h1 className="text-xl font-semibold text-slate-800 flex items-center gap-2">Welcome back, <span className="bg-[#102A43] text-white text-base px-3.5 py-1.5 rounded-xl font-black shadow-sm tracking-wide">{branch} Branch</span></h1>
             <div className="flex items-center gap-5">
               <Link
                 href="/Office_Staff/Notifications"
-                className="relative p-1.5 hover:bg-white/10 rounded-full transition-colors cursor-pointer focus:outline-none flex items-center justify-center"
+                className="relative p-1.5 hover:bg-slate-100 rounded-full transition-colors cursor-pointer focus:outline-none flex items-center justify-center"
               >
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="w-6 h-6 text-white"
+                  className="w-6 h-6 text-slate-500 hover:text-slate-800"
                 >
                   <path
                     fillRule="evenodd"
@@ -548,12 +547,12 @@ export default function AddVehiclesPage() {
                   />
                 </svg>
               </Link>
-              <button className="relative p-1 hover:bg-white/10 rounded-full transition-colors cursor-pointer focus:outline-none">
+              <button className="relative p-1 hover:bg-slate-100 rounded-full transition-colors cursor-pointer focus:outline-none">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 24 24"
                   fill="currentColor"
-                  className="w-8 h-8 text-white"
+                  className="w-8 h-8 text-slate-500 hover:text-slate-800"
                 >
                   <path
                     fillRule="evenodd"
@@ -901,7 +900,6 @@ export default function AddVehiclesPage() {
           </main>
         </div>
       </div>
-      <OfficeStaffFooter />
 
       {/* Owner Profile Details Modal */}
       {selectedUserForModal && (
