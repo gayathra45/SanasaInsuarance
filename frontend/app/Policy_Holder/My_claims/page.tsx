@@ -79,6 +79,19 @@ export default function MyClaims() {
     return "";
   };
 
+  // Format YYYY-MM-DD to "DD MMM YYYY" (e.g. "12 Jan 2026")
+  const formatDateString = (dateStr: string) => {
+    if (!dateStr) return "";
+    try {
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return `${date.getDate().toString().padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()}`;
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
   const formatDateTimeString = (dateStr: string) => {
     if (!dateStr) return "";
     try {
@@ -234,19 +247,6 @@ export default function MyClaims() {
       document.body.style.overflow = "";
     };
   }, [selectedClaim]);
-
-  // Format YYYY-MM-DD to "DD MMM YYYY" (e.g. "12 Jan 2026")
-  const formatDateString = (dateStr: string) => {
-    if (!dateStr) return "";
-    try {
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      return `${date.getDate().toString().padStart(2, '0')} ${months[date.getMonth()]} ${date.getFullYear()}`;
-    } catch (e) {
-      return dateStr;
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const s = status.toLowerCase();

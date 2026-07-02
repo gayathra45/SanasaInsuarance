@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Afacad } from "next/font/google";
-// @ts-ignore: allow side-effect CSS import without explicit module declarations
 import "./globals.css";
 
 const afacad = Afacad({

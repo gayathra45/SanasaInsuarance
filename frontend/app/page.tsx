@@ -258,7 +258,7 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <Footer />
+      <Footer className="mt-0" />
     </div>
   );
 }

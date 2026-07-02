@@ -2,9 +2,13 @@ import React from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-export default function Footer() {
+interface FooterProps {
+  className?: string;
+}
+
+export default function Footer({ className }: FooterProps) {
   return (
-    <footer className="bg-[#102A43] text-white pt-10 pb-5 px-6 md:px-16 mt-[60px] w-full">
+    <footer className={`bg-[#102A43] text-white pt-10 pb-5 px-6 md:px-16 w-full ${className || "mt-[60px]"}`}>
       <div className="max-w-[1200px] mx-auto flex flex-col md:flex-row justify-between items-center md:items-start gap-8 text-center md:text-left">
         
         {/* Left Section - Logo */}
@@ -55,7 +59,7 @@ export default function Footer() {
             </Link>
             <Link
               href="/SignUp"
-              className="bg-white text-[#ffa500] py-2 px-6 rounded-full no-underline text-sm font-semibold border-none cursor-pointer transition-all duration-300 hover:opacity-90 hover:-translate-y-[2px]"
+              className="bg-white text-[#102A43] py-2 px-6 rounded-full no-underline text-sm font-semibold border-none cursor-pointer transition-all duration-300 hover:opacity-90 hover:-translate-y-[2px]"
             >
               Sign Up
             </Link>

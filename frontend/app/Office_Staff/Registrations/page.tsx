@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import OfficeStaffNavbar from "@/app/Components/Office_Staff/Navbar";
@@ -41,7 +41,7 @@ interface Registration {
   createdAt: string;
 }
 
-export default function RegistrationsPage() {
+function RegistrationsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const refParam = searchParams.get("ref");
@@ -529,5 +529,13 @@ export default function RegistrationsPage() {
       )}
 
     </div>
+  );
+}
+
+export default function RegistrationsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading registrations...</div>}>
+      <RegistrationsPageContent />
+    </Suspense>
   );
 }

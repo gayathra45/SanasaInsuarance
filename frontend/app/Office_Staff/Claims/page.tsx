@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import OfficeStaffNavbar from "@/app/Components/Office_Staff/Navbar";
@@ -366,7 +366,7 @@ const renderParsedInspection = (
   );
 };
 
-export default function OfficeStaffClaimsPage() {
+function OfficeStaffClaimsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const claimId = searchParams.get("claimId");
@@ -3038,3 +3038,12 @@ function formatMessageTime(dateStr: string) {
     return "";
   }
 }
+
+export default function OfficeStaffClaimsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading claims...</div>}>
+      <OfficeStaffClaimsPageContent />
+    </Suspense>
+  );
+}
+
