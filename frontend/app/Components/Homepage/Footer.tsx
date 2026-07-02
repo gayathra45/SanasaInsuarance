@@ -55,7 +55,7 @@ export default function Footer() {
             </Link>
             <Link
               href="/SignUp"
-              className="bg-white text-[#ffa500] py-2 px-6 rounded-full no-underline text-sm font-semibold border-none cursor-pointer transition-all duration-300 hover:opacity-90 hover:-translate-y-[2px]"
+              className="bg-white text-[#102A43] py-2 px-6 rounded-full no-underline text-sm font-semibold border-none cursor-pointer transition-all duration-300 hover:opacity-90 hover:-translate-y-[2px]"
             >
               Sign Up
             </Link>
